@@ -1,11 +1,10 @@
 
+'use client';
+
 import React, { useState } from 'react';
 import { Visitor, User } from '../types';
 import { Plus, X, Share2, Clock, User as UserIcon, Search } from 'lucide-react';
 
-interface AccessControlProps {
-  currentUser: User;
-}
 
 const MOCK_ADMIN_VISITORS: Visitor[] = [
   { id: '1', name: 'Uber Eats', type: 'Delivery', accessCode: '8842', date: '2023-11-02 19:00', status: 'Active', unit: '402' },
@@ -14,7 +13,7 @@ const MOCK_ADMIN_VISITORS: Visitor[] = [
   { id: '4', name: 'Furniture Delivery', type: 'Delivery', accessCode: '5566', date: '2023-11-03 12:00', status: 'Active', unit: '808' },
 ];
 
-export const AccessControl: React.FC<AccessControlProps> = ({ }) => {
+export default function AccessControl() {
   const isAdmin = true;
 
   const [visitors, setVisitors] = useState<Visitor[]>(

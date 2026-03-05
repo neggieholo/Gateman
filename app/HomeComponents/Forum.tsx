@@ -1,12 +1,12 @@
 
+'use client';
+
 import React, { useState } from 'react';
 import { Post, User, Comment, Role } from '../types';
 import { summarizeForumThread } from '../services/geminiService';
 import { MessageSquare, ThumbsUp, MoreHorizontal, Sparkles, Send, Trash2, ArrowLeft, Plus, X, ShieldCheck, Crown } from 'lucide-react';
+import { useUser } from '../UserContext';
 
-interface ForumProps {
-    currentUser: User;
-}
 
 const MOCK_POSTS: Post[] = [
   {
@@ -47,7 +47,8 @@ const MOCK_POSTS: Post[] = [
   }
 ];
 
-export const Forum: React.FC<ForumProps> = ({ currentUser }) => {
+export default function Forum() {
+  const {user} = useUser();
   const [posts, setPosts] = useState<Post[]>(MOCK_POSTS);
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [summary, setSummary] = useState<{ [key: string]: string }>({});
@@ -63,7 +64,6 @@ export const Forum: React.FC<ForumProps> = ({ currentUser }) => {
   const [newPostCategory, setNewPostCategory] = useState<'General' | 'Complaints' | 'Marketplace' | 'Alerts'>('General');
   const [newComment, setNewComment] = useState('');
 
-  const isAdmin = currentUser.role === 'admin' || currentUser.role === 'superadmin';
   const categories = ['All', 'General', 'Complaints', 'Marketplace', 'Alerts'];
 
   const selectedPost = posts.find(p => p.id === selectedPostId);
@@ -122,8 +122,8 @@ export const Forum: React.FC<ForumProps> = ({ currentUser }) => {
 
     const newPost: Post = {
         id: Date.now().toString(),
-        author: currentUser.name,
-        authorRole: currentUser.role,
+        author: user?.name || "Unknown User",
+        authorRole: user?.role,
         title: newPostTitle,
         content: newPostContent,
         category: newPostCategory,
@@ -144,8 +144,8 @@ export const Forum: React.FC<ForumProps> = ({ currentUser }) => {
 
     const comment: Comment = {
         id: Date.now().toString(),
-        author: currentUser.name,
-        authorRole: currentUser.role,
+        author: user?.name || "Unknown User",
+        authorRole: user?.role,
         content: newComment,
         timestamp: 'Just now'
     };
@@ -227,7 +227,7 @@ export const Forum: React.FC<ForumProps> = ({ currentUser }) => {
                         disabled={!newPostTitle || !newPostContent}
                         className="px-8 py-3 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-xl shadow-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95"
                     >
-                        Post as {currentUser.role === 'resident' ? 'Resident' : currentUser.role.toUpperCase()}
+                        Post as {user?.role.toUpperCase()}
                     </button>
                 </div>
             </div>
@@ -308,8 +308,8 @@ export const Forum: React.FC<ForumProps> = ({ currentUser }) => {
                     </div>
                 )}
                 {selectedPost.comments.map(comment => (
-                    <div key={comment.id} className="bg-white p-5 rounded-[1.5rem] border border-slate-100 flex gap-4 shadow-sm">
-                         <div className={`w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center text-xs font-bold text-white ${comment.authorRole === 'admin' || comment.authorRole === 'superadmin' ? 'bg-indigo-600' : 'bg-slate-400'}`}>
+                    <div key={comment.id} className="bg-white p-5 rounded-3xl border border-slate-100 flex gap-4 shadow-sm">
+                         <div className={`w-9 h-9 rounded-xl shrink-0 flex items-center justify-center text-xs font-bold text-white ${comment.authorRole === 'admin' || comment.authorRole === 'superadmin' ? 'bg-indigo-600' : 'bg-slate-400'}`}>
                             {comment.author.charAt(0)}
                         </div>
                         <div className="flex-1">
@@ -386,7 +386,7 @@ export const Forum: React.FC<ForumProps> = ({ currentUser }) => {
           <div 
             key={post.id} 
             onClick={() => { setSelectedPostId(post.id); setView('thread'); }}
-            className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 transition-all hover:shadow-xl hover:-translate-y-1 relative group cursor-pointer"
+            className="bg-white p-6 rounded-4xl shadow-sm border border-slate-100 transition-all hover:shadow-xl hover:-translate-y-1 relative group cursor-pointer"
           >
             <div className="flex justify-between items-start mb-4">
               <div className="flex items-center space-x-3">
@@ -405,14 +405,12 @@ export const Forum: React.FC<ForumProps> = ({ currentUser }) => {
                  <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${getCategoryColor(post.category)}`}>
                     {post.category}
                  </span>
-                 {isAdmin && (
-                    <button 
+                 <button 
                         onClick={(e) => handleDelete(e, post.id)}
                         className="text-slate-300 hover:text-rose-500 transition-colors p-1.5 rounded-full hover:bg-rose-50"
                     >
                         <Trash2 size={16} />
-                    </button>
-                 )}
+                  </button>
               </div>
             </div>
 

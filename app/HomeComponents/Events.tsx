@@ -1,12 +1,11 @@
 
+'use client';
+
 import React, { useState } from 'react';
 import { CommunityEvent, User } from '../types';
 import { generateEventIdeas } from '../services/geminiService';
 import { Calendar, MapPin, Users, Sparkles, Plus, Trash2, X, Image as ImageIcon, Clock } from 'lucide-react';
 
-interface EventsProps {
-  currentUser: User;
-}
 
 const MOCK_EVENTS: CommunityEvent[] = [
   {
@@ -29,7 +28,7 @@ const MOCK_EVENTS: CommunityEvent[] = [
   }
 ];
 
-export const Events: React.FC<EventsProps> = ({ currentUser }) => {
+export default function Events() {
   const [events, setEvents] = useState<CommunityEvent[]>(MOCK_EVENTS);
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);

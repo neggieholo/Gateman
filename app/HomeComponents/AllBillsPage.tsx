@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect } from "react";
 import { BillItem } from "../types";
 import { fetchBills } from "../utils/invoices";

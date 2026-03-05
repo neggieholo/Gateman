@@ -1,9 +1,11 @@
+'use client';
+
 import React, { useEffect, useState } from "react";
 import { db } from "../services/database";
 import { Tenant } from "../types";
 
 
-const TenantManagement: React.FC = () => {
+export default function TenantManagement() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
 
@@ -92,6 +94,4 @@ const TenantManagement: React.FC = () => {
       </ul>
     </div>
   );
-};
-
-export default TenantManagement;
+}

@@ -1,9 +1,11 @@
+'use client';
+
 import React, { useEffect, useState } from "react";
 import { JoinRequest } from "../types";
 import JoinRequestsList from "./JoinRequestsList";
 import { db } from "../services/database";
 
-const JoinRequestsPage = () => {
+export default function JoinRequestsPage() {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
   const [pendingRequests, setPendingRequests] = useState<JoinRequest[]>([]);
 
@@ -62,6 +64,4 @@ const JoinRequestsPage = () => {
       />
     </div>
   );
-};
-
-export default JoinRequestsPage;
+}

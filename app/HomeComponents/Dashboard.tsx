@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Bell, QrCode, Users, AlertTriangle, TrendingUp, ShieldCheck } from 'lucide-react';
+import { QrCode, Users, AlertTriangle, TrendingUp, ShieldCheck } from 'lucide-react';
 
 
 export default function Dashboard () {
@@ -13,11 +13,7 @@ export default function Dashboard () {
           <div>
              <div className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">{currentDate}</div>
             <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Overview</h1>
-          </div>
-          <button className="relative p-3 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:shadow-md transition-all">
-            <Bell size={20} />
-            <span className="absolute top-0 right-0 w-3 h-3 bg-rose-500 rounded-full border-2 border-white"></span>
-          </button>
+          </div>          
         </div>
 
         {/* Admin Stats Grid */}

@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState } from "react";
 import { JoinRequest } from "../types";
 import { ChevronDown, Check, X } from "lucide-react";

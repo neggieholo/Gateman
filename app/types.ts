@@ -8,7 +8,7 @@ export interface User {
   email: string;        
   city?: string | null;
   town?: string | null;
-  role: 'admin'| 'superadmin' | 'resident';
+  role: 'admin';
   wallet_balance: string;       // keep as string to match DB numeric -> '0.00'
   avatar?: string |Blob;
   subscription_expiry?: string; // or Date if you convert it on fetch
