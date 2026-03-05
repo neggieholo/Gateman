@@ -181,7 +181,14 @@ export interface EstateInvoice {
   created_by_name?: string | null;      // estate_admin_users.name
 }
 
+export interface sessionResponse {
+  success: boolean;
+}
 
+export interface LoginResponse {
+  success: boolean;
+  message: string;
+}
 
 
 

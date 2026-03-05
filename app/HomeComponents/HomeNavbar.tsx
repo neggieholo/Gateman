@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useUser } from '@/app/UserContext';
 import { useRouter } from 'next/navigation';
+import { checkSession } from '../services/apis';
 // import Link from 'next/link';
 
 const HomeNavbar = () => {
@@ -19,6 +20,28 @@ const HomeNavbar = () => {
     }
     checkUserAndMount();
   }, [user]);
+
+  
+  // useEffect(() => {
+  //   async function cSessionCheck() {
+  //     try {
+  //       const res = await checkSession();
+
+  //       // Changed res.ok to res.success
+  //       if (!res.success) {
+  //         console.warn('Session invalid, redirecting...');
+  //         window.location.replace('/');
+  //       } else {
+  //         // console.log('Session verified for:', res.user?.firstName);
+  //       }
+  //     } catch (err) {
+  //       console.error('Session check failed:', err);
+  //       window.location.replace('/');
+  //     }
+  //   }
+
+  //   cSessionCheck();
+  // }, []); 
 
   // 2. Prevent rendering dynamic user data until client-side hydration is complete
   // This avoids the "text content does not match" error

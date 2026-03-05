@@ -3,12 +3,12 @@ import { Tenant } from '../types';
 import { JoinRequest } from '../types';
 
 
-const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+// const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
 export const db = {
   // Authenticate user
   authenticate: async (email: string, password: string) => {
-  const res = await fetch(`${baseUrl}/auth/login/admin`, {
+  const res = await fetch("/api/auth/login/admin", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
@@ -19,7 +19,7 @@ export const db = {
     const err = await res.json();
     throw new Error(err.error || "Login failed");
   }
-
+  
   const data = await res.json(); // <-- now logs the actual object
   return data;                   // returns { success: true, user }
  },
@@ -33,7 +33,7 @@ export const db = {
 ) => {
   const body = { name, email, password, city, town };
 
-  const res = await fetch(`${baseUrl}/payment`, {
+  const res = await fetch('api/payment', {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body)
@@ -59,7 +59,7 @@ export const db = {
 ) => {
   const body = { name, email, password, unit };
 
-  const res = await fetch(`${baseUrl}/register/tenant`, {
+  const res = await fetch('/api/register/tenant', {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -77,7 +77,7 @@ export const db = {
 
   // Top-up wallet
   topUpWallet: async (userId: string, amount: number, type: "tenant" | "admin" = "tenant") => {
-    const res = await fetch(`${baseUrl}/wallet/topup`, {
+    const res = await fetch('/api/wallet/topup', {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId, amount, type }),
@@ -94,7 +94,7 @@ export const db = {
 
   // Deduct wallet
   deductWallet: async (userId: string, amount: number, type: "tenant" | "admin" = "tenant") => {
-    const res = await fetch(`${baseUrl}/wallet/deduct`, {
+    const res = await fetch('/api/wallet/deduct', {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId, amount, type }),
@@ -110,7 +110,7 @@ export const db = {
   },
 
    getAllTenants: async (): Promise<Tenant[]> => {
-    const res = await fetch(`${baseUrl}/admin/tenants`, {
+    const res = await fetch('/api/admin/tenants', {
       credentials: "include",
     });
     if (!res.ok) {
@@ -123,7 +123,7 @@ export const db = {
 
   // Fetch all join requests (admin-only)
   getAllRequests: async (): Promise<JoinRequest[]> => {
-    const res = await fetch(`${baseUrl}/admin/join-requests`, {
+    const res = await fetch('/api/admin/join-requests', {
       credentials: "include",
     });
     if (!res.ok) {
@@ -136,7 +136,7 @@ export const db = {
   },
 
   deleteTenant: async (id: string) => {
-  const res = await fetch(`${baseUrl}/admin/tenant/${id}`, {
+  const res = await fetch('/api/admin/tenant/${id}', {
     method: "DELETE",
     credentials: "include",
   });

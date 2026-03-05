@@ -5,7 +5,6 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 // import { io, Socket } from 'socket.io-client';
 // import localforage from 'localforage';
 import { UserContextType } from './types';
-import { useRouter } from 'next/navigation';
 import { User } from './types';
 
 
@@ -25,42 +24,6 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 //   const [notifications, setNotifications] = useState<CleanNotification[]>([]);
 //   const badgeCount = notifications.length;
 
-//   useEffect(() => {
-//     const loadUser = async () => {
-//       try {
-//         const storedUser = await localforage.getItem<User>('userData');
-//         if (storedUser) {
-//           setUser(storedUser);
-//           // console.log('Persistence: User reloaded from localforage');
-//         }
-//       } catch (err) {
-//         console.error('Failed to load user from storage:', err);
-//       }
-//     };
-
-//     loadUser();
-//   }, []);
-
-  // useEffect(() => {
-  //   async function cSessionCheck() {
-  //     try {
-  //       const res = await checkSession();
-
-  //       // Changed res.ok to res.success
-  //       if (!res.success) {
-  //         console.warn('Session invalid, redirecting...');
-  //         window.location.replace('/');
-  //       } else {
-  //         // console.log('Session verified for:', res.user?.firstName);
-  //       }
-  //     } catch (err) {
-  //       console.error('Session check failed:', err);
-  //       window.location.replace('/');
-  //     }
-  //   }
-
-  //   cSessionCheck();
-  // }, []); 
 
 //   useEffect(() => {
 //     const newSocket = io('http://localhost:3066', {

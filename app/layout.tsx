@@ -20,11 +20,11 @@ export const metadata: Metadata = {
     default: "GateMan | Smart Estate Security & Management",
   },
   description: "Advanced access control and estate management for modern communities.",
-  manifest: "/manifest.json", 
-  icons: {
-    icon: "/favicon.ico",
-    apple: "/apple-icon.png",
-  },
+  // manifest: "/manifest.json", 
+  // icons: {
+  //   icon: "/favicon.ico",
+  //   apple: "/apple-icon.png",
+  // },
 };
 
 

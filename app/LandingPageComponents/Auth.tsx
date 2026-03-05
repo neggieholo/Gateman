@@ -3,9 +3,10 @@
 
 import React, { useState } from 'react';
 import { db } from '../services/database';
-import { Mail, Lock, User as UserIcon, Home, ArrowRight, AlertCircle } from 'lucide-react';
+import { Mail, Lock, User as UserIcon, ArrowRight, AlertCircle } from 'lucide-react';
 import { useUser } from '../UserContext';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 
 export const Auth = () => {
@@ -13,6 +14,7 @@ export const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { setUser } = useUser();
+  const router = useRouter();
 
   // Form State
   const [email, setEmail] = useState('');
@@ -28,8 +30,14 @@ export const Auth = () => {
 
     try {
         if (isLogin) {
-            const user = await db.authenticate(email, password);
-            setUser(user);
+            const data= await db.authenticate(email, password);
+            if (data.success) {
+                const user = data.user;
+                setUser(user);
+                router.push('/home/dashboard');
+            } else {
+                throw new Error(data.error || "Authentication failed");
+            }
         } else {
             await db.register(name, email, password, city, town);
         }    
