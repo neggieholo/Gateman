@@ -6,12 +6,15 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 // import localforage from 'localforage';
 import { UserContextType } from './types';
 import { User } from './types';
+import { flushAllTraces } from 'next/dist/trace';
 
 
 
 interface UnifiedUserContextType extends UserContextType {
   user: User | null;
   setUser: (user: User | null) => void;
+  isSidebarOpen: boolean;
+  setIsSidebarOpen: (isOpen: boolean) => void;
 }
 
 const UserContext = createContext<UnifiedUserContextType | undefined>(undefined);
@@ -19,6 +22,7 @@ const UserContext = createContext<UnifiedUserContextType | undefined>(undefined)
 export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
   const [user, setUser] = useState<User | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
 //   const [isConnected, setIsConnected] = useState(false);
 //   const [notifications, setNotifications] = useState<CleanNotification[]>([]);
@@ -64,7 +68,9 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     <UserContext.Provider
       value={{
         user,
-        setUser
+        setUser,
+        isSidebarOpen, 
+        setIsSidebarOpen
       }}
     >
       {children}

@@ -1,27 +1,46 @@
-import { headers } from "next/headers";
-// import { isMobile } from "../utils/ismobile";
-import SideBar from "../HomeComponents/SideBar";
-import HomeNavbar from "../HomeComponents/HomeNavbar";
-// import MobBottomNav from "../HomeComponents/MobBottomNav";
+'use client';
 
-export default async function HomeLayout({
+import SideBar from '@/app/HomeComponents/SideBar';
+import React from 'react'
+import { X } from 'lucide-react';
+import { useUser } from '../UserContext';
+
+
+export default function HomeLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
-    // const headersList = await headers();
-    // const userAgent = headersList.get("user-agent") || "";
-    // const mobileCheck = isMobile(userAgent);
+    
+  const { isSidebarOpen, setIsSidebarOpen } = useUser();
+  
+  function closeAfterNavClick() {
+    setIsSidebarOpen(false);
+ }
 
     return (
-        <div className="flex h-screen bg-[#F8FAFC] overflow-hidden">
-            <SideBar />
-            <div className="flex-1 flex flex-col h-full">
-                <div className="h-24">
-                    <HomeNavbar />
-                </div>
-                <main className="p-6 flex-1">{children}</main>
-            </div>
+        <>        
+        <div 
+            className={`fixed h-screen left-0 z-50 transition-all duration-300 ease-in-out
+            ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+        >
+            {isSidebarOpen && (
+                    <button 
+                        onClick={() => setIsSidebarOpen(false)}
+                        className={`absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full md:hidden z-60 transition-opacity duration-300 delay-100 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}
+                    >
+                        <X size={24} />
+                    </button>
+                )}
+            <SideBar isOpen={isSidebarOpen} afterNavClick={closeAfterNavClick}/>
         </div>
+        {children}
+        {isSidebarOpen && (
+            <div 
+                className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden" 
+                onClick={() => setIsSidebarOpen(false)} 
+            />
+        )}
+        </>
     );
 }

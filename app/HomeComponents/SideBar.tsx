@@ -8,7 +8,16 @@ import { useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
 
 
-export default function SideBar () {
+interface SideBarProps {
+    isOpen?: boolean;
+    afterNavClick?: () => void;
+}
+
+function defaultAfterNavClick() {
+  console.log("");
+}
+
+export default function SideBar ({isOpen = true, afterNavClick = defaultAfterNavClick }: SideBarProps) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const {user, setUser} = useUser();
   const router = useRouter();
@@ -36,7 +45,7 @@ export default function SideBar () {
 
   return (
     <>
-      <aside className="hidden md:flex flex-col w-fit p-4 bg-primary h-screen border-r border-slate-100 z-50 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]">
+      <aside className={`${isOpen ? '' : 'hidden'} flex flex-col w-fit p-4 bg-primary h-screen border-r border-slate-100 z-50 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]`}>
         <div className="p-8 flex items-center space-x-3">
           <div className="relative w-14 h-14 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/30 overflow-hidden">
             <Image
@@ -57,7 +66,7 @@ export default function SideBar () {
             return (
               <button
                 key={item.id}
-                onClick={() => router.push(item.url)}
+                onClick={() => { afterNavClick(); router.push(item.url) }}
                 className={`flex items-center space-x-3 w-full px-4 py-3.5 rounded-2xl transition-all duration-200 group ${
                   isActive 
                     ? 'bg-white text-primary font-semibold shadow-sm' // White bg, Primary text

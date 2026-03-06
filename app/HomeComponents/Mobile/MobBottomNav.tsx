@@ -1,7 +1,9 @@
+'use client';
+
 import React, { useState } from 'react';
 import { Home, Zap, ShieldCheck, MessageSquare, Calendar, Users, ChevronDown, LogOut, Inbox, FileText, User2} from 'lucide-react';
-import { ViewState , User} from '../types';
-import { useUser } from '../UserContext';
+import { ViewState } from '@/app/types';
+import { useUser } from '@/app/UserContext';
 import { useRouter } from 'next/navigation';
 
 export default function MobBottomNav() {

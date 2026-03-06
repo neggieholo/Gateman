@@ -9,7 +9,7 @@ export const checkSession = async (): Promise<sessionResponse> => {
     const response = await fetch('/api/session-check', {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include', // Crucial to send the session cookie
+      credentials: 'include',
     });
 
     const data = await response.json();
