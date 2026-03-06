@@ -58,17 +58,15 @@ export default function Auth() {
           className="absolute inset-0 w-full h-full object-cover"
         />
         <div className="relative z-20 flex flex-col justify-between h-full p-16 text-white">
-          <div className="flex items-center gap-3">
-             <div className="relative w-15 h-15 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/30 overflow-hidden">
+             <div className="relative w-full h-32 backdrop-blur-md rounded-2xl flex items-center justify-center overflow-hidden border border-white/20 shadow-lg">
                 <Image
-                  src="/gateman.png" // Added leading slash for public folder
+                  src="/gateman_large_nobg.png" 
                   alt="GateMan Logo"
                   fill
-                  className="object-cover p-1 bg-white" // Ensures logo doesn't touch the borders
+                  priority
+                  className="object-contain p-2 bg-white/70" 
                 />
              </div>
-             <span className="text-2xl font-bold tracking-tight">Gateman</span>
-          </div>
           
           <div className="space-y-6 max-w-lg">
             <h1 className="text-5xl font-bold leading-tight">Modern Living,<br/>Simplified.</h1>
@@ -208,7 +206,7 @@ export default function Auth() {
                   </div>
                   <label htmlFor="remember" className="ml-2 text-sm font-medium text-slate-500">Remember me</label>
                 </div>
-                <a href="#" className="text-sm font-bold text-indigo-600 hover:underline">Lost Password?</a>
+                <a href="#" className="text-sm font-bold text-indigo-600 hover:underline">Forgot Password?</a>
               </div>
             )}
 

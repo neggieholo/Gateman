@@ -174,7 +174,7 @@ export default function MobileAuth() {
                     </div>
                     <label htmlFor="remember" className="ml-2 text-sm font-medium text-slate-700">Remember me</label>
                     </div>
-                    <a href="#" className="text-sm font-bold text-indigo-600 hover:underline">Lost Password?</a>
+                    <a href="#" className="text-sm font-bold text-indigo-600 hover:underline">Forgot Password?</a>
                 </div>
                 )}
 
