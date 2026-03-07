@@ -51,16 +51,15 @@ export default function MobileAuth() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-white bg-cover bg-center bg-no-repeat" 
     style={{backgroundImage: `url('https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?q=80&w=2070&auto=format&fit=crop')`}}>
-        <div className="flex items-center gap-3">
-          <div className="relative w-15 h-15 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/30 overflow-hidden">
+        <div className="flex items-center gap-3 w-full">
+          <div className="relative w-full h-15 rounded-xl flex items-center justify-center overflow-hidden">
               <Image
-                src="/gateman.png" 
+                src="/gateman_w_nobg_cropped.png" 
                 alt="GateMan Logo"
                 fill
-                className="object-cover p-1 bg-white"
+                className="object-contain p-1"
               />
           </div>
-          <span className="text-2xl font-bold tracking-tight">Gateman</span>
         </div>
         <div className="w-full flex items-center justify-center p-1">
             <div className="w-full max-w-md space-y-8 bg-white/60 p-8 md:p-12 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-white">

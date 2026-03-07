@@ -58,13 +58,13 @@ export default function Auth() {
           className="absolute inset-0 w-full h-full object-cover"
         />
         <div className="relative z-20 flex flex-col justify-between h-full p-16 text-white">
-             <div className="relative w-full h-32 backdrop-blur-md rounded-2xl flex items-center justify-center overflow-hidden border border-white/20 shadow-lg">
+             <div className="relative w-full h-32 rounded-2xl flex items-center overflow-hidden">
                 <Image
-                  src="/gateman_large_nobg.png" 
+                  src="/gateman_w_nobg_cropped.png" 
                   alt="GateMan Logo"
                   fill
                   priority
-                  className="object-contain p-2 bg-white/70" 
+                  className="object-contain" 
                 />
              </div>
           

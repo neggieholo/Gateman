@@ -47,20 +47,18 @@ export default function SideBar ({isOpen = true, afterNavClick = defaultAfterNav
     <>
       <aside className={`${isOpen ? '' : 'hidden'} flex flex-col w-fit p-4 bg-primary h-screen border-r border-slate-100 z-50 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]`}>
         <div className="p-8 flex items-center space-x-3">
-          <div className="relative w-14 h-14 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/30 overflow-hidden">
+          <div className="relative w-full h-14 backdrop-blur-md rounded-xl flex items-center justify-center overflow-hidden">
             <Image
-              src="/gateman_bg.png" // Added leading slash for public folder
-              alt="GateMan Logo"
+              src="/gateman_w_nobg_cropped.png"
+              alt="Gatenan Logo"
               fill
-              className="object-cover p-1 bg-white" // Ensures logo doesn't touch the borders
+              className="object-contain p-1" 
             />
           </div>
-          <span className="text-2xl font-bold bg-clip-text text-white">Gateman</span>
         </div>
         
         <div className="flex-1 px-6 py-6 space-y-2">
           {navItems.map((item) => {
-            // Check if the current URL matches the item's URL
             const isActive = pathname === item.url;
 
             return (
@@ -94,12 +92,12 @@ export default function SideBar ({isOpen = true, afterNavClick = defaultAfterNav
             onClick={() => setShowUserMenu(!showUserMenu)}
             className="flex items-center space-x-3 px-3 py-3 w-full rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 group"
           >
-            <div className="relative">
+            <div className="relative text-white group-hover:text-indigo-700 transition-colors">
                <User2/>
                 <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></div>
             </div>
             <div className="flex flex-col items-start flex-1 min-w-0">
-              <span className="text-sm font-bold text-slate-800 truncate w-full text-left group-hover:text-indigo-700 transition-colors">{user?.name}</span>
+              <span className="text-sm font-bold text-white truncate w-full text-left group-hover:text-indigo-700 transition-colors">{user?.name}</span>
               <div className="flex items-center mt-0.5">
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide ${getRoleBadgeColor()}`}>
                   Admin
