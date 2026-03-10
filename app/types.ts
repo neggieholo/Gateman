@@ -117,10 +117,21 @@ export interface JoinRequest {
   estate_id: string;
   block?: string;
   unit?: string;
-  status: "PENDING" | "APPROVED" | "DECLINED";
+  status: "PENDING" | "APPROVED" | "DECLINED" | "BLOCKED"; // Added BLOCKED for the new action
   requested_at: string;
-  temp_tenant_name: string;  // added from JOIN
-  temp_tenant_email: string; // added from JOIN
+  
+  // Fields added via SQL JOIN
+  temp_tenant_name: string;
+  temp_tenant_email: string;
+
+  // KYC Asset URLs (Cloudinary)
+  selfie_url?: string;
+  id_front_url?: string;
+  id_back_url?: string;
+  utility_bill_url?: string;
+  
+  // Identity Metadata
+  id_type: "nin" | "voters" | "drivers"; 
 }
 
 export interface Invoice {
@@ -190,5 +201,9 @@ export interface LoginResponse {
   message: string;
 }
 
-
+export interface BlockedUser {
+  id: string; 
+  name: string; 
+  email: string;
+}
 

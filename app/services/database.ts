@@ -146,5 +146,26 @@ export const db = {
   }
   return await res.json();
 },
+
+
+fetchBlocked: async () => {
+    const res = await fetch('/api/admin/blocked-users', { 
+      credentials: "include" 
+    });
+    if (!res.ok) throw new Error("Failed to fetch blocked users");
+    const data = await res.json();
+    return data.blockedUsers;
+  },
+
+handleUnblock: async (tempTenantId: string) => {
+    const res = await fetch('/api/admin/join-request/unblock', {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tempTenantId })
+    });
+    if (!res.ok) throw new Error("Failed to unblock user");
+    return await res.json();
+  },
 };
 
