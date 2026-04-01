@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
+  const [isForgot, setIsForgot] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { setUser } = useUser();
@@ -23,28 +24,42 @@ export default function Auth() {
   const [city, setCity] = useState('');
   const [town, setTown] = useState('');
 
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-        if (isLogin) {
-            const data= await db.authenticate(email, password);
-            if (data.success) {
-                const user = data.user;
-                setUser(user);
-                router.push('/home/dashboard');
-            } else {
-                throw new Error(data.error || "Authentication failed");
-            }
+      if (isForgot) {
+        // CALL THE FORGOT PASSWORD API
+        // Assuming your 'db' service has a forgotPassword method
+        const res = await db.forgotPassword(email, "admin"); 
+        
+        if (res.success) {
+          alert("A reset link has been sent to your email!");
+          setIsForgot(false); // Send them back to login
+          setIsLogin(true);
         } else {
-            await db.register(name, email, password, city, town);
-        }    
+          throw new Error(res.message || "Failed to send reset link");
+        }
+      } else if (isLogin) {
+        const data = await db.authenticate(email, password);
+        if (data.success) {
+          setUser(data.user);
+          router.push('/home/dashboard');
+        } else {
+          throw new Error(data.error || "Authentication failed");
+        }
+      } else {
+        await db.register(name, email, password, city, town);
+        alert("Registration successful! Please login.");
+        setIsLogin(true);
+      }
     } catch (err: any) {
-        setError(err.message || "An error occurred");
+      setError(err.message || "An error occurred");
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -98,10 +113,10 @@ export default function Auth() {
         <div className="w-full max-w-md space-y-8 bg-white p-8 md:p-12 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-white">
           <div className="text-center">
             <h2 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">
-              {isLogin ? 'Welcome back' : 'Create an account'}
+              {isLogin ? 'Welcome back' : isForgot ? 'Forgot Password' : 'Create an account'}
             </h2>
             <p className="text-slate-500">
-              {isLogin ? 'Enter your details to access your account' : 'Join your community today'}
+              {isLogin ? 'Enter your details to access your account' : isForgot ? 'Enter your email to reset your password' : 'Join your community today'}
             </p>
           </div>
           
@@ -115,7 +130,7 @@ export default function Auth() {
           </div>          
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {!isLogin && (
+            {(!isLogin && !isForgot) && (
               <>
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">Estate Name</label>
@@ -149,7 +164,7 @@ export default function Auth() {
               </div>
             </div>
 
-            <div>
+            {!isForgot && (<div>
               <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">Password</label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
@@ -162,9 +177,9 @@ export default function Auth() {
                   placeholder="••••••••"
                 />
               </div>
-            </div>
+            </div>)}
 
-            {!isLogin && (
+            {(!isLogin && !isForgot) && (
               <>
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">City</label>
@@ -198,15 +213,11 @@ export default function Auth() {
               </>
             )}
             
-            {isLogin && (
+            {(isLogin && !isForgot) && (
               <div className="flex items-center justify-between">
-                <div className="flex items-start">
-                  <div className="flex items-center h-5">
-                    <input id="remember" type="checkbox" className="w-4 h-4 border border-slate-300 rounded bg-slate-50 focus:ring-3 focus:ring-indigo-300" />
-                  </div>
-                  <label htmlFor="remember" className="ml-2 text-sm font-medium text-slate-500">Remember me</label>
-                </div>
-                <a href="#" className="text-sm font-bold text-indigo-600 hover:underline">Forgot Password?</a>
+                <button type="button" onClick={() => { setIsForgot(true); setIsLogin(false); setError(null); }} className="text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors">
+                   <span className="font-bold text-indigo-600">Forgot password?</span>
+                </button>
               </div>
             )}
 
@@ -219,7 +230,7 @@ export default function Auth() {
                 <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  {isLogin ? 'Sign In' : 'Create Account'}
+                  {isLogin ? 'Sign In' : isForgot ? 'Get Reset Link' : 'Create Account'}
                   <ArrowRight size={20} className="ml-2" />
                 </>
               )}
@@ -227,15 +238,23 @@ export default function Auth() {
           </form>
 
           <div className="text-center">
-            <button
+            {!isForgot && (<button
               type="button"
               onClick={() => { setIsLogin(!isLogin); setError(null); }}
               className="text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors"
             >
               {isLogin ? "Don't have an account? " : "Already have an account? "}
               <span className="font-bold text-indigo-600">{isLogin ? "Sign up" : "Sign in"}</span>
+            </button>)}
+          </div>
+          
+          {isForgot && (
+            <div className="text-center">
+            <button type="button" onClick={() => { setIsForgot(false); setIsLogin(true); setError(null); }} className="text-sm font-medium text-slate-500 hover:text-indigo-600">
+              <span className="font-bold text-indigo-600">Back to Login</span>
             </button>
           </div>
+          )}
         </div>
       </div>
     </div>

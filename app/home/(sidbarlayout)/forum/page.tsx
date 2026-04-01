@@ -1,5 +1,5 @@
-import Forum from '@/app/HomeComponents/Forum';
+import Events from "@/app/HomeComponents/Events";
 
 export default function ForumPage() {
-  return <Forum />;
+  return <Events />;
 }

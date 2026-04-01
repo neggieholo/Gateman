@@ -147,7 +147,6 @@ export const db = {
   return await res.json();
 },
 
-
 fetchBlocked: async () => {
     const res = await fetch('/api/admin/blocked-users', { 
       credentials: "include" 
@@ -167,5 +166,34 @@ handleUnblock: async (tempTenantId: string) => {
     if (!res.ok) throw new Error("Failed to unblock user");
     return await res.json();
   },
+
+  forgotPassword: async (email: string, role: 'admin' | 'tenant') => {
+    try {
+      const response = await fetch('/api/forgot-password', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, role }),
+      });
+      return await response.json();
+    } catch (error) {
+      console.error("Forgot Password Service Error:", error);
+      return { success: false, message: "Network error" };
+    }
+  },
+
+  resetPassword: async (token: string, userId: string, role: string, password: string) => {
+    try {
+      const response = await fetch('/api/reset-password', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, userId, role, password }),
+      });
+      return await response.json();
+    } catch (error) {
+      console.error("Reset Password Service Error:", error);
+      return { success: false, message: "Network error. Please check your connection." };
+    }
+  },
 };
+
 
