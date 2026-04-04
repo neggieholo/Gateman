@@ -1,11 +1,12 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import React, { useEffect, useState } from "react";
-import { JoinRequest } from "../types";
+import { SecurityJoinRequest } from "../types";
 import { ArrowRight, ArrowLeft, Check, X, Ban, ExternalLink, Loader2 } from "lucide-react";
 
-interface JoinRequestsListProps {
-  requests: JoinRequest[];
+interface SecurityJoinRequestsListProps {
+  requests: SecurityJoinRequest[];
   onApprove: (id: string) => Promise<void>;
   onDecline: (id: string, feedback: string) => Promise<void>;
   onBlock: (id: string, feedback: string) => Promise<void>; 
@@ -13,7 +14,7 @@ interface JoinRequestsListProps {
   hideTabs: (hide: boolean) => void;
 }
 
-const JoinRequestsList: React.FC<JoinRequestsListProps> = ({ 
+const SecurityJoinRequestsList: React.FC<SecurityJoinRequestsListProps> = ({ 
   requests, 
   onApprove, 
   onDecline, 
@@ -21,23 +22,11 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
   loading = false,
   hideTabs
 }) => {
-  const [selectedRequest, setSelectedRequest] = useState<JoinRequest | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<SecurityJoinRequest | null>(null);
   const [feedback, setFeedback] = useState("");
   // const [showPrompt, setShowPrompt] = useState<boolean>(false);
   const [showPrompt, setShowPrompt] = useState<{id: string, type: 'decline' | 'block'} | null>(null);
   const [loadingAction, setLoadingAction] = useState(false);
-
-  const handleApprove = async (id: string) => {
-    setLoadingAction(true);
-    try {
-      await onApprove(id);
-      setSelectedRequest(null);
-    } catch (err) {
-      alert("Failed to approve request");
-    } finally {
-        setLoadingAction(false);
-    }
-  }
 
   const confirmAction = async () => {
     if (!showPrompt) return;
@@ -53,16 +42,28 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
     setSelectedRequest(null);
   };
 
+  const handleApprove = async (id: string) => {
+    setLoadingAction(true);
+    try {
+      await onApprove(id);
+      setSelectedRequest(null);
+    } catch (err) {
+      alert("Failed to approve request");
+    } finally {
+        setLoadingAction(false);
+    }
+  }
+
   useEffect(() => {
     hideTabs(!!selectedRequest);
   }, [selectedRequest, hideTabs]);
 
-  const KYCDetailView = ({ req }: { req: JoinRequest }) => (
-    <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-y-auto h-[calc(100vh-200px)]">
+  const KYCDetailView = ({ req }: { req: SecurityJoinRequest }) => (
+    <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-y-auto h-[calc(100vh-300px)] flex flex-col">
       <div className="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
         <div>
-          <h3 className="text-xl font-bold text-slate-900">{req.temp_tenant_name}</h3>
-          <p className="text-sm text-slate-500">{req.temp_tenant_email}</p>
+          <h3 className="text-xl font-bold text-slate-900">{req.name}</h3>
+          <p className="text-sm text-slate-500">{req.email}</p>
         </div>
         <button 
           onClick={() => setSelectedRequest(null)}
@@ -72,10 +73,8 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
         </button>
       </div>
 
-      <div className="p-6">
+      <div className="p-6 flex-1 overflow-y-auto">
         <div className="grid grid-cols-2 gap-4 mb-8 bg-blue-50 p-4 rounded-lg">
-          <p className="text-sm"><strong>Unit:</strong> {req.unit || "-"}</p>
-          <p className="text-sm"><strong>Block:</strong> {req.block || "-"}</p>
           <p className="text-sm"><strong>ID Type:</strong> <span className="uppercase font-bold text-blue-700">{req.id_type}</span></p>
           <p className="text-sm"><strong>Requested:</strong> {new Date(req.requested_at).toLocaleString()}</p>
         </div>
@@ -85,11 +84,11 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
           <DocPreview url={req.selfie_url} label="Selfie" />
           <DocPreview url={req.id_front_url} label="ID Front" />
           <DocPreview url={req.id_back_url} label="ID Back" />
-          <DocPreview url={req.utility_bill_url} label="Utility Bill" />
         </div>
 
+      </div>
         {/* Admin Action Row */}
-        <div className="flex flex-row gap-3 mt-10 pt-6 border-t border-slate-100">
+        <div className="flex flex-row gap-3 items-center mx-2 p-6 border-t border-slate-100">
           <button
             onClick={() => handleApprove(req.id)}
             className="w-32 flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition-shadow shadow-md "
@@ -117,7 +116,6 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
             <Ban size={18} /> Block
           </button>
         </div>
-      </div>
     </div>
   );
 
@@ -161,11 +159,11 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
             >
               <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 rounded-full flex items-center justify-center border border-blue-100 shrink-0">
-                  <span className="text-blue-600 font-bold text-base sm:text-lg">{req.temp_tenant_name[0]}</span>
+                  <span className="text-blue-600 font-bold text-base sm:text-lg">{req.name[0]}</span>
                 </div>
                 <div className="flex flex-col">
                   <span className="text-lg font-bold text-slate-800 group-hover:text-blue-700 transition-colors">
-                    {req.temp_tenant_name}
+                    {req.name}
                   </span>
                   <span className="text-xs text-slate-400 font-medium">
                     Received: {new Date(req.requested_at).toLocaleDateString()}
@@ -221,4 +219,4 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
   );
 };
 
-export default JoinRequestsList;
+export default SecurityJoinRequestsList;

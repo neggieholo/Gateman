@@ -1,12 +1,14 @@
+/* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { db } from '../services/database';
 import { Mail, Lock, User as UserIcon, ArrowRight, AlertCircle } from 'lucide-react';
 import { useUser } from '../UserContext';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { sendOtpApi } from '../services/apis';
 
 
 export default function Auth() {
@@ -23,6 +25,112 @@ export default function Auth() {
   const [name, setName] = useState('');
   const [city, setCity] = useState('');
   const [town, setTown] = useState('');
+  const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]);
+  const [metadata, setMetadata] = useState("");
+  const [showOtpInput, setShowOtpInput] = useState(false);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);;
+
+    
+
+  const validateEmail = (text: string) => {
+    const cleanedEmail = text.trim();
+    const reg = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (reg.test(cleanedEmail)) {
+      return true;
+    }
+    return false;
+  };
+
+  const handleRequestOtp = async () => {
+    const trimmedEmail = email.trim();
+    if (!validateEmail(trimmedEmail)) {
+      alert("Invalid Email. Check your email format.");
+      setLoading(false);
+      return;
+    }
+
+    setError("");
+
+    try {
+      const otpRes = await sendOtpApi(trimmedEmail);
+      if (otpRes.success) {
+        setMetadata(otpRes.metadata);
+        setShowOtpInput(true);
+      } else {
+        setError(otpRes.message || "Failed to send OTP");
+      }
+    } catch (err) {
+      setError("Network error");
+    } 
+  };
+
+  const handleOtpChange = (value: string, index: number) => {
+  const cleanValue = value.replace(/[^0-9]/g, "").slice(-1); // Only last char
+  const newOtp = [...otp];
+  newOtp[index] = cleanValue;
+  setOtp(newOtp);
+
+  // Move focus forward
+  if (cleanValue && index < 5) {
+    inputRefs.current[index + 1]?.focus();
+  }
+
+  const finalOtpString = newOtp.join("");
+  if (finalOtpString.length === 6) {
+    handleRegister(finalOtpString);
+  }
+};
+
+  const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
+    // Move focus back on backspace if current field is empty
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  // Inside your component
+  const handleCancelOtp = () => {
+    setOtp(["", "", "", "", "", ""]); // Reset the 6 boxes
+    setError(""); // Clear any previous "Invalid Code" errors
+    setShowOtpInput(false); // Close the modal
+  };
+
+  const handleRegister = async (enteredOtp: string) => {
+    const trimmedEmail = email.trim();
+
+    if (enteredOtp.length !== 6) {
+      setError("Please enter the 6-digit code sent to your email.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      // Matches your db.register(name, email, password, city, town, newOtp, metadata)
+      await db.register(
+        name, 
+        trimmedEmail, 
+        password, 
+        city, 
+        town, 
+        enteredOtp, 
+        metadata
+      );
+      
+      // If db.register finishes without throwing an error, 
+      // it means the popup/redirect was triggered.
+      setShowOtpInput(false); 
+      setOtp(["", "", "", "", "", ""]);
+      
+    } catch (err: any) {
+      // This catches the "throw new Error" from your db.register
+      setError(err.message || "Registration failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -49,12 +157,14 @@ export default function Auth() {
           setUser(data.user);
           router.push('/home/dashboard');
         } else {
+          if (data.error.includes("Unexpected token")) {
+            setError("Server error. Please try again later.");
+            return;
+          }
           throw new Error(data.error || "Authentication failed");
         }
       } else {
-        await db.register(name, email, password, city, town);
-        alert("Registration successful! Please login.");
-        setIsLogin(true);
+        handleRequestOtp();
       }
     } catch (err: any) {
       setError(err.message || "An error occurred");
@@ -97,7 +207,7 @@ export default function Auth() {
                </div>
                <div className="flex flex-col justify-center">
                   <span className="font-bold text-sm">2,000+ Residents</span>
-                  <span className="text-xs text-indigo-200">Trust EstateMate</span>
+                  <span className="text-xs text-indigo-200">Trust Gateman</span>
                </div>
             </div>
           </div>
@@ -215,7 +325,9 @@ export default function Auth() {
             
             {(isLogin && !isForgot) && (
               <div className="flex items-center justify-between">
-                <button type="button" onClick={() => { setIsForgot(true); setIsLogin(false); setError(null); }} className="text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors">
+                <button type="button" 
+                onClick={() => { setIsForgot(true); setIsLogin(false); setError(null); setEmail(''); }} 
+                className="text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors">
                    <span className="font-bold text-indigo-600">Forgot password?</span>
                 </button>
               </div>
@@ -240,7 +352,7 @@ export default function Auth() {
           <div className="text-center">
             {!isForgot && (<button
               type="button"
-              onClick={() => { setIsLogin(!isLogin); setError(null); }}
+              onClick={() => { setIsLogin(!isLogin); setError(null);setEmail(''); setPassword(''); setCity(''); setTown('');setName(''); }}
               className="text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors"
             >
               {isLogin ? "Don't have an account? " : "Already have an account? "}
@@ -257,6 +369,71 @@ export default function Auth() {
           )}
         </div>
       </div>
+      {/* OTP MODAL OVERLAY */}
+      {showOtpInput && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-md rounded-[2.5rem] p-8 md:p-10 shadow-2xl scale-in-center border border-slate-100">
+            <div className="text-center space-y-4 mb-8">
+              <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Mail size={32} />
+              </div>
+              <h3 className="text-2xl font-bold text-slate-900">Verify your email</h3>
+              <p className="text-slate-500 text-sm">
+                We&apos;ve sent a 6-digit code to <br/>
+                <span className="font-semibold text-slate-900">{email}</span>
+              </p>
+            </div>
+
+            <div className="flex justify-between gap-2 mb-8">
+              {otp.map((digit, index) => (
+                <input
+                  key={index}
+                  ref={(el) => {
+                    inputRefs.current[index] = el;
+                  }}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handleOtpChange(e.target.value, index)}
+                  onKeyDown={(e) => handleKeyDown(e, index)}
+                  className="w-12 h-14 text-center text-2xl font-bold bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 transition-all outline-none"
+                />
+              ))}
+            </div>
+
+            <div className="space-y-4">
+              <button
+                onClick={() => handleRegister(otp.join(""))}
+                disabled={loading || otp.some(d => !d)}
+                className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg shadow-lg shadow-indigo-200 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center"
+              >
+                {loading ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "Verify & Register"}
+              </button>
+              
+              <button
+                onClick={handleCancelOtp}
+                className="w-full py-2 text-slate-500 font-medium hover:text-slate-800 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+
+            <div className={`mb-6 ${error ? 'bg-rose-50' : 'bg-transparent'} text-rose-600 p-3 min-h-[3rem] rounded-xl flex items-center gap-3 text-sm font-bold transition-all duration-300`}>
+              {error && (
+                <>
+                  <AlertCircle size={18} className="shrink-0" />
+                  <span className="animate-in slide-in-from-left-1">{error}</span>
+                </>
+              )}
+            </div>
+            
+            <p className="text-center text-xs text-slate-400 mt-8">
+              Didn&apos;t receive the code? <button onClick={handleRequestOtp} className="text-indigo-600 font-bold hover:underline">Resend</button>
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

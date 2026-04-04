@@ -32,7 +32,7 @@ export default function SideBar ({isOpen = true, afterNavClick = defaultAfterNav
   { id: ViewState.DASHBOARD, label: 'Home', icon: Home, url: '/home/dashboard' },
   { id: ViewState.UTILITIES, label: 'Bills', icon: Zap, url: '/home/utilities' },
   { id: ViewState.INVOICES, label: 'Invoices', icon: FileText, url: '/home/invoices' },
-  { id: ViewState.ACCESS, label: 'Security', icon: ShieldCheck, url: '/home/accesscontrol' },
+  { id: ViewState.ACCESS, label: 'Security', icon: ShieldCheck, url: '/home/security' },
   { id: ViewState.FORUM, label: 'Community', icon: MessageSquare, url: '/home/forum' },
   { id: ViewState.EVENTS, label: 'Events', icon: Calendar, url: '/home/events' },
   { id: ViewState.USERS, label: 'Residents', icon: Users, url: '/home/tenantmanagement' },

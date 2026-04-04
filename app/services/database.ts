@@ -1,5 +1,5 @@
 
-import { Tenant } from '../types';
+import { SecurityJoinRequest, SecurityLog, SecurityUser, Tenant } from '../types';
 import { JoinRequest } from '../types';
 
 
@@ -29,9 +29,11 @@ export const db = {
   email: string,
   password: string,
   city: string,
-  town: string
+  town: string,
+  newOtp: string, 
+  metadata: string
 ) => {
-  const body = { name, email, password, city, town };
+  const body = { name, email, password, city, town, otp: newOtp, metadata };
 
   const res = await fetch('api/payment', {
     method: "POST",
@@ -47,8 +49,8 @@ export const db = {
   const { paymentLink } = await res.json();
 
   // Redirect browser to Flutterwave checkout
-  window.open(paymentLink, '_blank');
-},
+  window.location.href = paymentLink;
+  },
 
 
   registerTenant: async (
@@ -196,4 +198,137 @@ handleUnblock: async (tempTenantId: string) => {
   },
 };
 
+export const securityDb = {
+  // 1. Fetch all pending security join requests
+  getSecurityRequests: async (): Promise<SecurityJoinRequest[]> => {
+    const res = await fetch('/api/security/join-requests', {
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Could not fetch security requests");
+    }
+    const data = await res.json();
+    return data.requests as SecurityJoinRequest[];
+  },
+
+  // 2. Approve a security guard (Promote from temp to official)
+  approveSecurity: async (requestId: string) => {
+    const res = await fetch(`/api/security/approve/${requestId}`, {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Promotion failed");
+    }
+    return await res.json();
+  },
+
+  // 3. Decline a security join request (Soft rejection)
+  declineSecurity: async (id: string, message: string) => {
+    const res = await fetch('/api/security/join-request/delete', {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, message }),
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Decline failed");
+    }
+    return await res.json();
+  },
+
+  // 4. Block a security applicant permanently
+  blockSecurity: async (id: string, message: string) => {
+    const res = await fetch('/api/security/join-request/block', {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, message }),
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Block failed");
+    }
+    return await res.json();
+  },
+
+  // 5. Fetch all blocked security guards
+  fetchBlockedGuards: async () => {
+    const res = await fetch('/api/security/blocked-users', {
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to fetch blocked guards");
+    const data = await res.json();
+    return data.blockedUsers;
+  },
+
+  // 6. Unblock a security guard
+  unblockSecurity: async (tempSecurityId: string) => {
+    const res = await fetch('/api/security/join-request/unblock', {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tempSecurityId }),
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to unblock guard");
+    return await res.json();
+  },
+
+  // 7. Fetch all official security guards in the estate
+  getAllSecurity: async (): Promise<SecurityUser[]> => {
+    const res = await fetch('/api/security/all', {
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Could not fetch security list");
+    }
+    const data = await res.json();
+    return data.securityGuards as SecurityUser[];
+  },
+
+  // 8. Delete/Offboard an official security guard
+  deleteSecurity: async (id: string) => {
+    const res = await fetch(`/api/security/delete/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Delete failed");
+    }
+    return await res.json();
+  },
+
+  generateCheckinCode: async () => {
+    const res = await fetch('/api/security/generate-checkin-code', {
+      method: "PUT",
+      credentials: "include",
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Failed to generate security code");
+    }
+
+    const data = await res.json();
+    return data.code as string; // Returns the 10-digit string
+  },
+
+  // 9. Fetch security duty logs (Check-in/Check-out history)
+  getSecurityLogs: async (): Promise<SecurityLog[]> => {
+    const res = await fetch('/api/security/logs', {
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Could not fetch duty logs");
+    }
+    const data = await res.json();
+    return data.logs as SecurityLog[];
+  },
+};
 

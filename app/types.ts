@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 export type Role = 'resident' | 'admin' | 'superadmin';
 
@@ -207,3 +208,100 @@ export interface BlockedUser {
   email: string;
 }
 
+export interface Invitation {
+  id: string;
+  guest_name: string;
+  guest_image_url: string | null;
+  access_code: string;
+  invite_type: 'one_time' | 'multi_entry';
+  start_date: any;
+  end_date: any;
+  start_time: any;
+  end_time: any;
+  excluded_dates: string[]; 
+  status: string;
+  actual_checkin: any;
+  actual_checkout: any;
+  actual_checkin_date: any;
+  actual_checkout_date: any;
+  created_at: string;
+  is_cancelled: boolean;
+}
+
+// -------------------- Core Security Types --------------------
+
+export interface SecurityUser {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  avatar?: string;
+  estate_id: string;
+  push_token?: string;
+  is_on_duty: boolean;
+  checkin_location?: string;
+  checkout_location?: string;
+  current_known_location?: string;
+  role: 'SECURITY';
+  id_type?: string;       
+  id_front_url?: string;
+  id_back_url?: string;
+}
+
+export interface SecurityJoinRequest {
+  id: string;
+  temp_security_id: string;
+  estate_id: string;
+  id_type: string;
+  selfie_url: string;
+  id_front_url: string;
+  id_back_url: string;
+  status: "PENDING" | "APPROVED" | "DECLINED" | "BLOCKED";
+  requested_at: string; 
+  name: string;  
+  email: string; 
+}
+
+export interface SecurityLog {
+  id: string;
+  security_id: string;
+  guard_name: string; // Joined from security_users
+  checkin_time: string;
+  checkout_time?: string;
+  checkin_location?: string;
+  checkout_location?: string;
+}
+
+export interface BlockedSecurityUser {
+  id: string;
+  name: string;
+  email: string;
+}
+
+// -------------------- API Response Wrappers --------------------
+
+export interface SecurityRequestsResponse {
+  success: boolean;
+  requests: SecurityJoinRequest[];
+}
+
+export interface AllSecurityResponse {
+  success: boolean;
+  securityGuards: SecurityUser[];
+}
+
+export interface SecurityLogsResponse {
+  success: boolean;
+  logs: SecurityLog[];
+}
+
+export interface BlockedSecurityResponse {
+  success: boolean;
+  blockedUsers: BlockedSecurityUser[];
+}
+
+export interface StandardApiResponse {
+  success: boolean;
+  message: string;
+  error?: string;
+}
