@@ -185,8 +185,43 @@ export default function GatePassesView() {
 
   const handleLogActivity = async (inviteId: string, currentLabel: string) => {
     setUpdatingInvite(inviteId);
+    const invite = invitations.find(i => i.id === inviteId);
+    if (!invite) return;
     
     const action = currentLabel === "INSIDE" ? "check_out" : "check_in"; 
+
+    if (action === "check_in") {
+      const now = new Date();
+      
+      // Parse Start and End times for today
+      const [startH, startM] = invite.start_time.split(":");
+      const [endH, endM] = invite.end_time.split(":");
+
+      const todayStart = new Date();
+      todayStart.setHours(parseInt(startH), parseInt(startM), 0, 0);
+
+      const todayEnd = new Date();
+      todayEnd.setHours(parseInt(endH), parseInt(endM), 0, 0);
+
+      // 1. Block Early Check-in
+      if (now < todayStart) {
+        alert(`Access Denied: It's too early. Check-in starts at ${invite.start_time.slice(0, 5)}.`);
+        setUpdatingInvite(null);
+        return;
+      }
+
+      // 2. Block Late Check-in
+      if (now > todayEnd) {
+        alert(`Access Denied: Entry window ended at ${invite.end_time.slice(0, 5)}.`);
+        return;
+      }
+
+      // 3. Block Overall Expiry (Single Entry)
+      if (isPastTime(invite.end_date, invite.end_time)) {
+        alert("Access Denied: This invitation has officially expired.");
+        return;
+      }
+    }
 
     try {
       const result = await logActivityApi(inviteId, action);

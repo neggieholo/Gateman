@@ -318,6 +318,21 @@ export const securityDb = {
     return data.code as string; // Returns the 10-digit string
   },
 
+  getCheckinCode: async (): Promise<string> => {
+    const res = await fetch('/api/security/get-checkin-code', {
+      method: "GET",
+      credentials: "include",
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Failed to fetch security code");
+    }
+
+    const data = await res.json();
+    return data.code; // Returns the 10-digit string
+  },
+
   // 9. Fetch security duty logs (Check-in/Check-out history)
   getSecurityLogs: async (): Promise<SecurityLog[]> => {
     const res = await fetch('/api/security/logs', {

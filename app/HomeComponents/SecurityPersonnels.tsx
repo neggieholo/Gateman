@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { securityDb } from "../services/database";
 import { SecurityUser } from "../types";
-import { Trash2, Shield, Mail, Phone, Search, MapPin } from "lucide-react";
+import { Trash2, Shield, Mail, Phone, Search, MapPin, Clock } from "lucide-react";
+import { formatLastSeen } from "../services/apis";
 
 export default function SecurityPersonnelsList() {
   const [guards, setGuards] = useState<SecurityUser[]>([]);
@@ -77,7 +78,7 @@ export default function SecurityPersonnelsList() {
                   )}
                 </div>
 
-                <div className="flex flex-col justify-center space-y-2 flex-1 min-w-0">
+                <div className="flex flex-col justify-center gap-4 flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-slate-800 text-lg truncate">{guard.name}</h3>
                     {guard.is_on_duty && <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
@@ -93,19 +94,28 @@ export default function SecurityPersonnelsList() {
                     <p className="text-xs truncate">{guard.phone || "No phone"}</p>
                   </div>
 
-                  <div className="flex items-center gap-2 text-blue-600 bg-blue-50 px-2 py-1 rounded-md w-fit">
-                    <Shield size={14} />
-                    <span className="text-[10px] font-bold uppercase tracking-tighter">Official Personnel</span>
-                  </div>
+                  <div className="flex flex-col gap-3">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Last Check-in</p>
+                      <div className="flex items-center gap-2 text-blue-600 bg-blue-50 px-2 py-1 rounded-md w-fit">
+                        <Clock size={14} />
+                        <span className="text-[10px] font-bold uppercase tracking-tighter">
+                          {guard.last_checkin ? formatLastSeen(guard.last_checkin) : "No record"}
+                        </span>
+                      </div>
+                    </div>
 
-                  {/* Request Location Button inside card info */}
-                  <button 
-                    onClick={() => handleRequestLocation(guard.id)}
-                    className="flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-blue-600 transition-colors pt-1"
-                  >
-                    <MapPin size={14} />
-                    Request Location
-                  </button>
+                    {/* Last Check-out Section */}
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Last Check-out</p>
+                      <div className="flex items-center gap-2 text-slate-600 bg-slate-100 px-2 py-1 rounded-md w-fit">
+                        <Clock size={14} />
+                        <span className="text-[10px] font-bold uppercase tracking-tighter">
+                          {guard.last_checkout ? formatLastSeen(guard.last_checkout) : "No record"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 

@@ -239,9 +239,12 @@ export interface SecurityUser {
   estate_id: string;
   push_token?: string;
   is_on_duty: boolean;
+  last_checkin?: string;
+  last_checkout?: string;
   checkin_location?: string;
   checkout_location?: string;
-  current_known_location?: string;
+  last_known_location?: string;
+  last_location_time?: string;
   role: 'SECURITY';
   id_type?: string;       
   id_front_url?: string;
