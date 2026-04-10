@@ -1,56 +1,92 @@
-'use client';
+/* eslint-disable @next/next/no-img-element */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
 
 import React, { useEffect, useState } from "react";
-import { JoinRequest } from "../types";
-import { ArrowRight, ArrowLeft, Check, X, Ban, ExternalLink, Loader2 } from "lucide-react";
+import { JoinRequest } from "../services/types";
+import {
+  ArrowRight,
+  ArrowLeft,
+  Check,
+  X,
+  Ban,
+  ExternalLink,
+  Loader2,
+} from "lucide-react";
+import { useUser } from "../UserContext";
 
 interface JoinRequestsListProps {
   requests: JoinRequest[];
   onApprove: (id: string) => Promise<void>;
   onDecline: (id: string, feedback: string) => Promise<void>;
-  onBlock: (id: string, feedback: string) => Promise<void>; 
+  onBlock: (id: string, feedback: string) => Promise<void>;
   loading?: boolean;
   hideTabs: (hide: boolean) => void;
 }
 
-const JoinRequestsList: React.FC<JoinRequestsListProps> = ({ 
-  requests, 
-  onApprove, 
-  onDecline, 
-  onBlock ,
+const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
+  requests,
+  onApprove,
+  onDecline,
+  onBlock,
   loading = false,
-  hideTabs
+  hideTabs,
 }) => {
-  const [selectedRequest, setSelectedRequest] = useState<JoinRequest | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<JoinRequest | null>(
+    null,
+  );
   const [feedback, setFeedback] = useState("");
   // const [showPrompt, setShowPrompt] = useState<boolean>(false);
-  const [showPrompt, setShowPrompt] = useState<{id: string, type: 'decline' | 'block'} | null>(null);
+  const [showPrompt, setShowPrompt] = useState<{
+    id: string;
+    type: "decline" | "block";
+  } | null>(null);
   const [loadingAction, setLoadingAction] = useState(false);
+  const [loadingApproveAction, setLoadingApproveAction] = useState(false);
+  const { user } = useUser();
+
+  // const MultipliedReqs = Array(16).fill(requests).flat();
+
+  useEffect(() => {
+    console.log("User from Requests:", user);
+  }, []);
 
   const handleApprove = async (id: string) => {
-    setLoadingAction(true);
+    setLoadingApproveAction(true);
     try {
       await onApprove(id);
       setSelectedRequest(null);
     } catch (err) {
       alert("Failed to approve request");
     } finally {
-        setLoadingAction(false);
+      setLoadingApproveAction(false);
     }
-  }
+  };
 
   const confirmAction = async () => {
     if (!showPrompt) return;
-    
-    if (showPrompt.type === 'decline') {
-      await onDecline(showPrompt.id, feedback); 
-    } else {
-      await onBlock(showPrompt.id, feedback);
+
+    setLoadingAction(true);
+
+    try {
+      if (showPrompt.type === "decline") {
+        await onDecline(showPrompt.id, feedback);
+      } else {
+        await onBlock(showPrompt.id, feedback);
+      }
+
+      setFeedback("");
+      setShowPrompt(null);
+      setSelectedRequest(null);
+    } catch (err: any) {
+      console.error(`Failed to ${showPrompt.type}:`, err);
+
+      alert(
+        err.message || `An error occurred while trying to ${showPrompt.type}.`,
+      );
+    } finally {
+      setLoadingAction(false);
     }
-    
-    setFeedback("");
-    setShowPrompt(null);
-    setSelectedRequest(null);
   };
 
   useEffect(() => {
@@ -61,10 +97,13 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
     <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-y-auto h-[calc(100vh-200px)]">
       <div className="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
         <div>
-          <h3 className="text-xl font-bold text-slate-900">{req.temp_tenant_name}</h3>
+          <h3 className="text-xl font-bold text-slate-900">
+            {req.temp_tenant_name}
+          </h3>
           <p className="text-sm text-slate-500">{req.temp_tenant_email}</p>
+          <p className="text-sm text-slate-500">{req.temp_tenant_phone}</p>
         </div>
-        <button 
+        <button
           onClick={() => setSelectedRequest(null)}
           className="flex items-center gap-1 text-slate-500 hover:text-slate-800 transition-colors"
         >
@@ -74,10 +113,22 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
 
       <div className="p-6">
         <div className="grid grid-cols-2 gap-4 mb-8 bg-blue-50 p-4 rounded-lg">
-          <p className="text-sm"><strong>Unit:</strong> {req.unit || "-"}</p>
-          <p className="text-sm"><strong>Block:</strong> {req.block || "-"}</p>
-          <p className="text-sm"><strong>ID Type:</strong> <span className="uppercase font-bold text-blue-700">{req.id_type}</span></p>
-          <p className="text-sm"><strong>Requested:</strong> {new Date(req.requested_at).toLocaleString()}</p>
+          <p className="text-sm">
+            <strong>Unit:</strong> {req.unit || "-"}
+          </p>
+          <p className="text-sm">
+            <strong>Block:</strong> {req.block || "-"}
+          </p>
+          <p className="text-sm">
+            <strong>ID Type:</strong>{" "}
+            <span className="uppercase font-bold text-blue-700">
+              {req.id_type}
+            </span>
+          </p>
+          <p className="text-sm">
+            <strong>Requested:</strong>{" "}
+            {new Date(req.requested_at).toLocaleString()}
+          </p>
         </div>
 
         {/* Credentials Grid */}
@@ -94,7 +145,7 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
             onClick={() => handleApprove(req.id)}
             className="w-32 flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition-shadow shadow-md "
           >
-            {loadingAction && req.id === selectedRequest?.id ? (
+            {loadingApproveAction && req.id === selectedRequest?.id ? (
               <span className="flex items-center gap-2 text-sm">
                 <Loader2 className="animate-spin" size={16} /> Processing...
               </span>
@@ -105,13 +156,13 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
             )}
           </button>
           <button
-            onClick={() => setShowPrompt({ id: req.id, type: 'decline' })}
+            onClick={() => setShowPrompt({ id: req.id, type: "decline" })}
             className="w-32 flex items-center justify-center gap-2 bg-amber-500 text-white py-3 rounded-lg font-bold hover:bg-amber-600 transition-shadow shadow-md"
           >
             <X size={18} /> Decline
           </button>
           <button
-            onClick={() => setShowPrompt({ id: req.id, type: 'block' })}
+            onClick={() => setShowPrompt({ id: req.id, type: "block" })}
             className="w-32 flex items-center justify-center gap-2 bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition-shadow shadow-md"
           >
             <Ban size={18} /> Block
@@ -125,24 +176,35 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
   const DocPreview = ({ url, label }: { url?: string; label: string }) => (
     <div className="space-y-2">
       <div className="flex justify-between items-center">
-        <span className="text-xs font-bold text-slate-400 uppercase tracking-tighter">{label}</span>
+        <span className="text-xs font-bold text-slate-400 uppercase tracking-tighter">
+          {label}
+        </span>
         {url && (
-          <a href={url} target="_blank" className="text-blue-500 hover:text-blue-700">
+          <a
+            href={url}
+            target="_blank"
+            className="text-blue-500 hover:text-blue-700"
+          >
             <ExternalLink size={14} />
           </a>
         )}
       </div>
       {url ? (
-        <img src={url} className="w-full h-40 object-cover rounded-lg border border-slate-200 bg-slate-100" alt={label} />
+        <img
+          src={url}
+          className="w-full h-40 object-cover rounded-lg border border-slate-200 bg-slate-100"
+          alt={label}
+        />
       ) : (
         <div className="w-full h-40 bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center">
-          <span className="text-slate-300 text-sm italic font-medium">Not Provided</span>
+          <span className="text-slate-300 text-sm italic font-medium">
+            Not Provided
+          </span>
         </div>
       )}
     </div>
   );
 
- 
   return (
     <>
       {/* 1. Main View Area (Background) */}
@@ -153,15 +215,17 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
           {loading ? "Loading..." : "No pending join requests"}
         </p>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3 h-[calc(100vh-300px)] overflow-y-auto p-3">
           {requests.map((req) => (
-            <div 
-              key={req.id} 
+            <div
+              key={req.id}
               className="flex justify-between items-center bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-all group"
             >
               <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 rounded-full flex items-center justify-center border border-blue-100 shrink-0">
-                  <span className="text-blue-600 font-bold text-base sm:text-lg">{req.temp_tenant_name[0]}</span>
+                  <span className="text-blue-600 font-bold text-base sm:text-lg">
+                    {req.temp_tenant_name[0]}
+                  </span>
                 </div>
                 <div className="flex flex-col">
                   <span className="text-lg font-bold text-slate-800 group-hover:text-blue-700 transition-colors">
@@ -189,9 +253,10 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
             <h3 className="text-lg font-bold mb-2">
-              Add a reason for {showPrompt.type === 'block' ? 'blocking' : 'declining'}?
+              Add a reason for{" "}
+              {showPrompt.type === "block" ? "blocking" : "declining"}?
             </h3>
-            <textarea 
+            <textarea
               className="w-full border rounded-lg p-3 text-sm h-32 focus:ring-2 focus:ring-blue-500 outline-none text-slate-800"
               placeholder="e.g. ID is blurry, please take a clearer photo."
               value={feedback}
@@ -199,19 +264,33 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
               autoFocus
             />
             <div className="flex gap-3 mt-4">
-              <button 
-                onClick={() => setShowPrompt(null)} 
+              <button
+                onClick={() => setShowPrompt(null)}
                 className="flex-1 py-2 text-slate-500 font-medium hover:bg-slate-50 rounded-lg transition-colors"
               >
                 Cancel
               </button>
-              <button 
-                onClick={confirmAction} 
-                className={`flex-1 py-2 text-white rounded-lg font-bold transition-opacity hover:opacity-90 ${
-                  showPrompt.type === 'block' ? 'bg-red-600' : 'bg-blue-600'
+              <button
+                onClick={confirmAction}
+                disabled={loadingAction}
+                className={`flex-1 py-2 text-white rounded-lg font-bold transition-opacity flex items-center justify-center gap-2 ${
+                  loadingAction
+                    ? "opacity-70 cursor-not-allowed"
+                    : "hover:opacity-90"
+                } ${
+                  showPrompt.type === "block" ? "bg-red-600" : "bg-blue-600"
                 }`}
               >
-                Submit & {showPrompt.type === 'block' ? 'Block' : 'Decline'}
+                {loadingAction ? (
+                  <>
+                    <Loader2 className="animate-spin" size={18} />
+                    <span>Processing...</span>
+                  </>
+                ) : (
+                  <span>
+                    {showPrompt.type === "block" ? "Block" : "Decline"}
+                  </span>
+                )}
               </button>
             </div>
           </div>

@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { UserMinus, ShieldCheck, Mail, Info } from "lucide-react";
-import { db, securityDb } from "../services/database";
 
 interface BlockedUser {
   id: string;
@@ -36,6 +35,8 @@ const SecurityBlockedUsersList: React.FC<BlockedUsersListProps> = ({
     }
   };
 
+  // const MultipliedUsers = Array(16).fill(users).flat();
+
   if (loading) {
     return (
       <div className="bg-white rounded-xl border border-dashed border-slate-300 p-10 text-center">
@@ -64,7 +65,7 @@ const SecurityBlockedUsersList: React.FC<BlockedUsersListProps> = ({
       </div>
 
       {/* CHANGED: Removed grid-cols-2 to make cards full width */}
-      <div className="flex flex-col gap-3"> 
+      <div className="flex flex-col gap-3 h-[calc(100vh-450px)] overflow-y-auto p-3"> 
         {users.map((user) => (
           <div 
             key={user.id} 

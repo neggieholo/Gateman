@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { UserProvider } from "./UserContext"
-import { Montserrat } from "next/font/google";;
+import { Montserrat } from "next/font/google";
+import Script from "next/script";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -35,12 +36,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${inter.variable} ${montserrat.variable} antialiased`}
-      >
-        <UserProvider>
-        {children}
-        </UserProvider>
+      <head>
+        <Script
+          src="https://cdn.smileidentity.com/js/v1/smileid.js"
+          strategy="beforeInteractive"
+        />
+      </head>
+      <body className={`${inter.variable} ${montserrat.variable} antialiased`}>
+        <UserProvider>{children}</UserProvider>
       </body>
     </html>
   );

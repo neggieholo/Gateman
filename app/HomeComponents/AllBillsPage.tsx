@@ -1,10 +1,8 @@
-'use client';
+"use client";
 
 import { useState, useEffect } from "react";
-import { BillItem } from "../types";
+import { BillItem } from "../services/types";
 import { fetchBills } from "../utils/invoices";
-
-
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
@@ -15,7 +13,7 @@ const deleteBill = async (id: string) => {
     headers: {
       "Content-Type": "application/json",
     },
-    credentials: 'include'
+    credentials: "include",
   });
 
   if (!res.ok) {
@@ -34,7 +32,7 @@ const updateBill = async (id: string, body: Partial<BillItem>) => {
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
-    credentials: 'include'
+    credentials: "include",
   });
 
   if (!res.ok) {
@@ -50,7 +48,7 @@ type BillRegistrationFormProps = {
 };
 
 // Component
-export default function BillsList({ setView}: BillRegistrationFormProps) {
+export default function BillsList({ setView }: BillRegistrationFormProps) {
   const [bills, setBills] = useState<BillItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,25 +71,24 @@ export default function BillsList({ setView}: BillRegistrationFormProps) {
   }, []);
 
   const handleToggleActive = async (bill: BillItem) => {
-  try {
-    const res = await fetch(`${baseUrl}/bills/${bill.id}/toggle`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: 'include'
-    });
+    try {
+      const res = await fetch(`${baseUrl}/bills/${bill.id}/toggle`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      });
 
-    if (!res.ok) throw new Error("Failed to toggle bill status");
+      if (!res.ok) throw new Error("Failed to toggle bill status");
 
-    const data = await res.json();
-    setBills(bills.map((b) => (b.id === bill.id ? data.bill : b)));
-  } catch (err) {
-    console.error(err);
-    alert("Failed to update bill status.");
-  }
-};
-
+      const data = await res.json();
+      setBills(bills.map((b) => (b.id === bill.id ? data.bill : b)));
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update bill status.");
+    }
+  };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this bill?")) return;
@@ -110,14 +107,14 @@ export default function BillsList({ setView}: BillRegistrationFormProps) {
 
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-4">
-        <div className="flex justify-end">
-            <button
-                className="btn btn-ghost text-gray-600 hover:bg-gray-100"
-                onClick={() => setView(false)}
-            >
-                Back
-            </button>
-        </div>
+      <div className="flex justify-end">
+        <button
+          className="btn btn-ghost text-gray-600 hover:bg-gray-100"
+          onClick={() => setView(false)}
+        >
+          Back
+        </button>
+      </div>
       {bills.map((bill) => (
         <div
           key={bill.id}

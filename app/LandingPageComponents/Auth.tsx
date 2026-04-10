@@ -153,15 +153,21 @@ export default function Auth() {
         }
       } else if (isLogin) {
         const data = await db.authenticate(email, password);
+        if (!data || (typeof data === 'string' && data.includes("<!DOCTYPE html>"))) {
+        setError("Server error. Please try again later.");
+        return;
+      }
         if (data.success) {
           setUser(data.user);
           router.push('/home/dashboard');
         } else {
-          if (data.error.includes("Unexpected token")) {
-            setError("Server error. Please try again later.");
-            return;
+          const errorMessage = data.error || data.message || "Authentication failed";
+        
+          if (errorMessage.includes("Unexpected token") || errorMessage.includes("fetch")) {
+            setError("Server is currently restarting. Please wait a moment.");
+          } else {
+            setError(errorMessage);
           }
-          throw new Error(data.error || "Authentication failed");
         }
       } else {
         handleRequestOtp();

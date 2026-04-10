@@ -1,7 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { securityDb } from "../services/database";
-import { SecurityLog } from "../types";
-import { Search, Calendar, MapPin, Clock, Loader2, FileText } from "lucide-react";
+import { SecurityLog } from "../services/types";
+import {
+  Search,
+  Calendar,
+  MapPin,
+  Clock,
+  Loader2,
+  FileText,
+} from "lucide-react";
 
 export default function SecurityLogsPage() {
   const [logs, setLogs] = useState<SecurityLog[]>([]);
@@ -19,20 +26,23 @@ export default function SecurityLogsPage() {
     }
   };
 
-  useEffect(() => { fetchLogs(); }, []);
+  useEffect(() => {
+    fetchLogs();
+  }, []);
 
-  const filteredLogs = logs.filter(log => 
-    log.guard_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.checkin_location?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredLogs = logs.filter(
+    (log) =>
+      log.guard_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.checkin_location?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Date(dateString).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -43,11 +53,16 @@ export default function SecurityLogsPage() {
           <h1 className="text-2xl font-black text-slate-800 flex items-center gap-2">
             <FileText className="text-blue-600" /> Duty Logs
           </h1>
-          <p className="text-slate-500 text-sm">Historical record of all security check-ins and check-outs.</p>
+          <p className="text-slate-500 text-sm">
+            Historical record of all security check-ins and check-outs.
+          </p>
         </div>
 
         <div className="relative w-full md:w-80">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            size={18}
+          />
           <input
             type="text"
             placeholder="Filter by guard or location..."
@@ -63,10 +78,18 @@ export default function SecurityLogsPage() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Security Personnel</th>
-                <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Check-In</th>
-                <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Check-Out</th>
-                <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Duration</th>
+                <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Security Personnel
+                </th>
+                <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Check-In
+                </th>
+                <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Check-Out
+                </th>
+                <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Duration
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -81,14 +104,19 @@ export default function SecurityLogsPage() {
                 </tr>
               ) : filteredLogs.length > 0 ? (
                 filteredLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-50/50 transition-colors group">
+                  <tr
+                    key={log.id}
+                    className="hover:bg-slate-50/50 transition-colors group"
+                  >
                     {/* Guard Info */}
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-xs">
                           {log.guard_name[0]}
                         </div>
-                        <span className="font-bold text-slate-700">{log.guard_name}</span>
+                        <span className="font-bold text-slate-700">
+                          {log.guard_name}
+                        </span>
                       </div>
                     </td>
 
@@ -131,19 +159,24 @@ export default function SecurityLogsPage() {
                     <td className="p-4 text-slate-500 font-mono text-xs">
                       {log.checkout_time ? (
                         <div className="flex items-center gap-2">
-                           <Clock size={14} />
-                           {/* Simple duration logic could go here */}
-                           Shift Completed
+                          <Clock size={14} />
+                          {/* Simple duration logic could go here */}
+                          Shift Completed
                         </div>
                       ) : (
-                        <span className="text-blue-500 italic">Active Session</span>
+                        <span className="text-blue-500 italic">
+                          Active Session
+                        </span>
                       )}
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={4} className="p-12 text-center text-slate-400 italic bg-white">
+                  <td
+                    colSpan={4}
+                    className="p-12 text-center text-slate-400 italic bg-white"
+                  >
                     No logs found for this estate.
                   </td>
                 </tr>

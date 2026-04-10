@@ -1,57 +1,46 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { useUser } from '@/app/UserContext';
-import { useRouter } from 'next/navigation';
-import { checkSession } from '../services/apis';
+import React, { useEffect, useState } from "react";
+import { useUser } from "@/app/UserContext";
+import { useRouter } from "next/navigation";
+import { checkSession } from "../services/apis";
 // import Link from 'next/link';
 
 const HomeNavbar = () => {
-  const { user } = useUser();
+  const { user, setUser, isLoading, setIsLoading } = useUser();
   const router = useRouter();
-  
+
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    function checkUserAndMount() {
-      if (user) {
+    async function cSessionCheck() {
+      try {
         setMounted(true);
+        setIsLoading(true);
+        const res = await checkSession();
+
+        if (!res.success) {
+          console.warn("Session invalid, redirecting...");
+          window.location.replace("/");
+        } else {
+          setUser(res.user);
+          setIsLoading(false);
+        }
+      } catch (err) {
+        console.error("Session check failed:", err);
+        window.location.replace("/");
       }
     }
-    checkUserAndMount();
-  }, [user]);
 
-  
-  // useEffect(() => {
-  //   async function cSessionCheck() {
-  //     try {
-  //       const res = await checkSession();
+    cSessionCheck();
+  }, [setUser, setIsLoading]);
 
-  //       // Changed res.ok to res.success
-  //       if (!res.success) {
-  //         console.warn('Session invalid, redirecting...');
-  //         window.location.replace('/');
-  //       } else {
-  //         // console.log('Session verified for:', res.user?.firstName);
-  //       }
-  //     } catch (err) {
-  //       console.error('Session check failed:', err);
-  //       window.location.replace('/');
-  //     }
-  //   }
-
-  //   cSessionCheck();
-  // }, []); 
-
-  // 2. Prevent rendering dynamic user data until client-side hydration is complete
-  // This avoids the "text content does not match" error
-  const fullname = mounted ? (user?.name || 'Admin') : '';
-  // const displayEmail = mounted ? (user?.email || '') : '';
+  const fullname = mounted && !isLoading ? user?.name || "Admin" : "...";
 
   return (
     <header
       className="bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-10 sticky top-0 z-30"
-      style={{ height: '90px' }}
+      style={{ height: "90px" }}
     >
       {/* WELCOME SECTION */}
       <div className="flex flex-col">
@@ -65,7 +54,6 @@ const HomeNavbar = () => {
 
       {/* ACTION CONTROLS */}
       <div className="flex items-center gap-8">
-
         {/* NOTIFICATION HUB */}
         <div className="flex items-center gap-2">
           <div className="indicator group">
@@ -76,7 +64,7 @@ const HomeNavbar = () => {
             )} */}
             <button
               className="btn btn-ghost btn-circle bg-slate-50 hover:bg-primary/10 hover:text-primary transition-all duration-300 shadow-sm border mx-2 border-slate-100"
-              onClick={() => router.push('/home/dashboard')}
+              onClick={() => router.push("/home/dashboard")}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -97,7 +85,7 @@ const HomeNavbar = () => {
 
           <button
             className="btn btn-ghost btn-circle bg-slate-50 hover:bg-secondary/10 hover:text-secondary transition-all duration-300 shadow-sm border mx-4 border-slate-100"
-            onClick={() => router.push('/home/settings')}
+            onClick={() => router.push("/home/settings")}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"

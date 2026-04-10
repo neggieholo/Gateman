@@ -1,89 +1,100 @@
-
-import { SecurityJoinRequest, SecurityLog, SecurityUser, Tenant } from '../types';
-import { JoinRequest } from '../types';
-
+import {
+  SecurityJoinRequest,
+  SecurityLog,
+  SecurityUser,
+  Tenant,
+} from "./types";
+import { JoinRequest } from "./types";
 
 // const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
 export const db = {
-  // Authenticate user
   authenticate: async (email: string, password: string) => {
-  const res = await fetch("/api/auth/login/admin", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-    credentials: "include" // send cookies for session
-  });
+    try {
+      const res = await fetch("/api/auth/login/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+        credentials: "include",
+      });
 
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error || "Login failed");
-  }
-  
-  const data = await res.json(); // <-- now logs the actual object
-  return data;                   // returns { success: true, user }
- },
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Login failed");
+      }
+
+      const data = await res.json(); // <-- now logs the actual object
+      return data;
+    } catch {
+      return {
+        success: false,
+        error: "Server error",
+      };
+    }
+  },
   // Register user
   register: async (
-  name: string,
-  email: string,
-  password: string,
-  city: string,
-  town: string,
-  newOtp: string, 
-  metadata: string
-) => {
-  const body = { name, email, password, city, town, otp: newOtp, metadata };
+    name: string,
+    email: string,
+    password: string,
+    city: string,
+    town: string,
+    newOtp: string,
+    metadata: string,
+  ) => {
+    const body = { name, email, password, city, town, otp: newOtp, metadata };
 
-  const res = await fetch('api/payment', {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
+    const res = await fetch("api/payment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
 
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error || "Admin registration failed");
-  }
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Admin registration failed");
+    }
 
-  const { paymentLink } = await res.json();
+    const { paymentLink } = await res.json();
 
-  // Redirect browser to Flutterwave checkout
-  window.location.href = paymentLink;
+    // Redirect browser to Flutterwave checkout
+    window.location.href = paymentLink;
   },
 
+  //   registerTenant: async (
+  //   name: string,
+  //   email: string,
+  //   password: string,
+  //   unit: string,
+  // ) => {
+  //   const body = { name, email, password, unit };
 
-  registerTenant: async (
-  name: string,
-  email: string,
-  password: string,
-  unit: string,
-) => {
-  const body = { name, email, password, unit };
+  //   const res = await fetch('/api/register/tenant', {
+  //     method: "POST",
+  //     headers: { "Content-Type": "application/json" },
+  //     body: JSON.stringify(body),
+  //     credentials: "include"
+  //   });
 
-  const res = await fetch('/api/register/tenant', {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    credentials: "include"
-  });
+  //   if (!res.ok) {
+  //     const err = await res.json();
+  //     throw new Error(err.error || "Tenant registration failed");
+  //   }
 
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error || "Tenant registration failed");
-  }
-
-  return await res.json(); // { success: true, user }
-},
-
+  //   return await res.json(); // { success: true, user }
+  // },
 
   // Top-up wallet
-  topUpWallet: async (userId: string, amount: number, type: "tenant" | "admin" = "tenant") => {
-    const res = await fetch('/api/wallet/topup', {
+  topUpWallet: async (
+    userId: string,
+    amount: number,
+    type: "tenant" | "admin" = "tenant",
+  ) => {
+    const res = await fetch("/api/wallet/topup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId, amount, type }),
-      credentials: "include"
+      credentials: "include",
     });
 
     if (!res.ok) {
@@ -95,12 +106,16 @@ export const db = {
   },
 
   // Deduct wallet
-  deductWallet: async (userId: string, amount: number, type: "tenant" | "admin" = "tenant") => {
-    const res = await fetch('/api/wallet/deduct', {
+  deductWallet: async (
+    userId: string,
+    amount: number,
+    type: "tenant" | "admin" = "tenant",
+  ) => {
+    const res = await fetch("/api/wallet/deduct", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId, amount, type }),
-      credentials: "include"
+      credentials: "include",
     });
 
     if (!res.ok) {
@@ -111,8 +126,8 @@ export const db = {
     return await res.json(); // updated user
   },
 
-   getAllTenants: async (): Promise<Tenant[]> => {
-    const res = await fetch('/api/admin/tenants', {
+  getAllTenants: async (): Promise<Tenant[]> => {
+    const res = await fetch("/api/admin/tenants", {
       credentials: "include",
     });
     if (!res.ok) {
@@ -125,7 +140,7 @@ export const db = {
 
   // Fetch all join requests (admin-only)
   getAllRequests: async (): Promise<JoinRequest[]> => {
-    const res = await fetch('/api/admin/join-requests', {
+    const res = await fetch("/api/admin/join-requests", {
       credentials: "include",
     });
     if (!res.ok) {
@@ -133,45 +148,45 @@ export const db = {
       throw new Error(err.error || "Could not fetch join requests");
     }
     const data = await res.json();
-    console.log("Request:", data)
+    console.log("Request:", data);
     return data.joinRequests as JoinRequest[];
   },
 
   deleteTenant: async (id: string) => {
-  const res = await fetch('/api/admin/tenant/${id}', {
-    method: "DELETE",
-    credentials: "include",
-  });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error || "Delete failed");
-  }
-  return await res.json();
-},
+    const res = await fetch("/api/admin/tenant/${id}", {
+      method: "DELETE",
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Delete failed");
+    }
+    return await res.json();
+  },
 
-fetchBlocked: async () => {
-    const res = await fetch('/api/admin/blocked-users', { 
-      credentials: "include" 
+  fetchBlocked: async () => {
+    const res = await fetch("/api/admin/blocked-users", {
+      credentials: "include",
     });
     if (!res.ok) throw new Error("Failed to fetch blocked users");
     const data = await res.json();
     return data.blockedUsers;
   },
 
-handleUnblock: async (tempTenantId: string) => {
-    const res = await fetch('/api/admin/join-request/unblock', {
+  handleUnblock: async (tempTenantId: string) => {
+    const res = await fetch("/api/admin/join-request/unblock", {
       method: "PUT",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tempTenantId })
+      body: JSON.stringify({ tempTenantId }),
     });
     if (!res.ok) throw new Error("Failed to unblock user");
     return await res.json();
   },
 
-  forgotPassword: async (email: string, role: 'admin' | 'tenant') => {
+  forgotPassword: async (email: string, role: "admin" | "tenant") => {
     try {
-      const response = await fetch('/api/forgot-password', {
+      const response = await fetch("/api/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, role }),
@@ -183,9 +198,14 @@ handleUnblock: async (tempTenantId: string) => {
     }
   },
 
-  resetPassword: async (token: string, userId: string, role: string, password: string) => {
+  resetPassword: async (
+    token: string,
+    userId: string,
+    role: string,
+    password: string,
+  ) => {
     try {
-      const response = await fetch('/api/reset-password', {
+      const response = await fetch("/api/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, userId, role, password }),
@@ -193,7 +213,10 @@ handleUnblock: async (tempTenantId: string) => {
       return await response.json();
     } catch (error) {
       console.error("Reset Password Service Error:", error);
-      return { success: false, message: "Network error. Please check your connection." };
+      return {
+        success: false,
+        message: "Network error. Please check your connection.",
+      };
     }
   },
 };
@@ -201,7 +224,7 @@ handleUnblock: async (tempTenantId: string) => {
 export const securityDb = {
   // 1. Fetch all pending security join requests
   getSecurityRequests: async (): Promise<SecurityJoinRequest[]> => {
-    const res = await fetch('/api/security/join-requests', {
+    const res = await fetch("/api/security/join-requests", {
       credentials: "include",
     });
     if (!res.ok) {
@@ -227,7 +250,7 @@ export const securityDb = {
 
   // 3. Decline a security join request (Soft rejection)
   declineSecurity: async (id: string, message: string) => {
-    const res = await fetch('/api/security/join-request/delete', {
+    const res = await fetch("/api/security/join-request/delete", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, message }),
@@ -242,7 +265,7 @@ export const securityDb = {
 
   // 4. Block a security applicant permanently
   blockSecurity: async (id: string, message: string) => {
-    const res = await fetch('/api/security/join-request/block', {
+    const res = await fetch("/api/security/join-request/block", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, message }),
@@ -257,7 +280,7 @@ export const securityDb = {
 
   // 5. Fetch all blocked security guards
   fetchBlockedGuards: async () => {
-    const res = await fetch('/api/security/blocked-users', {
+    const res = await fetch("/api/security/blocked-users", {
       credentials: "include",
     });
     if (!res.ok) throw new Error("Failed to fetch blocked guards");
@@ -267,7 +290,7 @@ export const securityDb = {
 
   // 6. Unblock a security guard
   unblockSecurity: async (tempSecurityId: string) => {
-    const res = await fetch('/api/security/join-request/unblock', {
+    const res = await fetch("/api/security/join-request/unblock", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tempSecurityId }),
@@ -279,7 +302,7 @@ export const securityDb = {
 
   // 7. Fetch all official security guards in the estate
   getAllSecurity: async (): Promise<SecurityUser[]> => {
-    const res = await fetch('/api/security/all', {
+    const res = await fetch("/api/security/all", {
       credentials: "include",
     });
     if (!res.ok) {
@@ -304,7 +327,7 @@ export const securityDb = {
   },
 
   generateCheckinCode: async () => {
-    const res = await fetch('/api/security/generate-checkin-code', {
+    const res = await fetch("/api/security/generate-checkin-code", {
       method: "PUT",
       credentials: "include",
     });
@@ -319,7 +342,7 @@ export const securityDb = {
   },
 
   getCheckinCode: async (): Promise<string> => {
-    const res = await fetch('/api/security/get-checkin-code', {
+    const res = await fetch("/api/security/get-checkin-code", {
       method: "GET",
       credentials: "include",
     });
@@ -335,7 +358,7 @@ export const securityDb = {
 
   // 9. Fetch security duty logs (Check-in/Check-out history)
   getSecurityLogs: async (): Promise<SecurityLog[]> => {
-    const res = await fetch('/api/security/logs', {
+    const res = await fetch("/api/security/logs", {
       credentials: "include",
     });
     if (!res.ok) {
@@ -346,4 +369,3 @@ export const securityDb = {
     return data.logs as SecurityLog[];
   },
 };
-

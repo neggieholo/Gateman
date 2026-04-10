@@ -1,8 +1,17 @@
 /* eslint-disable @next/next/no-img-element */
 import React, { useEffect, useState } from "react";
 import { securityDb } from "../services/database";
-import { SecurityUser } from "../types";
-import { Search, MapPin, Mail, Phone, RefreshCw, ShieldCheck, Loader2, Clock } from "lucide-react";
+import { SecurityUser } from "../services/types";
+import {
+  Search,
+  MapPin,
+  Mail,
+  Phone,
+  RefreshCw,
+  ShieldCheck,
+  Loader2,
+  Clock,
+} from "lucide-react";
 import { fetchReadableAddress } from "../services/apis";
 import { formatLastSeen } from "../services/apis";
 
@@ -17,10 +26,10 @@ export default function OnDutyPersonnel() {
     try {
       const [personnelData, existingCode] = await Promise.all([
         securityDb.getAllSecurity(),
-        securityDb.getCheckinCode()
+        securityDb.getCheckinCode(),
       ]);
 
-      setGuards(personnelData.filter(g => g.is_on_duty));
+      setGuards(personnelData.filter((g) => g.is_on_duty));
       setCheckinCode(existingCode);
     } catch (err) {
       console.error("Load Error:", err);
@@ -58,24 +67,29 @@ export default function OnDutyPersonnel() {
     }, [location]);
 
     return (
-      <p className="text-sm font-semibold text-blue-600 truncate" title={address}>
+      <span
+        className="text-sm font-semibold text-blue-600 truncate"
+        title={address}
+      >
         {address}
-      </p>
+      </span>
     );
   };
 
-
-  const filteredGuards = guards.filter(g => 
-    g.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    g.email.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredGuards = guards.filter(
+    (g) =>
+      g.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      g.email.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
-
   return (
-    <div className="p-6 max-w-7xl mx-auto h-[calc(100vh-300px)] ">
+    <div className="p-6 max-w-7xl mx-auto h-[calc(100vh-200px)] flex flex-col">
       {/* 1. Search Bar */}
       <div className="relative mb-6">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+        <Search
+          className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+          size={20}
+        />
         <input
           type="text"
           placeholder="Search on-duty personnel..."
@@ -93,7 +107,9 @@ export default function OnDutyPersonnel() {
           </div>
           <div>
             <h2 className="text-xl font-bold">Security Check-in Code</h2>
-            <p className="text-blue-100 text-sm">Generate a new 10-digit code for guard handovers.</p>
+            <p className="text-blue-100 text-sm">
+              Generate a new 10-digit code for guard handovers.
+            </p>
           </div>
         </div>
 
@@ -101,30 +117,46 @@ export default function OnDutyPersonnel() {
           <span className="text-3xl font-mono font-black tracking-[0.3em]">
             {checkinCode || "----------"}
           </span>
-          <button 
+          <button
             onClick={handleGenerateCode}
             disabled={isGenerating}
             className="bg-white text-blue-600 px-6 py-3 rounded-lg font-bold hover:bg-blue-50 transition-colors flex items-center gap-2 shadow-md"
           >
-            {(isGenerating || loading) ? <Loader2 className="animate-spin" size={18} /> : <RefreshCw size={18} />}
+            {isGenerating || loading ? (
+              <Loader2 className="animate-spin" size={18} />
+            ) : (
+              <RefreshCw size={18} />
+            )}
             {checkinCode ? "Refresh" : "Generate"}
           </button>
         </div>
       </div>
 
       {/* 3. Personnel List (Long Cards) */}
-      <h3 className="text-slate-500 font-bold uppercase tracking-widest text-xs mb-4 px-2">Active Personnel</h3>
-      <div className=" h-[78%] overflow-y-auto pb-4">
+      <h3 className="text-slate-500 font-bold uppercase tracking-widest text-xs mb-4 px-2">
+        Active Personnel
+      </h3>
+
+      <div className=" flex-1 overflow-y-auto pb-4">
         <div className="flex flex-col gap-4 pb-4">
           {loading ? (
-            <div className="flex justify-center p-20"><Loader2 className="animate-spin text-blue-600" size={32} /></div>
+            <div className="flex justify-center p-20">
+              <Loader2 className="animate-spin text-blue-600" size={32} />
+            </div>
           ) : filteredGuards.length > 0 ? (
             filteredGuards.map((guard) => (
-              <div key={guard.id} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col md:flex-row hover:border-blue-300 transition-colors">
+              <div
+                key={guard.id}
+                className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col md:flex-row hover:border-blue-300 transition-colors"
+              >
                 {/* Image Left */}
                 <div className="w-full md:w-40 h-48 md:h-auto bg-slate-100 shrink-0 border-r border-slate-100">
                   {guard.avatar ? (
-                    <img src={guard.avatar} className="w-full h-full object-cover" alt={guard.name} />
+                    <img
+                      src={guard.avatar}
+                      className="w-full h-full object-cover"
+                      alt={guard.name}
+                    />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-blue-50 text-blue-400 font-bold text-3xl">
                       {guard.name[0]}
@@ -135,7 +167,9 @@ export default function OnDutyPersonnel() {
                 {/* Info Middle */}
                 <div className="flex-1 p-6 flex flex-col justify-center border-r border-slate-100">
                   <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-black text-slate-800 text-xl">{guard.name}</h4>
+                    <h4 className="font-black text-slate-800 text-xl">
+                      {guard.name}
+                    </h4>
                     <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                   </div>
                   <div className="space-y-2">
@@ -152,16 +186,30 @@ export default function OnDutyPersonnel() {
                 <div className="flex-1 p-6 bg-slate-50/50 flex flex-col justify-center space-y-4">
                   <div className="flex flex-col gap-4">
                     <div>
-                      <h2 className="text-[10px] font-bold text-slate-400 uppercase">Check-in Location</h2>
+                      <h2 className="text-[10px] font-bold text-slate-400 uppercase">
+                        Check-in Location
+                      </h2>
                       <p className="text-sm font-semibold text-slate-700">
-                        {guard.checkin_location ? <AddressDisplay location={guard.checkin_location} /> : "No location data"}
+                        {guard.checkin_location ? (
+                          <AddressDisplay location={guard.checkin_location} />
+                        ) : (
+                          "No location data"
+                        )}
                       </p>
                     </div>
                     <div>
-                      <h2 className="text-[10px] font-bold text-slate-400 uppercase">Last Known Location</h2>
+                      <h2 className="text-[10px] font-bold text-slate-400 uppercase">
+                        Last Known Location
+                      </h2>
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-semibold text-slate-700">
-                          {guard.last_known_location ? <AddressDisplay location={guard.last_known_location} /> : "No location data"}
+                          {guard.last_known_location ? (
+                            <AddressDisplay
+                              location={guard.last_known_location}
+                            />
+                          ) : (
+                            "No location data"
+                          )}
                         </p>
                         {guard.last_location_time && (
                           <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-blue-100 text-blue-600 rounded-full">
@@ -172,10 +220,12 @@ export default function OnDutyPersonnel() {
                       </div>
                     </div>
                   </div>
-                  
-                  <button 
+
+                  <button
                     className="flex items-center justify-center gap-2 w-full py-2 bg-white border border-blue-200 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-600 hover:text-white transition-all shadow-sm"
-                    onClick={() => console.log("Requesting location from guard...")}
+                    onClick={() =>
+                      console.log("Requesting location from guard...")
+                    }
                   >
                     <MapPin size={14} /> Request Live Location
                   </button>

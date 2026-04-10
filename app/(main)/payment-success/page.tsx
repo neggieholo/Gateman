@@ -1,11 +1,8 @@
-import React from 'react'
-import PaymentSuccess from '@/app/HomeComponents/PaymentSuccess'
-
+import React from "react";
+import PaymentSuccess from "@/app/LandingPageComponents/PaymentSuccess";
 
 const page = () => {
-  return (
-    <PaymentSuccess />
-  )
-}
+  return <PaymentSuccess />;
+};
 
-export default page
+export default page;
