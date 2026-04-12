@@ -371,23 +371,26 @@ export interface EstateDocsPayload {
   cacNumber: string;
   tinNumber: string;
   cacCert: File;
+  tinCert: File;
   estateUtility: File | null;
+  accountNumber: string;
+  bankCode: string;
+  accountName: string;
+  bankName: string;
 }
 
 export interface AdminIdentityPayload {
   adminFullName: string;
   ninNumber: string;
+  bvnNumber: string;
   adminRole: string;
   residentialAddress: string;
+
   authorizingBodyName: string;
   authLetter: File;
   adminUtility: File | null;
-  signature: File; 
-  selfie: File; 
-  accountNumber: string; 
-  bankCode: string; 
-  accountName: string; 
-  bankName: string;
+  signature: File;
+  selfie: File;
 }
 
 export interface Post {

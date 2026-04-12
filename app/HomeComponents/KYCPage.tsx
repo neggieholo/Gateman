@@ -22,7 +22,7 @@ const MODEL_URL =
 const AdminKYC = () => {
   const { user, setUser } = useUser();
   const router = useRouter();
-  const [step, setStep] = useState(2);
+  const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [hasConsent, setHasConsent] = useState(false);
   const [livenessStatus, setLivenessStatus] = useState("idle"); // idle, active, success
@@ -37,6 +37,7 @@ const AdminKYC = () => {
     tinNumber: "",
     adminFullName: "",
     ninNumber: "",
+    bvnNumber: "",
     adminRole: "",
     residentialAddress: "",
     authorizingBodyName: "",
@@ -49,6 +50,7 @@ const AdminKYC = () => {
 
   const [files, setFiles] = useState<{ [key: string]: File | null }>({
     cacCert: null,
+    tinCert: null,
     estateUtility: null,
     authLetter: null,
     adminUtility: null,
@@ -238,6 +240,7 @@ const AdminKYC = () => {
           tinNumber: "",
           adminFullName: "",
           ninNumber: "",
+          bvnNumber: "",
           adminRole: "",
           residentialAddress: "",
           authorizingBodyName: "",
@@ -278,62 +281,80 @@ const AdminKYC = () => {
     }
   };
 
+  // Update Step 1 Save Function
   const onSaveEstate = async () => {
-    if (!files.cacCert || !formData.cacNumber)
-      return alert("CAC number and Certificate are required");
+    // Validate Step 1 + Bank Details
+    if (
+      !files.cacCert ||
+      !files.tinCert ||
+      !formData.cacNumber ||
+      !formData.accountNumber ||
+      !formData.bankCode ||
+      !formData.accountName ||
+      formData.accountName === "Invalid Account"
+    ) {
+      return alert(
+        "Please provide CAC details, TIN details and valid Corporate Bank account info.",
+      );
+    }
+
     setLoading(true);
     const result = await kycService.saveEstateDocs({
       cacNumber: formData.cacNumber,
       tinNumber: formData.tinNumber,
+      accountNumber: formData.accountNumber,
+      bankCode: formData.bankCode,
+      accountName: formData.accountName,
+      bankName: formData.bankName,
       cacCert: files.cacCert!,
+      tinCert: files.tinCert!,
       estateUtility: files.estateUtility,
     });
+
     if (result.success) {
       setStep(2);
-
-      if (user) {
-        setUser({
-          ...user,
-          verification_step: 2,
-        });
-      }
-    } else alert(result.message);
+      if (user) setUser({ ...user, verification_step: 2 });
+    } else {
+      alert(result.message);
+    }
     setLoading(false);
   };
 
+  // Update Step 2 Save Function (NIN & BVN)
   const onSaveIdentity = async () => {
     if (
       !files.authLetter ||
       !formData.ninNumber ||
+      !formData.bvnNumber || // Added validation
       !files.referenceSelfie ||
       !files.signature ||
-      !formData.authorizingBodyName ||
-      !formData.accountNumber || 
-      !formData.bankCode || 
-      !formData.accountName ||
-      formData.accountName === "Invalid Account"
-    )
+      !formData.authorizingBodyName
+    ) {
       return alert(
-        "All identity fields and a valid settlement bank account are required.",
+        "Please complete all personal identity fields and upload required documents.",
       );
+    }
 
     setLoading(true);
     const result = await kycService.saveAdminIdentity({
-      ...formData,
+      adminFullName: formData.adminFullName,
+      ninNumber: formData.ninNumber,
+      bvnNumber: formData.bvnNumber,
+      adminRole: formData.adminRole,
+      residentialAddress: formData.residentialAddress,
+      authorizingBodyName: formData.authorizingBodyName,
       authLetter: files.authLetter!,
       adminUtility: files.adminUtility,
       signature: files.signature,
       selfie: files.referenceSelfie,
     });
+
     if (result.success) {
       setStep(3);
-      if (user) {
-        setUser({
-          ...user,
-          verification_step: 3,
-        });
-      }
-    } else alert(result.message);
+      if (user) setUser({ ...user, verification_step: 3 });
+    } else {
+      alert(result.message);
+    }
     setLoading(false);
   };
 
@@ -458,11 +479,84 @@ const AdminKYC = () => {
               }
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-6 border-t pt-4 mt-4">
+            <h4 className="text-sm font-bold text-indigo-900 uppercase">
+              Settlement Bank Details(Estate&apos;s Corporate Account)
+            </h4>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <select
+                className="border-2 p-3 rounded-lg bg-white"
+                onChange={(e) => {
+                  const selectedBank = banks.find(
+                    (b) => b.code === e.target.value,
+                  );
+                  setFormData({
+                    ...formData,
+                    bankCode: e.target.value,
+                    bankName: selectedBank?.name || "",
+                  });
+                  if (formData.accountNumber.length === 10) {
+                    resolveAccount(formData.accountNumber, e.target.value);
+                  }
+                }}
+              >
+                <option value="">Select Bank</option>
+                {banks.map((bank, index) => (
+                  <option key={`${bank.code}-${index}`} value={bank.code}>
+                    {bank.name}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                placeholder="Account Number"
+                maxLength={10}
+                className="border-2 p-3 rounded-lg"
+                value={formData.accountNumber}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "");
+
+                  setFormData({ ...formData, accountNumber: val });
+
+                  if (val.length === 10 && formData.bankCode) {
+                    resolveAccount(val, formData.bankCode);
+                  } else if (val.length < 10) {
+                    setFormData((prev) => ({ ...prev, accountName: "" }));
+                  }
+                }}
+              />
+            </div>
+
+            {(formData.accountName || isResolving) && (
+              <div
+                className={`p-3 rounded-lg text-sm font-bold mt-2 animate-in fade-in duration-300 ${
+                  formData.accountName === "Invalid Account"
+                    ? "bg-red-50 text-red-600"
+                    : "bg-indigo-50 text-indigo-700" // Using Indigo for a "neutral" loading state
+                }`}
+              >
+                {isResolving ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                    Verifying Account...
+                  </div>
+                ) : (
+                  `Account Name: ${formData.accountName}`
+                )}
+              </div>
+            )}
+          </div>
+          <div className="grid grid-cols-3 gap-2 border-t pt-4">
             <FileUploadField
               label="CAC Certificate"
               onChange={(e) => handleFileUpload(e, "cacCert")}
               hasFile={!!files.cacCert}
+            />
+            <FileUploadField
+              label="TIN Certificate"
+              onChange={(e) => handleFileUpload(e, "tinCert")}
+              hasFile={!!files.tinCert}
             />
             <FileUploadField
               label="Estate Utility Bill"
@@ -503,6 +597,14 @@ const AdminKYC = () => {
                   setFormData({ ...formData, ninNumber: e.target.value })
                 }
               />
+              <input
+                placeholder="BVN Number"
+                maxLength={11}
+                className="border-2 p-3 rounded-lg"
+                onChange={(e) =>
+                  setFormData({ ...formData, bvnNumber: e.target.value })
+                }
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <input
@@ -533,74 +635,6 @@ const AdminKYC = () => {
                 setFormData({ ...formData, residentialAddress: e.target.value })
               }
             />
-            <div className="space-y-4 border-t pt-4 mt-4">
-              <h4 className="text-sm font-bold text-indigo-900 uppercase">
-                Settlement Bank Details
-              </h4>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <select
-                  className="border-2 p-3 rounded-lg bg-white"
-                  onChange={(e) => {
-                    const selectedBank = banks.find(
-                      (b) => b.code === e.target.value,
-                    );
-                    setFormData({
-                      ...formData,
-                      bankCode: e.target.value,
-                      bankName: selectedBank?.name || "",
-                    });
-                    if (formData.accountNumber.length === 10) {
-                      resolveAccount(formData.accountNumber, e.target.value);
-                    }
-                  }}
-                >
-                  <option value="">Select Bank</option>
-                  {banks.map((bank, index) => (
-                    <option key={`${bank.code}-${index}`} value={bank.code}>
-                      {bank.name}
-                    </option>
-                  ))}
-                </select>
-
-                <input
-                  placeholder="Account Number"
-                  maxLength={10}
-                  className="border-2 p-3 rounded-lg"
-                  value={formData.accountNumber}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, "");
-
-                    setFormData({ ...formData, accountNumber: val });
-
-                    if (val.length === 10 && formData.bankCode) {
-                      resolveAccount(val, formData.bankCode);
-                    } else if (val.length < 10) {
-                      setFormData((prev) => ({ ...prev, accountName: "" }));
-                    }
-                  }}
-                />
-              </div>
-
-              {(formData.accountName || isResolving) && (
-                <div
-                  className={`p-3 rounded-lg text-sm font-bold mt-2 animate-in fade-in duration-300 ${
-                    formData.accountName === "Invalid Account"
-                      ? "bg-red-50 text-red-600"
-                      : "bg-indigo-50 text-indigo-700" // Using Indigo for a "neutral" loading state
-                  }`}
-                >
-                  {isResolving ? (
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                      Verifying Account...
-                    </div>
-                  ) : (
-                    `Account Name: ${formData.accountName}`
-                  )}
-                </div>
-              )}
-            </div>
             <div className="grid grid-cols-2 gap-4">
               <FileUploadField
                 label="Authorization Letter"

@@ -9,7 +9,7 @@ import { Menu } from 'lucide-react';
 
 
 export default function MobHomeNavbar() {
-  const { user } = useUser();
+  const { user, setUser, isLoading, setIsLoading } = useUser();
   const router = useRouter();
   const { setIsSidebarOpen } = useUser();
   const [mounted, setMounted] = useState(false);
@@ -24,30 +24,30 @@ export default function MobHomeNavbar() {
   }, [user]);
 
   
-  // useEffect(() => {
-  //   async function cSessionCheck() {
-  //     try {
-  //       const res = await checkSession();
+ useEffect(() => {
+   async function cSessionCheck() {
+     try {
+       setMounted(true);
+       setIsLoading(true);
+       const res = await checkSession();
 
-  //       // Changed res.ok to res.success
-  //       if (!res.success) {
-  //         console.warn('Session invalid, redirecting...');
-  //         window.location.replace('/');
-  //       } else {
-  //         // console.log('Session verified for:', res.user?.firstName);
-  //       }
-  //     } catch (err) {
-  //       console.error('Session check failed:', err);
-  //       window.location.replace('/');
-  //     }
-  //   }
+       if (!res.success) {
+         console.warn("Session invalid, redirecting...");
+         window.location.replace("/");
+       } else {
+         setUser(res.user);
+         setIsLoading(false);
+       }
+     } catch (err) {
+       console.error("Session check failed:", err);
+       window.location.replace("/");
+     }
+   }
 
-  //   cSessionCheck();
-  // }, []); 
-
-  // 2. Prevent rendering dynamic user data until client-side hydration is complete
-  // This avoids the "text content does not match" error
-  const fullname = mounted ? (user?.name || 'Admin') : '';
+   cSessionCheck();
+ }, [setUser, setIsLoading]);
+ 
+ const fullname = mounted ? (user?.name || 'Admin') : '';
   // const displayEmail = mounted ? (user?.email || '') : '';
 
   return (
