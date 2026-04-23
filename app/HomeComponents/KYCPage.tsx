@@ -129,7 +129,7 @@ const AdminKYC = () => {
     canvas.width = videoRef.current.videoWidth;
     canvas.height = videoRef.current.videoHeight;
     canvas.getContext("2d")?.drawImage(videoRef.current, 0, 0);
-    return canvas.toDataURL("image/jpeg", 0.7);
+    return canvas.toDataURL("image/jpeg", 0.5);
   };
 
   const handleDetectionLogic = (detection: any) => {
@@ -221,7 +221,7 @@ const AdminKYC = () => {
       return;
     setLoading(true);
     try {
-      const res = await fetch("/api/v1/kyc/reset", {
+      const res = await fetch("/api/kyc/reset", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ adminId: user?.id, estateId: user?.estate_id }),
@@ -271,6 +271,10 @@ const AdminKYC = () => {
   ) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.type === "application/pdf") {
+        setFiles((prev) => ({ ...prev, [key]: file }));
+        return;
+      }
       const options = {
         maxSizeMB: 0.8,
         maxWidthOrHeight: 1920,
@@ -533,7 +537,7 @@ const AdminKYC = () => {
                 className={`p-3 rounded-lg text-sm font-bold mt-2 animate-in fade-in duration-300 ${
                   formData.accountName === "Invalid Account"
                     ? "bg-red-50 text-red-600"
-                    : "bg-indigo-50 text-indigo-700" // Using Indigo for a "neutral" loading state
+                    : "bg-indigo-50 text-indigo-700" 
                 }`}
               >
                 {isResolving ? (

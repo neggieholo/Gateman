@@ -2,19 +2,30 @@
 
 export type Role = "resident" | "admin" | "superadmin";
 
+export interface EmergencyContact {
+  id: number; // or string, depending on Date.now() or UUID
+  name: string;
+  phone: string;
+}
+
 export interface User {
   id: string;
   estate_id: string;
   estate_name?: string;
+  estate_code?: string;
   name: string;
   email: string;
-  city?: string | null;
-  town?: string | null;
+  phone_number: string;
+  state?: string | null;
+  lga?: string | null;
   role: "admin";
-  wallet_balance: string;
+  wallet_balance: number;
   avatar?: string | Blob;
   subscription_expiry?: string;
   created_at?: string;
+  emergency_contacts: EmergencyContact[];
+  payment_type: string;
+  external_api_url: string;
 
   verification_step: number;
   nin_number?: string;
@@ -123,7 +134,8 @@ export interface CommunityEvent {
 export enum ViewState {
   DASHBOARD = "dashboard",
   UTILITIES = "utilities",
-  INVOICES = "invoices",
+  // INVOICES = "invoices",
+  PAYMENT_APPROVALS='payments',
   ACCESS = "access",
   FORUM = "forum",
   EVENTS = "events",
@@ -414,6 +426,7 @@ export interface Comment {
   id: number;
   post_id: number;
   user_id: string;
+  user_type: string;
   author_name: string;
   content: string;
   created_at: string;
@@ -423,4 +436,23 @@ export interface Like {
   user_id: string;
   author_name: string;
   created_at: string;
+}
+
+
+export type PaymentType =
+  | "Security Levy"
+  | "Power/Electricity"
+  | "Water Bill"
+  | "Waste Management"
+  | "Other";
+
+export interface Payment {
+  id: string;
+  resident: string;
+  unit: string;
+  amount: string;
+  type: PaymentType;
+  transId: string;
+  receiptUrl: string;
+  date: string;
 }

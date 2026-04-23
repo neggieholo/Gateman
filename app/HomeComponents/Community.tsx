@@ -1,7 +1,8 @@
+/* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Bell,
   Megaphone,
@@ -17,8 +18,14 @@ import {
   Loader,
   Trash,
   Loader2,
+  ImageIcon,
+  X,
 } from "lucide-react";
-import { communityApi, getRelativeTime } from "../services/apis";
+import {
+  communityApi,
+  getCloudinaryUrl,
+  getRelativeTime,
+} from "../services/apis";
 import { useUser } from "../UserContext";
 import { Like, Post, Comment } from "../services/types";
 
@@ -34,6 +41,7 @@ const AdminAlertManager = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   // Form States
+  const [selectedImage, setSelectedImage] = useState<any>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [targetResidents, setTargetResidents] = useState(true);
@@ -44,10 +52,21 @@ const AdminAlertManager = () => {
   const [likes, setLikes] = useState<Like[]>([]);
   const [newComment, setNewComment] = useState("");
   const [uploadingComment, setUploadingComment] = useState(false);
+  const [publishing, setPublishing] = useState(false);
 
   useEffect(() => {
     if (activeTab === "alerts") fetchAlerts();
   }, [activeTab]);
+
+  // Add this near your other state hooks
+  useEffect(() => {
+    if (!selectedImage) return;
+
+    const objectUrl = URL.createObjectURL(selectedImage);
+    // You could store this in a separate 'preview' state if you want
+
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [selectedImage]);
 
   const fetchAlerts = async () => {
     setLoading(true);
@@ -63,32 +82,70 @@ const AdminAlertManager = () => {
 
   const handlePostAlert = async () => {
     if (!title || !content) return alert("Please fill all fields");
-    setLoading(true);
+    setPublishing(true);
 
     try {
-      // 1. Post to Community Alerts Tab
+      let uploadedUrl = "";
+
+      if (selectedImage) {
+        const url = await getCloudinaryUrl(selectedImage, "image");
+        if (url) uploadedUrl = url;
+      }
+
       await communityApi.createPost({
-        estate_id: user?.estate_id,
-        author_name: user?.name,
+        author_name: "ADMIN",
         author_role: "admin",
         title: title,
         content: content,
         category: "Alerts",
+        image_url: uploadedUrl,
+        thumbnail_url: uploadedUrl,
         send_push: alsoNotify,
       });
 
       alert("Alert published successfully!");
       setTitle("");
       setContent("");
+      setSelectedImage(null);
       fetchAlerts();
     } catch (err) {
+      console.error(err);
       alert("Failed to post alert");
     } finally {
-      setLoading(false);
+      setPublishing(false);
+    }
+  };
+
+  const handleSendNotification = async () => {
+    if (!title || !content) return alert("Content required");
+    if (!targetResidents && !targetSecurity)
+      return alert("Select at least one group");
+
+    setPublishing(true);
+    try {
+      await communityApi.sendDirectNotification({
+        title,
+        message: content,
+        targets: {
+          residents: targetResidents,
+          security: targetSecurity,
+        },
+      });
+
+      alert("Notifications sent to selected groups!");
+      setTitle("");
+      setContent("");
+    } catch (err) {
+      alert("Failed to send notifications");
+    } finally {
+      setPublishing(true);;
     }
   };
 
   const handleLike = async (postId: string) => {
+    if (!user?.id) return;
+    const isUnliking = selectedPost?.has_liked;
+
     if (user && user.id) {
       setPosts(
         posts.map((p) =>
@@ -104,29 +161,63 @@ const AdminAlertManager = () => {
         ),
       );
 
+      if (selectedPost && selectedPost.id === postId) {
+        setSelectedPost({
+          ...selectedPost,
+          likes_count: selectedPost.has_liked
+            ? selectedPost.likes_count - 1
+            : selectedPost.likes_count + 1,
+          has_liked: !selectedPost.has_liked,
+        });
+      }
+
+      if (isUnliking) {
+        setLikes((prev) => prev.filter((l) => l.user_id !== user.id));
+      } else {
+        const adminLike = {
+          user_id: user.id,
+          author_name: "ADMIN",
+          user_type: "admin",
+          created_at: new Date().toISOString(),
+        };
+        setLikes((prev) => [adminLike, ...prev]);
+      }
+
       await communityApi.toggleLike(postId);
     } else return;
   };
 
   const handleDeleteComment = async (commentId: number) => {
-    // window.confirm returns true if they click "OK"
-    const confirmed = window.confirm(
-      "Are you sure you want to remove this comment?",
+    if (!window.confirm("Are you sure you want to remove this comment?"))
+      return;
+
+    // 1. Optimistic UI update
+    const previousComments = [...comments]; // Keep for fallback
+    setComments((prev) => prev.filter((c) => c.id !== commentId));
+
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === selectedPost?.id
+          ? { ...p, comments_count: Math.max(0, p.comments_count - 1) }
+          : p,
+      ),
     );
 
-    if (confirmed) {
-      try {
-        const response = await communityApi.deleteComment(commentId.toString());
+    if (selectedPost) {
+      setSelectedPost({
+        ...selectedPost,
+        comments_count: Math.max(0, selectedPost.comments_count - 1),
+      });
+    }
 
-        if (response.success) {
-          setComments((prev) => prev.filter((c) => c.id !== commentId));
-          // Simple success alert
-          alert("Comment removed.");
-        }
-      } catch (error) {
-        console.error("Delete Comment Error:", error);
-        alert("Could not delete comment.");
-      }
+    try {
+      const response = await communityApi.deleteComment(commentId.toString());
+      if (!response.success) throw new Error("Failed");
+    } catch (error) {
+      console.error("Delete Comment Error:", error);
+      alert("Could not delete comment. Reverting...");
+      setComments(previousComments); // Revert UI
+      fetchAlerts(); // Re-sync counts
     }
   };
 
@@ -142,6 +233,8 @@ const AdminAlertManager = () => {
         communityApi.getLikes(post.id),
       ]);
 
+      console.log("Fetched comments:", commentsData);
+      console.log("Fetched likes:", likesData);
       setPosts((prev) =>
         prev.map((p) =>
           p.id === post.id
@@ -163,50 +256,55 @@ const AdminAlertManager = () => {
     }
   };
 
-  const handleSendNotification = async () => {
-    if (!title || !content) return alert("Content required");
-    if (!targetResidents && !targetSecurity)
-      return alert("Select at least one group");
-
-    setLoading(true);
-    try {
-      await communityApi.sendDirectNotification({
-        estate_id: user?.estate_id,
-        title,
-        message: content,
-        targets: {
-          residents: targetResidents,
-          security: targetSecurity,
-        },
-      });
-
-      alert("Notifications sent to selected groups!");
-      setTitle("");
-      setContent("");
-    } catch (err) {
-      alert("Failed to send notifications");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleAddComment = async (postId: string) => {
     if (!newComment.trim()) return;
 
+    const commentText = newComment;
+    setNewComment("");
     setUploadingComment(true);
 
-    try {
-      await communityApi.addComment({
-        post_id: postId,
-        author_name: user!.name,
-        content: newComment,
-      });
-      await fetchAlerts();
+    // 1. Create the Optimistic Comment object
+    const optimisticComment: Comment = {
+      id: Date.now(),
+      post_id: Number(postId),
+      user_id: user?.id || "",
+      user_type: 'admin',
+      author_name: "ADMIN",
+      content: commentText,
+      created_at: new Date().toISOString(),
+    };
 
-      setNewComment("");
+    // 2. Update UI states immediately
+    setComments((prev) => [...prev, optimisticComment]);
+
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === postId ? { ...p, comments_count: p.comments_count + 1 } : p,
+      ),
+    );
+
+    if (selectedPost && selectedPost.id === postId) {
+      setSelectedPost({
+        ...selectedPost,
+        comments_count: selectedPost.comments_count + 1,
+      });
+    }
+
+    try {
+      const response = await communityApi.addComment({
+        post_id: postId,
+        content: commentText,
+      });
+
+      // 3. Replace the optimistic comment with the real one from the DB (for the real ID)
+      setComments((prev) =>
+        prev.map((c) => (c.id === optimisticComment.id ? response : c)),
+      );
     } catch (error) {
       console.error("GateMan Comment Error:", error);
-      alert("Failed to add comment. Please check your internet and try again.");
+      alert("Failed to add comment.");
+      // Optional: Revert states here if you want to be strict
+      fetchAlerts();
     } finally {
       setUploadingComment(false);
     }
@@ -222,6 +320,28 @@ const AdminAlertManager = () => {
     // Re-fetch comments to show the new one immediately
     const updatedComments = await communityApi.getComments(selectedPost.id);
     setComments(updatedComments);
+  };
+
+  const handleDelete = async (postId: string) => {
+    const confirmed = window.confirm(
+      "Delete Post\nAre you sure you want to remove this post permanently?",
+    );
+
+    if (confirmed) {
+      try {
+        // 1. Call the API
+        const response = await communityApi.deletePost(postId.toString());
+
+        if (response.success || response) {
+          setPosts((prevPosts) => prevPosts.filter((p) => p.id !== postId));
+
+          alert("Post deleted successfully.");
+        }
+      } catch (error: any) {
+        console.error("Delete Error:", error);
+        alert("Could not delete post. Please try again.");
+      }
+    }
   };
 
   return (
@@ -282,6 +402,47 @@ const AdminAlertManager = () => {
               onChange={(e) => setContent(e.target.value)}
             />
 
+            {/* Image Upload UI */}
+            {activeTab === "alerts" ? (
+              <div className="space-y-2">
+                <p className="text-xs font-black text-slate-400 uppercase">
+                  Attachment
+                </p>
+
+                {!selectedImage ? (
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50 cursor-pointer hover:bg-slate-100 hover:border-indigo-300 transition group">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <ImageIcon className="w-8 h-8 text-slate-400 group-hover:text-indigo-500 mb-2" />
+                      <p className="text-sm text-slate-500">
+                        Click to upload photo
+                      </p>
+                    </div>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={(e) => setSelectedImage(e.target.files?.[0])}
+                    />
+                  </label>
+                ) : (
+                  <div className="relative rounded-xl overflow-hidden border-2 border-indigo-100">
+                    <img
+                      src={URL.createObjectURL(selectedImage)}
+                      alt="Preview"
+                      className="w-full h-40 object-cover"
+                    />
+                    <button
+                      type="button" // Prevents accidental form submission
+                      onClick={() => setSelectedImage(null)}
+                      className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 shadow-md"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : null}
+
             {activeTab === "alerts" ? (
               <label className="flex items-center gap-3 p-3 bg-indigo-50 rounded-xl cursor-pointer group">
                 <input
@@ -329,7 +490,7 @@ const AdminAlertManager = () => {
               disabled={loading}
               className="w-full bg-indigo-600 text-white p-4 rounded-xl font-black shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 hover:bg-indigo-700 transition"
             >
-              {loading ? (
+              {publishing ? (
                 "Processing..."
               ) : (
                 <>
@@ -350,7 +511,10 @@ const AdminAlertManager = () => {
               {/* Detail Header */}
               <div className="p-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/50 shrink-0">
                 <button
-                  onClick={() => setSelectedPost(null)}
+                  onClick={() => {
+                    setSelectedPost(null);
+                    setActiveSelectedPostTab("comments");
+                  }}
                   className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 font-bold transition"
                 >
                   <ArrowLeft size={20} /> BACK TO LIST
@@ -393,58 +557,65 @@ const AdminAlertManager = () => {
                     <p
                       className={`text-xs font-bold uppercase tracking-widest ${activeSelectedPostTab === "likes" ? "text-white" : "text-gray-400"}`}
                     >
-                      Likes ({likes?.length ?? 0})
+                      Likes ({likes.length ?? 0})
                     </p>
                   </button>
                 </div>
               </div>
               {/* Detail Content - SCROLLABLE CONTENT AREA */}
               <div className="p-2 overflow-y-auto flex-1">
-                {activeSelectedPostTab === "likes" ? (
+                {loadingComments ? (
+                  /* This now covers BOTH tabs */
+                  <div className="flex flex-col items-center justify-center py-20">
+                    <Loader2
+                      size={24}
+                      className="text-indigo-600 animate-spin"
+                    />
+                    <p className="text-slate-400 text-xs mt-2 font-medium">
+                      Loading details...
+                    </p>
+                  </div>
+                ) : activeSelectedPostTab === "likes" ? (
+                  /* --- LIKES TAB CONTENT --- */
                   <div className="flex-1 p-4">
-                    {loadingComments ? (
-                      <div className="flex-1 p-4 flex justify-center items-center">
-                        <Loader2 size="small" color="#4f46e5" />
-                      </div>
-                    ) : likes.length > 0 ? (
+                    {likes.length > 0 ? (
                       likes.map((like: any, index: number) => (
                         <div
                           key={index}
-                          className="flex-row items-center mb-3 bg-white p-3 rounded-2xl border border-gray-100 shadow-sm"
+                          className="flex items-center justify-between mb-3 bg-white p-3 rounded-2xl border border-gray-100 shadow-sm"
                         >
-                          {/* Avatar Initial */}
-                          <div className="flex gap-3 items-center">
-                            <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center mr-3 border border-indigo-100">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center border border-indigo-100">
                               <p className="text-indigo-600 font-bold text-sm">
                                 {like.author_name?.charAt(0).toUpperCase() ||
                                   "U"}
                               </p>
                             </div>
-
-                            <p className="text-sm font-bold text-gray-900">
-                              {like.author_name}
-                            </p>
+                            <div>
+                              <p className="text-sm font-bold text-gray-900">
+                                {like.author_name}
+                              </p>
+                              <p className="text-[10px] text-gray-400">
+                                Liked {getRelativeTime(like.created_at)}
+                              </p>
+                            </div>
                           </div>
-
-                          <div className="flex-1 mt-2">
-                            <p className="text-[10px] text-gray-400">
-                              Liked {getRelativeTime(like.created_at)}
-                            </p>
-                          </div>
-
-                          {/* Heart indicator */}
-                          <div className="p-2 rounded-full">
-                            <Heart size={12} color="#ef4444" fill="#ef4444" />
-                          </div>
+                          <Heart
+                            size={14}
+                            className="text-red-500 fill-red-500"
+                          />
                         </div>
                       ))
                     ) : (
-                      <div className="items-center py-10">
-                        <p className="text-gray-400 text-xs">No likes yet</p>
+                      <div className="text-center py-10">
+                        <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">
+                          No likes yet
+                        </p>
                       </div>
                     )}
                   </div>
                 ) : (
+                  /* --- COMMENTS TAB CONTENT --- */
                   <div className="flex-1 p-4">
                     {comments.length > 0 ? (
                       comments.map((comment: any) => (
@@ -458,26 +629,28 @@ const AdminAlertManager = () => {
                           <p className="text-gray-800 py-1 text-sm">
                             {comment.content}
                           </p>
-                          <div className="flex-row justify-between w-full">
+                          <div className="flex justify-between items-center w-full">
                             <p className="text-[9px] text-gray-400">
                               {getRelativeTime(comment.created_at)}
                             </p>
                             {comment.user_id === user?.id && (
                               <button
                                 onClick={() => handleDeleteComment(comment.id)}
+                                className="p-1 hover:bg-red-50 rounded-lg transition"
                               >
-                                <Trash size={14} color="red" />
+                                <Trash size={14} className="text-red-500" />
                               </button>
                             )}
                           </div>
                         </div>
                       ))
                     ) : (
-                      <div className="items-center py-10">
-                        <p className="text-gray-400 text-xs">No comments yet</p>
+                      <div className="text-center py-10">
+                        <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">
+                          No comments yet
+                        </p>
                       </div>
                     )}
-                    <div className="h-10" />
                   </div>
                 )}
               </div>
@@ -485,16 +658,15 @@ const AdminAlertManager = () => {
               {/* Stats - STICKY BOTTOM */}
               <div className="pl-3 bg-slate-50 flex gap-6 border-t shrink-0">
                 <div className="flex gap-3 h-12 items-center">
-                  <div className="flex items-center gap-2 text-slate-500">
-                    <MessageSquare size={18} />{" "}
-                    <span className="font-bold">
-                      {comments.length} Comments
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-500">
-                    <Heart size={18} />{" "}
-                    <span className="font-bold">{likes.length} Likes</span>
-                  </div>
+                  <button
+                    className="flex justify-center items-center"
+                    onClick={() => handleLike(selectedPost.id)}
+                  >
+                    <ThumbsUp
+                      size={18}
+                      color={selectedPost.has_liked ? "#2563eb" : "#9ca3af"}
+                    />
+                  </button>
                 </div>
                 {activeSelectedPostTab === "comments" && (
                   <div className="border-t border-gray-100 bg-white flex-1">
@@ -510,12 +682,15 @@ const AdminAlertManager = () => {
                       <button
                         onClick={handleCommentSubmit}
                         disabled={uploadingComment}
-                        className="ml-2 bg-indigo-600 rounded-full p-2"
+                        className="ml-2 bg-indigo-600 rounded-full w-10 h-10 flex items-center justify-center transition-all disabled:opacity-70"
                       >
                         {uploadingComment ? (
-                          <Loader size="small" color="white" />
+                          <Loader
+                            size={18}
+                            className="text-white animate-spin"
+                          />
                         ) : (
-                          <Send size={16} color="white" />
+                          <Send size={16} className="text-white" />
                         )}
                       </button>
                     </div>
@@ -539,10 +714,12 @@ const AdminAlertManager = () => {
                     posts.map((post) => (
                       <div
                         key={post.id}
-                        onClick={() => handleOpenPost(post)}
                         className="bg-white p-5 rounded-2xl border border-slate-100 flex justify-between items-start cursor-pointer hover:border-indigo-200 transition"
                       >
-                        <div className="flex-1">
+                        <div
+                          className="flex-1"
+                          onClick={() => handleOpenPost(post)}
+                        >
                           <div className="flex items-center gap-2 mb-1">
                             <span className="bg-red-100 text-red-600 text-[10px] font-black px-2 py-0.5 rounded">
                               ALERT
@@ -559,10 +736,7 @@ const AdminAlertManager = () => {
                             {new Date(post.created_at).toLocaleString()}
                           </p>
                           <div className="flex items-center justify-between my-3">
-                            <button
-                              className="flexitems-center"
-                              onClick={() => handleLike(post.id)}
-                            >
+                            <span className="flex items-center">
                               <ThumbsUp
                                 size={18}
                                 color={post.has_liked ? "#2563eb" : "#9ca3af"}
@@ -570,7 +744,7 @@ const AdminAlertManager = () => {
                               <p className="ml-1 font-bold text-sm">
                                 {post.likes_count}
                               </p>
-                            </button>
+                            </span>
                             <div className="flex items-center">
                               <MessageSquare size={18} color="#9ca3af" />
                               <p className="ml-1 font-bold text-sm">
@@ -579,9 +753,16 @@ const AdminAlertManager = () => {
                             </div>
                           </div>
                         </div>
-                        <button className="text-slate-300 hover:text-red-500 transition">
-                          <Trash2 size={18} />
-                        </button>
+                        <div>
+                          {user?.id === post.author_id && (
+                            <button
+                              onClick={() => handleDelete(post.id)}
+                              className="text-red-500"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))
                   ) : (

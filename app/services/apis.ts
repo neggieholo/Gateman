@@ -39,6 +39,20 @@ export const sendOtpApi = async (email: string) => {
   }
 };
 
+export const sendPofileChangeOtpApi = async (target: string, type: string) => {
+  try {
+    const res = await fetch("/api/admin/send-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target, type }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.log("OTP error:", err);
+    return { success: false, message: "Network error" };
+  }
+};
+
 export const fetchGatePasses = async (): Promise<Invitation[]> => {
   try {
     const res = await fetch("/api/invitations", {
@@ -228,8 +242,16 @@ export const communityApi = {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      return await response.json();
+
+      const result = await response.json();
+
+      if (!response.ok || result.error) {
+        throw new Error(result.error || "Server Error");
+      }
+
+      return result;
     } catch (error) {
+      throw error
       console.error("createPost Error:", error);
     }
   },
@@ -329,7 +351,6 @@ export const communityApi = {
   },
 
   sendDirectNotification: async (payload: {
-    estate_id: string | undefined;
     title: string;
     message: string;
     targets: { residents: boolean; security: boolean };
@@ -340,7 +361,9 @@ export const communityApi = {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      return await response.json();
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Broadcast failed");
+      return data;
     } catch (error) {
       throw error;
     }
@@ -354,5 +377,54 @@ export const getRelativeTime = (timestamp: string) => {
     return formatDistanceToNow(date, { addSuffix: true });
   } catch (error) {
     return timestamp; // Fallback to raw string if it fails
+  }
+};
+
+export const getCloudinaryUrl = async (
+  file: File, // Expecting the actual File object from <input type="file">
+  selectionType: "image" | "audio" | "video" | "document",
+) => {
+  try {
+    // 1. SIZE CHECK: 50MB Limit
+    const MAX_SIZE = 50 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      alert("File too large. Max limit is 50MB.");
+      return null;
+    }
+
+    const formData = new FormData();
+
+    // 2. Resource Type Logic
+    let cloudinaryType = "image";
+    if (selectionType === "audio" || selectionType === "video") {
+      cloudinaryType = "video"; // Cloudinary handles audio under the 'video' endpoint
+    } else if (selectionType === "document") {
+      cloudinaryType = "raw";
+    }
+
+    // Web-standard FormData append
+    formData.append("file", file);
+    formData.append("upload_preset", "gateman uploads");
+
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/diubaoqcr/${cloudinaryType}/upload`,
+      {
+        method: "POST",
+        body: formData,
+      },
+    );
+
+    const data = await res.json();
+
+    if (data.error) {
+      console.error("Cloudinary Error:", data.error.message);
+      alert(`Cloudinary Error: ${data.error.message}`);
+      return null;
+    }
+
+    return data.secure_url;
+  } catch (err) {
+    console.error("Upload Logic Error:", err);
+    return null;
   }
 };

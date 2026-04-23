@@ -24,6 +24,7 @@ const HomeNavbar = () => {
           window.location.replace("/");
         } else {
           setUser(res.user);
+          // console.log("Navbar User:", res.user)
           setIsLoading(false);
         }
       } catch (err) {

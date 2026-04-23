@@ -1,101 +1,88 @@
-import React, { useState } from 'react';
-import { changePassword } from '../services/apis';
+"use client";
 
-const ChangePassword = () => {
-    const [formData, setFormData] = useState({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-    });
-    const [status, setStatus] = useState({ type: '', msg: '' });
-    const [loading, setLoading] = useState(false);
+import { useState } from "react";
+import { Lock, Eye, EyeOff, ArrowLeft, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
+export default function ChangePassword() {
+  const [showPass, setShowPass] = useState(false);
+  const [formData, setFormData] = useState({
+    current: "",
+    new: "",
+    confirm: "",
+  });
 
-        // 1. Validation
-        if (formData.newPassword !== formData.confirmPassword) {
-            return setStatus({ type: 'error', msg: 'Passwords do not match' });
-        }
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
+      <Link
+        href="/home/settings"
+        className="flex items-center justify-start w-full gap-2 text-slate-500 font-bold text-sm hover:text-indigo-600 transition-colors"
+      >
+        <ArrowLeft size={16} /> Back to Settings
+      </Link>
+      <div className="w-full max-w-md space-y-8 mt-10">
+        <div className="bg-white p-10 rounded-[40px] shadow-sm border border-slate-100 space-y-6">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight">
+              Update Password
+            </h1>
+            <p className="text-slate-400 text-sm font-medium">
+              Ensure your account stays secure
+            </p>
+          </div>
 
-        if (formData.newPassword.length < 6) {
-            return setStatus({ type: 'error', msg: 'Password must be at least 6 characters' });
-        }
-
-        setLoading(true);
-        setStatus({ type: '', msg: '' }); // Clear previous status
-
-        try {
-            // 2. Call the shared service
-            // Since this is the Admin Web panel, we pass "admin" as the role
-            const data = await changePassword(
-                formData.currentPassword, 
-                formData.newPassword, 
-                "admin"
-            );
-
-            // 3. Handle the response
-            if (data.success) {
-                setStatus({ type: 'success', msg: 'Password changed successfully!' });
-                setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-            } else {
-                // Displays "Current password is incorrect" or other server-side messages
-                setStatus({ type: 'error', msg: data.message || 'Update failed' });
-            }
-        } catch (err) {
-            setStatus({ type: 'error', msg: 'A network error occurred. Please try again.' });
-        } finally {
-            setLoading(false);
-        }
-    };
-
-
-
-    return (
-        <div style={{ maxWidth: '400px', margin: '2rem auto', fontFamily: 'sans-serif' }}>
-            <h2 style={{ color: '#2563eb' }}>Change Password</h2>
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div className="space-y-4">
+            {/* Current Password */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                Current Password
+              </label>
+              <div className="relative">
                 <input
-                    type="password"
-                    placeholder="Current Password"
-                    required
-                    style={inputStyle}
-                    value={formData.currentPassword}
-                    onChange={(e) => setFormData({...formData, currentPassword: e.target.value})}
+                  type={showPass ? "text" : "password"}
+                  className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500"
+                  placeholder="••••••••"
                 />
-                <input
-                    type="password"
-                    placeholder="New Password"
-                    required
-                    style={inputStyle}
-                    value={formData.newPassword}
-                    onChange={(e) => setFormData({...formData, newPassword: e.target.value})}
-                />
-                <input
-                    type="password"
-                    placeholder="Confirm New Password"
-                    required
-                    style={inputStyle}
-                    value={formData.confirmPassword}
-                    onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-                />
-                <button 
-                    type="submit" 
-                    disabled={loading}
-                    style={{ backgroundColor: '#2563eb', color: 'white', padding: '10px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                <button
+                  onClick={() => setShowPass(!showPass)}
+                  className="absolute right-4 top-4 text-slate-300"
                 >
-                    {loading ? 'Processing...' : 'Change Password'}
+                  {showPass ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
-            </form>
-            {status.msg && (
-                <p style={{ marginTop: '1rem', color: status.type === 'error' ? '#ef4444' : '#22c55e' }}>
-                    {status.msg}
-                </p>
-            )}
+              </div>
+            </div>
+
+            {/* New Password */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                New Password
+              </label>
+              <input
+                type="password"
+                className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500"
+                placeholder="New secret key"
+              />
+            </div>
+
+            {/* Confirm Password */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                Confirm New Password
+              </label>
+              <input
+                type="password"
+                className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500"
+                placeholder="Repeat new secret key"
+              />
+            </div>
+          </div>
+
+          <button className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2">
+            <ShieldCheck size={20} />
+            Update Password
+          </button>
         </div>
-    );
-};
-
-const inputStyle = { padding: '10px', borderRadius: '4px', border: '1px solid #ccc' };
-
-export default ChangePassword;
+      </div>
+    </div>
+  );
+}

@@ -1,9 +1,9 @@
 import React from 'react'
-import InvoicesPage from '@/app/HomeComponents/Invoices'
+import Settings from '@/app/HomeComponents/Settings'
 
 const page = () => {
   return (
-    <InvoicesPage />
+    <Settings />
   )
 }
 

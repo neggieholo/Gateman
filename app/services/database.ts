@@ -37,12 +37,12 @@ export const db = {
     name: string,
     email: string,
     password: string,
-    city: string,
-    town: string,
+    state: string,
+    lga: string,
     newOtp: string,
     metadata: string,
   ) => {
-    const body = { name, email, password, city, town, otp: newOtp, metadata };
+    const body = { name, email, password, state, lga, otp: newOtp, metadata };
 
     const res = await fetch("api/payment", {
       method: "POST",
@@ -61,31 +61,7 @@ export const db = {
     window.location.href = paymentLink;
   },
 
-  //   registerTenant: async (
-  //   name: string,
-  //   email: string,
-  //   password: string,
-  //   unit: string,
-  // ) => {
-  //   const body = { name, email, password, unit };
-
-  //   const res = await fetch('/api/register/tenant', {
-  //     method: "POST",
-  //     headers: { "Content-Type": "application/json" },
-  //     body: JSON.stringify(body),
-  //     credentials: "include"
-  //   });
-
-  //   if (!res.ok) {
-  //     const err = await res.json();
-  //     throw new Error(err.error || "Tenant registration failed");
-  //   }
-
-  //   return await res.json(); // { success: true, user }
-  // },
-
-  // Top-up wallet
-  topUpWallet: async (
+   topUpWallet: async (
     userId: string,
     amount: number,
     type: "tenant" | "admin" = "tenant",

@@ -24,7 +24,7 @@ export default async function SidebarLayout({
                     <div className="h-24">
                         <HomeNavbar />
                     </div>
-                    <main className="flex-1 p-6">{children}</main>
+                    <main className="flex-1">{children}</main>
                 </div>
             </div>
         ) : (

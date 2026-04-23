@@ -17,98 +17,14 @@ import { useRouter } from "next/navigation";
 export default function Dashboard() {
   const { user } = useUser();
   const router = useRouter();
-  const [showKYCModal, setShowKYCModal] = useState(false);
   const currentDate = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     day: "numeric",
     month: "long",
   });
 
-  const isVerified = user?.verification_status === "verified";
-
-  const handleBillingClick = () => {
-    if (!isVerified) {
-      setShowKYCModal(true);
-    } else {
-      // Proceed to Billing view
-      console.log("Navigating to billing...");
-    }
-  };
-
-  const bannerContent = useMemo(() => {
-    if (user?.is_verified)
-      return { title: "Verified", desc: "Your account is fully verified." };
-
-    const step = user?.verification_step
-    
-    switch (step) {
-      case 0:
-        return {
-          title: "Verification Required",
-          desc: "Complete KYC to enable the estate wallet and collection features.",
-        };
-      case 1:
-        return {
-          title: "KYC Progress: 33%",
-          desc: "Complete Step 1: Upload your Estate & Business documents to proceed.",
-        };
-      case 2:
-        return {
-          title: "KYC Progress: 66%",
-          desc: "Complete Step 2: Provide Admin Identity and Authorization details.",
-        };
-      case 3:
-        return {
-          title: "Final Step: Liveness",
-          desc: "Take a quick selfie to finalize your verification request.",
-        };
-      case 4:
-        return {
-          title: "Verification Pending",
-          desc: "Your documents are currently being reviewed by our compliance team.",
-        };
-      default:
-        return {
-          title: "KYC Update",
-          desc: "Please follow the instructions to verify your account.",
-        };
-    }
-  }, [user?.verification_step, user?.is_verified]);
-
   return (
-    <div className="relative space-y-8 pb-24 md:pb-8">
-      {!user?.is_verified && (
-        <div
-          className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${
-            user?.verification_status === "pending"
-              ? "bg-blue-50 border-blue-100 text-blue-800"
-              : "bg-amber-50 border-amber-100 text-amber-800"
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className={`p-2 rounded-full ${user?.verification_status === "pending" ? "bg-blue-100" : "bg-amber-100"}`}
-            >
-              <Info size={18} />
-            </div>
-            <div>
-              <p className="text-sm font-bold">{bannerContent.title}</p>
-              <p className="text-xs opacity-80">{bannerContent.desc}</p>
-            </div>
-          </div>
-
-          {user?.verification_status !== "pending" && (
-            <button
-              className="flex items-center gap-1 text-xs font-black uppercase tracking-tighter bg-amber-200/50 px-3 py-2 rounded-lg hover:bg-amber-200 transition-colors"
-              onClick={() => router.push("/home/kyc")}
-            >
-              {user?.verification_step === 0 ? "Verify Now" : "Continue"}{" "}
-              <ChevronRight size={14} />
-            </button>
-          )}
-        </div>
-      )}
-
+    <div className="relative space-y-8 md:pb-18  h-[calc(100vh-50px)] overflow-y-auto p-6">
       <div className="flex justify-between items-end">
         <div>
           <div className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">
@@ -118,6 +34,31 @@ export default function Dashboard() {
             Overview
           </h1>
         </div>
+      </div>
+
+      <div className="bg-indigo-900 p-6 rounded-3xl shadow-lg text-white relative overflow-hidden">
+        <div className="relative z-10 flex justify-between items-center">
+          <div>
+            <span className="text-xs font-bold opacity-70 uppercase tracking-widest">
+              Estate Status
+            </span>
+            <div className="text-3xl font-black mt-1 tracking-tight">
+              Active & Secure
+            </div>
+            <p className="text-indigo-200 text-xs mt-2 font-medium">
+              All gates operational • 14 staff on duty
+            </p>
+          </div>
+          <div className="bg-white/10 p-4 rounded-2xl backdrop-blur-md border border-white/10">
+            <div className="text-center">
+              <div className="text-2xl font-bold">12</div>
+              <div className="text-[10px] uppercase font-bold opacity-60">
+                New Receipts
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-indigo-500/20 rounded-full blur-3xl"></div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -211,67 +152,54 @@ export default function Dashboard() {
         </button>
 
         <button
-          onClick={handleBillingClick}
-          className="group bg-white text-slate-900 border border-slate-200 p-8 rounded-3xl shadow-sm flex flex-col items-start justify-between min-h-40 hover:shadow-xl hover:border-slate-300 transition-all duration-300 relative"
+          onClick={() => router.push("/home/payments")}
+          className="group bg-white text-slate-900 border border-slate-200 p-8 rounded-3xl shadow-sm flex flex-col items-start justify-between min-h-40 hover:shadow-xl transition-all duration-300"
         >
-          {!isVerified && (
-            <div className="absolute top-4 right-4 text-slate-300">
-              <Lock size={20} />
-            </div>
-          )}
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl mb-4 group-hover:scale-110 transition-transform">
-            <TrendingUp size={28} />
+          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl mb-4 group-hover:scale-110 transition-transform">
+            <ShieldCheck size={28} />
           </div>
           <div className="text-left">
-            <span className="block font-bold text-xl mb-1 text-indigo-900">
-              Billing Reports
+            <span className="block font-bold text-xl mb-1 text-slate-900">
+              Payment Audits
             </span>
             <span className="text-sm text-slate-500">
-              Manage unit utilities & levies
+              Verify resident transfers & receipts
             </span>
           </div>
         </button>
       </div>
 
-      {showKYCModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl animate-in fade-in zoom-in duration-300">
-            <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mb-6">
-              <ShieldCheck size={32} />
+      {/* <div className="bg-white rounded-3xl border border-slate-100 p-6">
+        <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <Users size={18} className="text-indigo-600" />
+          Recent Gate Activity
+        </h3>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="flex items-center justify-between py-3 border-b border-slate-50 last:border-0"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-xs font-bold">
+                  JD
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-800">
+                    John Doe (Visitor)
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    Invited by Unit B12 • 10:45 AM
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold bg-emerald-50 text-emerald-600 px-2 py-1 rounded-md uppercase">
+                Checked In
+              </span>
             </div>
-            <h3 className="text-2xl font-bold text-slate-900 mb-2">
-              {user?.verification_step === 0
-                ? "Verification Required"
-                : "Continue Verification"}
-            </h3>
-            <p className="text-slate-500 mb-8">
-              To handle payments, generate utility bills, or withdraw funds, you
-              must complete your administrative KYC. This ensures compliance
-              with Nigerian financial regulations.
-            </p>
-            <div className="flex flex-col gap-3">
-              <button
-                className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-colors"
-                onClick={() => {
-                  router.push("/home/kyc");
-                }}
-              >
-                {user?.verification_step === 0
-                  ? "Start Verification"
-                  : "Continue"}
-              </button>
-              <button
-                className="w-full py-4 bg-slate-50 text-slate-400 rounded-2xl font-bold hover:bg-slate-100 transition-colors"
-                onClick={() => setShowKYCModal(false)}
-              >
-                {user?.verification_step === 0
-                  ? "Maybe Later"
-                  : "Continue Later"}{" "}
-              </button>
-            </div>
-          </div>
+          ))}
         </div>
-      )}
+      </div> */}
     </div>
   );
 }
