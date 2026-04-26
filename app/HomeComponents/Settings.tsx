@@ -16,12 +16,14 @@ import {
   Phone,
   Loader2,
 } from "lucide-react";
+import "react-phone-number-input/style.css";
+import PhoneInput, { isValidPhoneNumber } from "react-phone-number-input";
 import { useUser } from "../UserContext";
 import { EmergencyContact } from "../services/types";
-import { sendOtpApi, sendPofileChangeOtpApi } from "../services/apis";
+import { sendPofileChangeOtpApi } from "../services/apis";
 
 export default function Settings() {
-  const { user, setUser } = useUser();
+  const { user } = useUser();
   const [isEditing, setIsEditing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("manual");
   const [banks, setBanks] = useState<{ name: string; code: string }[]>([]);
@@ -61,13 +63,23 @@ export default function Settings() {
     estateCode: user?.estate_code,
     adminName: user?.name || "Not set",
     email: user?.email || "Not set",
-    phone: user?.phone_number || "Not set",
+    phone: user?.phone_number || undefined,
     phone_verified: false,
     email_verified: false,
   });
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
   const [loadingAction, setLoadingAction] = useState(false);
 
+  const hasChanges =
+    profile.adminName !== (user?.name || "") ||
+    profile.email !== (user?.email || "") ||
+    profile.phone !== (user?.phone_number || "") ||
+    paymentMethod !== (user?.payment_type || "manual") ||
+    externalUrl !== (user?.external_api_url || "") ||
+    JSON.stringify(emergencyContacts) !==
+      JSON.stringify(user?.emergency_contacts || []) ||
+    accountNumber !== (user?.bank_account_number || "") ||
+    selectedBank.code !== (user?.bank_code || "");
 
   useEffect(() => {
     if (user) {
@@ -76,9 +88,9 @@ export default function Settings() {
         estateCode: user.estate_code,
         adminName: user.name || (isEditing ? "" : "Not set"),
         email: user.email || (isEditing ? "" : "Not set"),
-        phone: user.phone_number || (isEditing ? "" : "Not set"),
-        phone_verified: !!user.phone_number,
-        email_verified: !!user.email,
+        phone: user.phone_number || (isEditing ? "" : undefined),
+        phone_verified: true,
+        email_verified: true,
       });
 
       // Apply same fix for account number
@@ -93,21 +105,38 @@ export default function Settings() {
     }
   }, [user, isEditing]);
 
-
-  const handleFieldChange = (
-    field: "email" | "phone" | "adminName",
-    value: string,
-  ) => {
+  const handleFieldChange = (field: "email" | "adminName", value: string) => {
     setProfile((prev) => {
       let isVerified = false;
       // Always compare against the source of truth (user context)
       if (field === "email") isVerified = value === user?.email;
-      if (field === "phone") isVerified = value === user?.phone_number;
 
       return {
         ...prev,
         [field]: value,
         [`${field}_verified`]: isVerified,
+      };
+    });
+  };
+
+  const handlePhoneChange = (value: string | undefined) => {
+    if (value)
+      {if (!isValidPhoneNumber(value)) {
+      alert(
+        "Invalid phone number format. Please check the number and country code.",
+      );
+      return;
+    }}
+    const phoneValue = value || "";
+    setProfile((prev) => {
+      const originalPhone = user?.phone_number || "";
+      const isUnchanged = phoneValue === originalPhone;
+      const isVerified = isUnchanged;
+
+      return {
+        ...prev,
+        phone: phoneValue,
+        phone_verified: isVerified,
       };
     });
   };
@@ -135,18 +164,19 @@ export default function Settings() {
   };
 
   const handleOtpChange = (value: string, index: number) => {
-    const cleanValue = value.replace(/[^0-9]/g, "").slice(-1);
+    const cleanValue = value.replace(/[^0-9]/g, "").slice(-1); // Only last char
     const newOtp = [...otp];
     newOtp[index] = cleanValue;
     setOtp(newOtp);
 
+    // Move focus forward
     if (cleanValue && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
 
     const finalOtpString = newOtp.join("");
     if (finalOtpString.length === 6) {
-      handleOtpVerify();
+      handleOtpVerify(finalOtpString);
     }
   };
 
@@ -156,9 +186,8 @@ export default function Settings() {
     }
   };
 
-  const handleOtpVerify = async () => {
+  const handleOtpVerify = async (finalOtp:string) => {
     setOtpLoading(true);
-    const finalOtp = otp.join("");
     try {
       const res = await fetch("/api/admin/verify-otp-only", {
         method: "POST",
@@ -196,13 +225,32 @@ export default function Settings() {
   };
 
   const addEmergencyContact = () => {
-    if (newContact.name && newContact.phone) {
-      setEmergencyContacts([
-        ...emergencyContacts,
-        { ...newContact, id: Date.now() },
-      ]);
-      setNewContact({ name: "", phone: "" });
+    if (!newContact.name.trim() || !newContact.phone) {
+      alert("Please enter both a name and a phone number.");
+      return;
     }
+
+    // 2. Strict E.164 validation
+    if (!isValidPhoneNumber(newContact.phone)) {
+      alert(
+        "Invalid phone number format. Please check the number and country code.",
+      );
+      return;
+    }
+
+    // 3. Prevent duplicates
+    const isDuplicate = emergencyContacts.some(
+      (c) => c.phone === newContact.phone,
+    );
+    if (isDuplicate) {
+      alert("This number is already in your emergency contacts.");
+      return;
+    }
+    setEmergencyContacts([
+      ...emergencyContacts,
+      { ...newContact, id: Date.now() },
+    ]);
+    setNewContact({ name: "", phone: "" });
   };
 
   const removeContact = (id: number) => {
@@ -229,6 +277,12 @@ export default function Settings() {
   };
 
   const handleSaveConfig = async () => {
+    if (!hasChanges) {
+      alert("No changes detected to save.");
+      // setIsEditing(false);
+      return;
+    }
+
     const isEmailChanged = profile.email !== user?.email;
     const isPhoneChanged = profile.phone !== user?.phone_number;
 
@@ -300,7 +354,7 @@ export default function Settings() {
     setIsEditing(false);
     setError(null);
   };
-  
+
   const confirmAction = async () => {
     setLoadingAction(true);
     try {
@@ -365,10 +419,13 @@ export default function Settings() {
             onClick={() =>
               isEditing ? handleSaveConfig() : setIsEditing(true)
             }
+            disabled={isEditing && (saving || !hasChanges)}
             className={`px-6 py-2 rounded-xl text-sm font-bold shadow-sm transition-all ${
               isEditing
-                ? "bg-indigo-600 text-white"
-                : "bg-white border border-slate-200 text-slate-600"
+                ? !hasChanges || saving
+                  ? "bg-slate-200 text-slate-400 cursor-not-allowed" 
+                  : "bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95" 
+                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50" 
             }`}
           >
             {isEditing
@@ -463,33 +520,50 @@ export default function Settings() {
               {/* Phone with Verification */}
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  Phone
+                  Phone Number
                 </label>
-                <div className="relative">
-                  <input
-                    type="tel"
-                    disabled={!isEditing}
-                    value={profile.phone}
-                    onChange={(e) => handleFieldChange("phone", e.target.value)}
-                    className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-slate-900 pr-32"
-                  />
-                  <div className="absolute right-2 top-2 bottom-2 flex items-center">
+                <div
+                  className={`flex items-center justify-center w-full p-4 bg-slate-50 rounded-2xl border-2 transition-all ${isEditing ? "border-transparent focus-within:border-indigo-500 bg-white shadow-sm" : "border-transparent"}`}
+                >
+                  {!isEditing && !profile.phone ? (
+                    /* Show the "Not set" placeholder only when NOT editing */
+                    <div className="flex-1 p-3 font-bold text-slate-400">
+                      Not set
+                    </div>
+                  ) : (
+                    /* Only render the actual Input if we are editing OR if there is a number to show */
+                    <PhoneInput
+                      international
+                      defaultCountry="NG"
+                      disabled={!isEditing}
+                      /* Ensure we never pass "Not set" to the value prop */
+                      value={
+                        profile.phone === "Not set" ? undefined : profile.phone
+                      }
+                      onChange={handlePhoneChange}
+                      className="flex-1 font-bold text-slate-900 ml-2"
+                    />
+                  )}
+
+                  {/* Verification UI remains the same */}
+                  <div className="flex items-center">
                     {profile.phone_verified ? (
-                      <div className="flex items-center gap-1 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100 animate-in zoom-in">
+                      <div className="flex items-center gap-1 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100">
                         <CheckCircle2 size={16} strokeWidth={3} />
                         <span className="text-[10px] font-black uppercase tracking-tighter">
                           Verified
                         </span>
                       </div>
                     ) : (
-                      isEditing && (
+                      isEditing &&
+                      profile.phone && (
                         <button
                           onClick={() =>
-                            handleRequestOtp(profile.phone, "phone")
+                            handleRequestOtp(profile.phone!, "phone")
                           }
-                          className="bg-amber-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase active:scale-95 transition-transform"
+                          className="bg-amber-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase active:scale-95 transition-transform whitespace-nowrap"
                         >
-                          {otpLoading ? "Sending OTP" : "Verify"}
+                          {otpLoading ? "Sending..." : "Verify"}
                         </button>
                       )
                     )}
@@ -614,20 +688,29 @@ export default function Settings() {
                 emergencyContacts.map((contact) => (
                   <div
                     key={contact.id}
-                    className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/10 group"
+                    className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/10"
                   >
-                    <div>
-                      <p className="text-[10px] font-black uppercase text-slate-500">
+                    <div className="flex-1">
+                      <p className="text-[10px] font-black uppercase text-slate-500 mb-1 leading-none">
                         {contact.name}
                       </p>
-                      <p className="font-bold text-sm">{contact.phone}</p>
+                      <div className="flex items-center">
+                        <PhoneInput
+                          international
+                          defaultCountry="NG"
+                          disabled={!isEditing}
+                          value={contact.phone}
+                          onChange={() => {}}
+                          className="flex items-center text-sm font-bold text-white [&_input]:bg-transparent [&_input]:border-none [&_input]:p-0"
+                        />
+                      </div>
                     </div>
                     {isEditing && (
                       <button
                         onClick={() => removeContact(contact.id)}
-                        className="text-red-400 hover:text-red-300 transition-colors"
+                        className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={16} />
                       </button>
                     )}
                   </div>
@@ -647,21 +730,32 @@ export default function Settings() {
                   onChange={(e) =>
                     setNewContact({ ...newContact, name: e.target.value })
                   }
-                  placeholder="Service Name"
-                  className="w-full p-3 bg-white/10 rounded-xl text-sm outline-none border border-transparent focus:border-indigo-500"
+                  placeholder="Service Name (e.g. Security)"
+                  className="w-full p-3 bg-white/10 rounded-xl text-sm font-bold text-white outline-none border border-transparent focus:border-indigo-500 transition-all placeholder:text-slate-500"
                 />
+
                 <div className="flex gap-2">
-                  <input
-                    value={newContact.phone}
-                    onChange={(e) =>
-                      setNewContact({ ...newContact, phone: e.target.value })
-                    }
-                    placeholder="Phone"
-                    className="flex-1 p-3 bg-white/10 rounded-xl text-sm outline-none"
-                  />
+                  {/* The Phone Input Container */}
+                  <div className="flex-1 flex items-center bg-white/10 rounded-xl px-3 border border-transparent focus-within:border-indigo-500 transition-all">
+                    <PhoneInput
+                      international
+                      defaultCountry="NG"
+                      value={newContact.phone}
+                      onChange={(val) =>
+                        setNewContact({ ...newContact, phone: val || "" })
+                      }
+                      className="flex-1 flex items-center text-sm font-bold text-white [&_input]:bg-transparent [&_input]:border-none [&_input]:outline-none [&_input]:p-3 [&_input]:w-full [&_select]:bg-transparent [&_select]:text-white"
+                    />
+                  </div>
+
                   <button
                     onClick={addEmergencyContact}
-                    className="bg-indigo-600 px-4 rounded-xl font-bold text-xs flex items-center gap-1"
+                    disabled={!newContact.name || !newContact.phone}
+                    className={`px-4 rounded-xl font-black text-[10px] uppercase flex items-center gap-1 transition-all ${
+                      newContact.name && newContact.phone
+                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 active:scale-95"
+                        : "bg-slate-800 text-slate-500 cursor-not-allowed"
+                    }`}
                   >
                     <Plus size={14} /> Add
                   </button>
@@ -748,7 +842,6 @@ export default function Settings() {
 
             <div className="space-y-4">
               <button
-                onClick={handleOtpVerify}
                 disabled={otpLoading || otp.some((d) => !d)}
                 className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg shadow-lg shadow-indigo-200 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center"
               >

@@ -1,16 +1,24 @@
 /* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-'use client';
+"use client";
 
-import React, { useMemo, useRef, useState } from 'react';
-import { db } from '../services/database';
-import { Mail, Lock, User as UserIcon, ArrowRight, AlertCircle, Eye, EyeClosed, MapPin } from 'lucide-react';
-import { useUser } from '../UserContext';
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import { sendOtpApi } from '../services/apis';
-import { states_lgas } from '../utils/states_lgas';
-
+import React, { useMemo, useRef, useState } from "react";
+import { db } from "../services/database";
+import {
+  Mail,
+  Lock,
+  User as UserIcon,
+  ArrowRight,
+  AlertCircle,
+  Eye,
+  EyeClosed,
+  MapPin,
+} from "lucide-react";
+import { useUser } from "../UserContext";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { sendOtpApi } from "../services/apis";
+import { states_lgas } from "../utils/states_lgas";
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -22,17 +30,17 @@ export default function Auth() {
   const router = useRouter();
 
   // Form State
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [state, setState] = useState('');
-  const [lga, setLga] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [state, setState] = useState("");
+  const [lga, setLga] = useState("");
   // const [town, setTown] = useState('');
   const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]);
   const [metadata, setMetadata] = useState("");
   const [showOtpInput, setShowOtpInput] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const[show, setShow] =useState(false);
+  const [show, setShow] = useState(false);
 
   const availableLgas = useMemo(() => {
     const stateData = states_lgas.find((s) => s.state === state);
@@ -58,7 +66,7 @@ export default function Auth() {
     }
 
     setError("");
-    setRequestingOtp(true)
+    setRequestingOtp(true);
 
     try {
       const otpRes = await sendOtpApi(trimmedEmail);
@@ -70,31 +78,31 @@ export default function Auth() {
       }
     } catch (err) {
       setError("Network error");
-    } finally{
-      setRequestingOtp(false)
+    } finally {
+      setRequestingOtp(false);
     }
   };
 
   const handleOtpChange = (value: string, index: number) => {
-  const cleanValue = value.replace(/[^0-9]/g, "").slice(-1); // Only last char
-  const newOtp = [...otp];
-  newOtp[index] = cleanValue;
-  setOtp(newOtp);
+    const cleanValue = value.replace(/[^0-9]/g, "").slice(-1); // Only last char
+    const newOtp = [...otp];
+    newOtp[index] = cleanValue;
+    setOtp(newOtp);
 
-  // Move focus forward
-  if (cleanValue && index < 5) {
-    inputRefs.current[index + 1]?.focus();
-  }
+    // Move focus forward
+    if (cleanValue && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
 
-  const finalOtpString = newOtp.join("");
-  if (finalOtpString.length === 6) {
-    handleRegister(finalOtpString);
-  }
-};
+    const finalOtpString = newOtp.join("");
+    if (finalOtpString.length === 6) {
+      handleRegister(finalOtpString);
+    }
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
     // Move focus back on backspace if current field is empty
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
   };
@@ -120,20 +128,19 @@ export default function Auth() {
     try {
       // Matches your db.register(name, email, password, city, town, newOtp, metadata)
       await db.register(
-        name, 
-        trimmedEmail, 
+        name,
+        trimmedEmail,
         password,
-        state, 
-        lga, 
-        enteredOtp, 
-        metadata
+        state,
+        lga,
+        enteredOtp,
+        metadata,
       );
-      
-      // If db.register finishes without throwing an error, 
+
+      // If db.register finishes without throwing an error,
       // it means the popup/redirect was triggered.
-      setShowOtpInput(false); 
+      setShowOtpInput(false);
       setOtp(["", "", "", "", "", ""]);
-      
     } catch (err: any) {
       // This catches the "throw new Error" from your db.register
       setError(err.message || "Registration failed. Please try again.");
@@ -141,7 +148,6 @@ export default function Auth() {
       setLoading(false);
     }
   };
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,8 +158,8 @@ export default function Auth() {
       if (isForgot) {
         // CALL THE FORGOT PASSWORD API
         // Assuming your 'db' service has a forgotPassword method
-        const res = await db.forgotPassword(email, "admin"); 
-        
+        const res = await db.forgotPassword(email, "admin");
+
         if (res.success) {
           alert("A reset link has been sent to your email!");
           setIsForgot(false); // Send them back to login
@@ -163,17 +169,24 @@ export default function Auth() {
         }
       } else if (isLogin) {
         const data = await db.authenticate(email, password);
-        if (!data || (typeof data === 'string' && data.includes("<!DOCTYPE html>"))) {
-        setError("Server error. Please try again later.");
-        return;
-      }
+        if (
+          !data ||
+          (typeof data === "string" && data.includes("<!DOCTYPE html>"))
+        ) {
+          setError("Server error. Please try again later.");
+          return;
+        }
         if (data.success) {
           setUser(data.user);
-          router.push('/home/dashboard');
+          router.push("/home/dashboard");
         } else {
-          const errorMessage = data.error || data.message || "Authentication failed";
-        
-          if (errorMessage.includes("Unexpected token") || errorMessage.includes("fetch")) {
+          const errorMessage =
+            data.error || data.message || "Authentication failed";
+
+          if (
+            errorMessage.includes("Unexpected token") ||
+            errorMessage.includes("fetch")
+          ) {
             setError("Server is currently restarting. Please wait a moment.");
           } else {
             setError(errorMessage);
@@ -455,7 +468,7 @@ export default function Auth() {
               disabled={loading}
               className="w-full flex items-center justify-center text-white bg-primary/60 hover:bg-primary focus:ring-4 focus:ring-indigo-300 font-bold rounded-2xl text-lg px-5 py-4 transition-all shadow-xl shadow-indigo-200 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              {(loading || requestingOtp) ? (
+              {loading || requestingOtp ? (
                 <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
@@ -594,4 +607,4 @@ export default function Auth() {
       )}
     </div>
   );
-};
+}

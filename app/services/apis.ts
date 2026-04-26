@@ -251,7 +251,7 @@ export const communityApi = {
 
       return result;
     } catch (error) {
-      throw error
+      throw error;
       console.error("createPost Error:", error);
     }
   },
@@ -354,6 +354,7 @@ export const communityApi = {
     title: string;
     message: string;
     targets: { residents: boolean; security: boolean };
+    type: string;
   }) => {
     try {
       const response = await fetch("/api/community/send-direct-notification", {

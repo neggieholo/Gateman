@@ -20,6 +20,7 @@ import {
   Loader2,
   ImageIcon,
   X,
+  ShieldAlert,
 } from "lucide-react";
 import {
   communityApi,
@@ -53,6 +54,7 @@ const AdminAlertManager = () => {
   const [newComment, setNewComment] = useState("");
   const [uploadingComment, setUploadingComment] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [notificationType, setNotificationType] = useState("announcement");
 
   useEffect(() => {
     if (activeTab === "alerts") fetchAlerts();
@@ -130,6 +132,7 @@ const AdminAlertManager = () => {
           residents: targetResidents,
           security: targetSecurity,
         },
+        type:notificationType
       });
 
       alert("Notifications sent to selected groups!");
@@ -138,7 +141,7 @@ const AdminAlertManager = () => {
     } catch (err) {
       alert("Failed to send notifications");
     } finally {
-      setPublishing(true);;
+      setPublishing(false);;
     }
   };
 
@@ -456,7 +459,43 @@ const AdminAlertManager = () => {
                 </span>
               </label>
             ) : (
-              <div className="space-y-2 p-3 bg-slate-50 rounded-xl">
+              <div className="space-y-4 p-3 bg-slate-50 rounded-xl">
+                {/* <div className="space-y-2">
+                  <p className="text-xs font-black text-slate-400 uppercase tracking-wider">
+                    Notification Priority
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setNotificationType("announcement")}
+                      className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition font-bold text-xs ${
+                        notificationType === "announcement"
+                          ? "bg-indigo-50 border-indigo-600 text-indigo-700"
+                          : "bg-white border-slate-100 text-slate-400 hover:border-slate-200"
+                      }`}
+                    >
+                      <Megaphone size={14} />
+                      Announcement
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNotificationType("emergency")}
+                      className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition font-bold text-xs ${
+                        notificationType === "emergency"
+                          ? "bg-red-50 border-red-600 text-red-700"
+                          : "bg-white border-slate-100 text-slate-400 hover:border-slate-200"
+                      }`}
+                    >
+                      <ShieldAlert size={14} />
+                      Emergency
+                    </button>
+                  </div>
+                  {notificationType === "emergency" && (
+                    <p className="text-[10px] text-red-500 font-medium px-1 italic">
+                      * This will trigger the emergency alarm sound on devices.
+                    </p>
+                  )}
+                </div> */}
                 <p className="text-xs font-black text-slate-400 uppercase mb-2">
                   Target Audience
                 </p>
