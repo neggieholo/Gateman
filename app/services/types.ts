@@ -135,7 +135,7 @@ export enum ViewState {
   DASHBOARD = "dashboard",
   UTILITIES = "utilities",
   // INVOICES = "invoices",
-  PAYMENT_APPROVALS='payments',
+  PAYMENT_APPROVALS = "payments",
   ACCESS = "access",
   FORUM = "forum",
   EVENTS = "events",
@@ -438,7 +438,6 @@ export interface Like {
   created_at: string;
 }
 
-
 export type PaymentType =
   | "Security Levy"
   | "Power/Electricity"
@@ -456,3 +455,22 @@ export interface Payment {
   receiptUrl: string;
   date: string;
 }
+
+export type ReportType = "GENERAL" | "SECURITY";
+export type ReportCategory = "COMPLAINT" | "INFORMATION" | "EMERGENCY";
+export type ReportStatus = "PENDING" | "REVIEWED" | "RESOLVED";
+
+export interface EstateReport {
+  id: string;
+  estate_id: string;
+  reporter_id: string;
+  reporter_name?: string; // From the JOIN
+  type: ReportType;
+  category: ReportCategory;
+  target_security_ids: string[];
+  subject: string;
+  description: string;
+  status: ReportStatus;
+  created_at: string;
+}
+

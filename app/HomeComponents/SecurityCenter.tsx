@@ -18,34 +18,13 @@ import GatePassesView from "./GatePassView";
 import SecurityJoinRequestsPage from "./SecurityJoinRequestPage";
 import SecurityPersonnelsList from "./SecurityPersonnels";
 import OnDutyPersonnel from "./SecurityOnDuty";
+import SecurityReportsView from "./SecurityReportsView";
 
-// Mock data for the existing Gate Passes logic
-const MOCK_ADMIN_VISITORS: Visitor[] = [
-  {
-    id: "1",
-    name: "Uber Eats",
-    type: "Delivery",
-    accessCode: "8842",
-    date: "2023-11-02 19:00",
-    status: "Active",
-    unit: "402",
-  },
-  {
-    id: "2",
-    name: "Sarah Mom",
-    type: "Guest",
-    accessCode: "9921",
-    date: "2023-11-03 14:00",
-    status: "Active",
-    unit: "402",
-  },
-];
 
 export default function SecurityManagement() {
   const [activeTab, setActiveTab] = useState<
     "requests" | "personnel" | "onduty" | "reports" | "gatepasses"
   >("requests");
-  const [visitors] = useState<Visitor[]>(MOCK_ADMIN_VISITORS);
 
   const tabs = [
     {
@@ -143,42 +122,10 @@ export default function SecurityManagement() {
 
         {activeTab === "onduty" && <OnDutyPersonnel />}
 
-        {activeTab === "reports" && (
-          <PlaceholderView
-            title="Incident Reports"
-            desc="View complaints and performance reports against security staff."
-            icon={<AlertOctagon size={48} />}
-          />
-        )}
+        {activeTab === "reports" && <SecurityReportsView />}
 
         {activeTab === "gatepasses" && <GatePassesView />}
       </div>
-    </div>
-  );
-}
-
-// Simple internal component for the empty states
-function PlaceholderView({
-  title,
-  desc,
-  icon,
-}: {
-  title: string;
-  desc: string;
-  icon: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col items-center justify-center p-12 bg-white rounded-[3rem] border border-slate-100 border-dashed animate-in fade-in duration-700">
-      <div className="text-slate-200 mb-4 bg-slate-50 p-6 rounded-full">
-        {icon}
-      </div>
-      <h3 className="text-xl font-bold text-slate-800">{title}</h3>
-      <p className="text-slate-500 text-center max-w-xs mt-2 font-medium">
-        {desc}
-      </p>
-      <button className="mt-6 px-6 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-bold active:scale-95 transition-all">
-        Action Required
-      </button>
     </div>
   );
 }

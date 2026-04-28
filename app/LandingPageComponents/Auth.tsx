@@ -156,8 +156,6 @@ export default function Auth() {
 
     try {
       if (isForgot) {
-        // CALL THE FORGOT PASSWORD API
-        // Assuming your 'db' service has a forgotPassword method
         const res = await db.forgotPassword(email, "admin");
 
         if (res.success) {
@@ -180,6 +178,7 @@ export default function Auth() {
           setUser(data.user);
           router.push("/home/dashboard");
         } else {
+          console.log("login error:",data.error)
           const errorMessage =
             data.error || data.message || "Authentication failed";
 

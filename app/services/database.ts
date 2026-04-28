@@ -20,10 +20,13 @@ export const db = {
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || "Login failed");
+        return {
+          success: false,
+          error: err.error,
+        };
       }
 
-      const data = await res.json(); // <-- now logs the actual object
+      const data = await res.json(); 
       return data;
     } catch {
       return {

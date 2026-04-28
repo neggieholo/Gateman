@@ -216,12 +216,12 @@ export const kycService = {
   },
 };
 
-
 export const communityApi = {
   getPosts: async (estateId: string) => {
     try {
       const response = await fetch(
         `/api/community/posts?estate_id=${estateId}`,
+        { credentials: "include" },
       );
       if (!response.ok)
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -241,6 +241,7 @@ export const communityApi = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
+        credentials: "include",
       });
 
       const result = await response.json();
@@ -252,7 +253,6 @@ export const communityApi = {
       return result;
     } catch (error) {
       throw error;
-      console.error("createPost Error:", error);
     }
   },
 
@@ -261,6 +261,7 @@ export const communityApi = {
       const response = await fetch(`/api/community/posts/${postId}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -283,6 +284,7 @@ export const communityApi = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ post_id: postId }),
+        credentials: "include",
       });
       return await response.json();
     } catch (error) {
@@ -292,7 +294,9 @@ export const communityApi = {
 
   getLikes: async (postId: string) => {
     try {
-      const response = await fetch(`/api/community/likes/${postId}`);
+      const response = await fetch(`/api/community/likes/${postId}`, {
+        credentials: "include",
+      });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -309,6 +313,7 @@ export const communityApi = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
+        credentials: "include",
       });
       return await response.json();
     } catch (error) {
@@ -318,7 +323,9 @@ export const communityApi = {
 
   getComments: async (postId: string) => {
     try {
-      const response = await fetch(`/api/community/comments/${postId}`);
+      const response = await fetch(`/api/community/comments/${postId}`, {
+        credentials: "include",
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -336,6 +343,7 @@ export const communityApi = {
       const response = await fetch(`/api/community/comments/${commentId}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -361,6 +369,7 @@ export const communityApi = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
+        credentials: "include",
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Broadcast failed");
@@ -429,3 +438,35 @@ export const getCloudinaryUrl = async (
     return null;
   }
 };
+
+// Get all report for the estate (Admin only)
+export const getEstateReports = async () => {
+  try {
+    const res = await fetch("/api/security/report", {
+      method: "GET",
+      credentials: "include",
+    });
+    return await res.json();
+  } catch (error) {
+    return { success: false, error: "Failed to fetch reports" };
+  }
+};
+
+export const updateReportStatus = async (
+  id: string,
+  status: "REVIEWED" | "RESOLVED",
+) => {
+  const res = await fetch(`/api/security/report/status/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+  return await res.json();
+};
+
+// export const deleteReport = async (id: string) => {
+//   const res = await fetch(`/api/report/${id}`, {
+//     method: "DELETE",
+//   });
+//   return await res.json();
+// };
