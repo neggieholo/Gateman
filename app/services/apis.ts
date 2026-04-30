@@ -455,11 +455,12 @@ export const getEstateReports = async () => {
 export const updateReportStatus = async (
   id: string,
   status: "REVIEWED" | "RESOLVED",
+  adminFeedback: string,
 ) => {
   const res = await fetch(`/api/security/report/status/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status, admin_response: adminFeedback }),
   });
   return await res.json();
 };

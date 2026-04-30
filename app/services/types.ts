@@ -165,14 +165,20 @@ export interface UserContextType {
 
 export interface Tenant {
   id: string;
-  estate_id: string;
   name: string;
   email: string;
-  unit: string;
-  block?: string | null;
-  wallet_balance: string; // from DB as string, you can parseFloat if needed
+  phone: string;
+  created_at: string | null;
+  estate_id?: string;
+  unit?: string;
+  block?: string;
   avatar?: string | null;
-  created_at: string; // timestamp string
+  id_type?: string;
+  id_front_url?: string;
+  id_back_url?: string;
+  utility_bill_url?: string;
+  estate_name?: string;
+  push_token?: string;
 }
 
 export interface JoinRequest {
