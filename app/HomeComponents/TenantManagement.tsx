@@ -55,7 +55,7 @@ export default function UnifiedResidentPortal() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-40px)] overflow-hidden p-4">
+    <div className="flex flex-col h-[calc(100vh-100px)] overflow-hidden p-4">
       {/* --- MASTER TAB NAVIGATION --- */}
       <div className="flex items-center justify-between mb-8 px-2">
         <div className="flex gap-2 p-1.5 bg-slate-100 rounded-4xl shadow-inner">
