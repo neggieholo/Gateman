@@ -1,8 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   AdminIdentityPayload,
+  ApproveRequest,
   EstateDocsPayload,
+  EstateEvent,
   Invitation,
+  RSVPRequest,
+  RSVPResponse,
   sessionResponse,
 } from "./types";
 import { parseISO, formatDistanceToNow } from "date-fns";
@@ -471,3 +475,43 @@ export const updateReportStatus = async (
 //   });
 //   return await res.json();
 // };
+
+const handleResponse = async (response: Response) => {
+  const data = await response.json();
+  if (!response.ok) {
+    throw data.error || "Something went wrong";
+  }
+  return data;
+};
+
+export const getAllEvents = async (): Promise<EstateEvent[]> => {
+  const response = await fetch("/api/event/all", { credentials: "include" });
+  return await handleResponse(response);
+};
+
+export const registerForEvent = async (
+  rsvpData: RSVPRequest,
+): Promise<RSVPResponse> => {
+  const response = await fetch("/api/event/rsvp", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(rsvpData),
+  });
+  return await handleResponse(response);
+};
+
+export const approveEvent = async (
+  eventId: string,
+  verdict: string,
+): Promise<ApproveRequest> => {
+  const response = await fetch(`/api/event/approve/${eventId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ verdict }),
+    credentials: "include",
+  });
+
+  const data = await response.json();
+  if (!response.ok) throw data.error || "Approval failed";
+  return data;
+};

@@ -12,20 +12,18 @@ import {
   ArrowLeft,
   Eye,
   CheckCircle,
-  X,
   Receipt,
 } from "lucide-react";
 import { getEstateReports, updateReportStatus } from "../services/apis";
 import { EstateReport, ReportStatus } from "../services/types";
 
-export default function ResidentsSuggestionsView() {
+export default function PaymentDisputesPage() {
   const [reports, setReports] = useState<EstateReport[]>([]);
   const [selectedReport, setSelectedReport] = useState<EstateReport | null>(
     null,
   );
   const [statusFilter, setStatusFilter] = useState<"ALL" | ReportStatus>("ALL");
   const [loading, setLoading] = useState(true);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showFeedbackModal, setShowFeedbackModal] = useState<{
     id: string;
     status: "REVIEWED" | "RESOLVED";
@@ -43,7 +41,7 @@ export default function ResidentsSuggestionsView() {
         if (res.success) {
           // Filter strictly for SECURITY type before updating state
           const securityOnly = res.reports.filter(
-            (report: EstateReport) => report.type === "GENERAL",
+            (report: EstateReport) => report.type === "PAYMENT",
           );
           setReports(securityOnly);
         }
@@ -240,7 +238,7 @@ export default function ResidentsSuggestionsView() {
   }
 
   return (
-    <div className="space-y-6 p-3 flex flex-col  h-[calc(100vh-100px)]  overflow-hidden pb-20">
+    <div className="space-y-6 p-2 flex flex-col  h-[calc(100vh-100px)] overflow-hidden pb-20">
       <div className="flex items-center gap-4 justify-between bg-white rounded-[2.5rem] ">
         <div className="flex gap-4 items-center p-3 border border-slate-50">
           <div className="p-3 bg-indigo-600 rounded-2xl text-white">

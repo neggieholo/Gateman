@@ -1,8 +1,8 @@
 import React from 'react'
-import PaymentApprovals from '@/app/HomeComponents/Payments'
+import PaymentReviewPage from '@/app/HomeComponents/PaymentReviewPage';
 
 const page = () => {
-  return <PaymentApprovals />;
+  return <PaymentReviewPage />;
 }
 
 export default page

@@ -462,7 +462,7 @@ export interface Payment {
   date: string;
 }
 
-export type ReportType = "GENERAL" | "SECURITY";
+export type ReportType = "GENERAL" | "SECURITY" | "PAYMENT";
 export type ReportCategory = "COMPLAINT" | "INFORMATION" | "EMERGENCY";
 export type ReportStatus = "PENDING" | "REVIEWED" | "RESOLVED";
 
@@ -480,3 +480,104 @@ export interface EstateReport {
   created_at: string;
 }
 
+export interface ResidentPayment {
+  id: string;
+  resident_id: string;
+  amount: number;
+  created_at: string;
+  verified_at?: string;
+  payment_date: string;
+  category: string;
+  notes?: string;
+  resident_name: string;
+  transaction_reference: string;
+  receipt_url: string;
+  status: "pending" | "verified" | "rejected";
+  payment_type: string;
+}
+
+export interface EventRegistration {
+  id: string;
+  event_id: string;
+  guest_name: string;
+  guest_email: string | null;
+  guest_code: string; // The "GUEST-XXXX" code for the gate guard
+  status: "registered" | "checked_in";
+  checked_in_at: string | null;
+  created_at: string;
+}
+
+export interface EstateEvent {
+  id: string;
+  estate_id: string;
+  organizer_id: string | null;
+  title: string;
+  description: string | null;
+
+  // Date and Time (Postgres formats)
+  start_date: string; // ISO Date string (YYYY-MM-DD)
+  end_date: string;
+  start_time: string; // HH:mm:ss
+  end_time: string;
+
+  venue_detail: string | null;
+  registered_number: number;
+  expected_guests: number;
+  banner_url: string | null;
+
+  // Financial & Security
+  is_paid: boolean;
+  ticket_price: string; // Decimal comes as string from Postgres
+  subaccount_id: string | null;
+  ref_code: string;
+  is_approved: boolean;
+  is_rejected: boolean;
+
+  created_at: string;
+}
+
+/**
+ * Data required to create a new event (Frontend Form State)
+ */
+export interface CreateEventRequest {
+  title: string;
+  banner_url: string;
+  description?: string;
+  start_date: string;
+  end_date: string;
+  start_time: string;
+  end_time: string;
+  venue_detail?: string;
+  expected_guests: number;
+  registered_guests?: number;
+  is_paid: boolean;
+  ticket_price?: number;
+  bank_code: string;
+  bank_name?: string; // Temporary fields used for subaccount creation
+  account_number?: string;
+}
+
+/**
+ * Data required for a guest to RSVP
+ */
+export interface RSVPRequest {
+  event_id: string;
+  guest_name: string;
+  guest_email: string;
+}
+
+export interface ApproveRequest {
+  success: boolean;
+  message: string;
+  event: EstateEvent;
+  error?: string;
+}
+
+/**
+ * Response from the RSVP API
+ */
+export interface RSVPResponse {
+  message: string;
+  guest_code?: string; // Returned immediately if FREE
+  paymentLink?: string; // Returned if PAID (Paystack checkout)
+}
