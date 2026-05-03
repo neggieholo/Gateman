@@ -11,7 +11,7 @@ import {
 } from "./types";
 import { parseISO, formatDistanceToNow } from "date-fns";
 
-// const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
 export const checkSession = async (): Promise<sessionResponse> => {
   try {
@@ -489,6 +489,13 @@ export const getAllEvents = async (): Promise<EstateEvent[]> => {
   return await handleResponse(response);
 };
 
+export const getEventById = async (id: string): Promise<EstateEvent> => {
+  const response = await fetch(`/api/event/public/${id}`, {
+    credentials: "include",
+  });
+  return await handleResponse(response);
+};
+
 export const registerForEvent = async (
   rsvpData: RSVPRequest,
 ): Promise<RSVPResponse> => {
@@ -497,7 +504,13 @@ export const registerForEvent = async (
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(rsvpData),
   });
-  return await handleResponse(response);
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Registration failed");
+  }
+
+  return await response.json();
 };
 
 export const approveEvent = async (

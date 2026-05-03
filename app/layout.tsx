@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { UserProvider } from "./UserContext"
+import { UserProvider } from "./UserContext";
 import { Montserrat } from "next/font/google";
 import Script from "next/script";
 
@@ -20,14 +20,14 @@ export const metadata: Metadata = {
     template: "%s | GateMan",
     default: "GateMan | Smart Estate Security & Management",
   },
-  description: "Advanced access control and estate management for modern communities.",
-  // manifest: "/manifest.json", 
+  description:
+    "Advanced access control and estate management for modern communities.",
+  // manifest: "/manifest.json",
   // icons: {
   //   icon: "/favicon.ico",
   //   apple: "/apple-icon.png",
   // },
 };
-
 
 export default function RootLayout({
   children,
@@ -36,14 +36,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
+      <body className={`${inter.variable} ${montserrat.variable} antialiased`}>
+        <UserProvider>{children}</UserProvider>
+
         <Script
           src="https://cdn.smileidentity.com/js/v1/smileid.js"
           strategy="beforeInteractive"
         />
-      </head>
-      <body className={`${inter.variable} ${montserrat.variable} antialiased`}>
-        <UserProvider>{children}</UserProvider>
       </body>
     </html>
   );
