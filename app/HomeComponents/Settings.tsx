@@ -119,14 +119,7 @@ export default function Settings() {
     });
   };
 
-  const handlePhoneChange = (value: string | undefined) => {
-    if (value)
-      {if (!isValidPhoneNumber(value)) {
-      alert(
-        "Invalid phone number format. Please check the number and country code.",
-      );
-      return;
-    }}
+  const handlePhoneChange = (value: string | undefined) => {    
     const phoneValue = value || "";
     setProfile((prev) => {
       const originalPhone = user?.phone_number || "";
@@ -142,6 +135,16 @@ export default function Settings() {
   };
 
   const handleRequestOtp = async (target: string, type: "email" | "phone") => {
+    if (type === 'phone') {
+      if (target) {
+        if (!isValidPhoneNumber(target)) {
+          alert(
+            "Invalid phone number format. Please check the number and country code.",
+          );
+          return;
+        }
+      }
+    }
     setVerifyingField(type);
     setOtpLoading(true);
     setError(null);
@@ -561,7 +564,7 @@ export default function Settings() {
                           onClick={() =>
                             handleRequestOtp(profile.phone!, "phone")
                           }
-                          className="bg-amber-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase active:scale-95 transition-transform whitespace-nowrap"
+                          className="bg-amber-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase active:scale-95 transition-transform whitespace-nowrap ml-2"
                         >
                           {otpLoading ? "Sending..." : "Verify"}
                         </button>
