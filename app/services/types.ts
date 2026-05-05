@@ -426,6 +426,7 @@ export interface Post {
   comments_count: number;
   has_liked: boolean;
   created_at: string;
+  admin_seen: boolean;
 }
 
 export interface Comment {
@@ -580,4 +581,66 @@ export interface RSVPResponse {
   message: string;
   guest_code?: string; // Returned immediately if FREE
   paymentLink?: string; // Returned if PAID (Paystack checkout)
+}
+
+export interface notification {
+  id: string;
+  estate_id: number;
+  user_id: number | null;
+  recipient_role: "tenant" | "security" | "admin";
+  title: string;
+  message: string;
+  type: "general" | "emergency" | "entry" | "invite" | "announcement";
+  created_at: string;
+  is_deleted: boolean;
+}
+
+export interface DashboardStats {
+  security: {
+    total: number;
+    onDuty: number;
+    complaints: number;
+    pendingRequests: number;
+  };
+  community: {
+    totalAlerts: number;
+    unreadAlerts: number;
+  };
+  payments: {
+    monthlyCount: number;
+    pendingPayments: number;
+    paymentReports: number;
+  };
+  events: {
+    total: number;
+    pending: number;
+    upcoming: {
+      title: string;
+      date: string | null;
+    };
+  };
+  residents: {
+    totalRequests: number;
+    total: number;
+    complaints: number;
+    pendingRequests: number;
+  };
+}
+
+export interface notification {
+  id: string;
+  estate_id: number;
+  user_id: number | null;
+  recipient_role: "tenant" | "security" | "admin";
+  title: string;
+  message: string;
+  type: "general" | "emergency" | "entry" | "invite" | "announcement";
+  created_at: string;
+  is_deleted: boolean;
+}
+
+export interface FetchNotificationsResponse {
+  success: boolean;
+  list: notification[];
+  lastReadAt: string;
 }

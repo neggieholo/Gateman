@@ -1,16 +1,47 @@
 "use client";
 
 import { useState } from "react";
-import { Lock, Eye, EyeOff, ArrowLeft, ShieldCheck } from "lucide-react";
+import { Lock, Eye, EyeOff, ArrowLeft, ShieldCheck, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { changePassword } from "../services/apis";
 
 export default function ChangePassword() {
   const [showPass, setShowPass] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     current: "",
     new: "",
     confirm: "",
   });
+
+  const handleUpdate = async () => {
+    if (formData.new !== formData.confirm) {
+      console.log("Passwords:", formData.new, formData.confirm);
+      return alert("New Passwords do not match");
+    }
+
+    if (formData.new.length < 6) {
+      return alert("Password must be at least 6 characters");
+    }
+
+    setLoading(true);
+
+    try {
+      const role = "admin";
+      const data = await changePassword(formData.current, formData.new, role);
+
+      if (data.success) {
+        alert("Password updated successfully");
+        setFormData({ current: "", new: "", confirm: "" });
+      } else {
+        alert(data.message || "Could not update password");
+      }
+    } catch (err) {
+      alert("An unexpected error occurred");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
@@ -40,6 +71,13 @@ export default function ChangePassword() {
               <div className="relative">
                 <input
                   type={showPass ? "text" : "password"}
+                  value={formData.current}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      current: e.target.value,
+                    }))
+                  }
                   className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500"
                   placeholder="••••••••"
                 />
@@ -59,6 +97,10 @@ export default function ChangePassword() {
               </label>
               <input
                 type="password"
+                value={formData.new}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, new: e.target.value }))
+                }
                 className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500"
                 placeholder="New secret key"
               />
@@ -71,15 +113,31 @@ export default function ChangePassword() {
               </label>
               <input
                 type="password"
+                value={formData.confirm}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, confirm: e.target.value }))
+                }
                 className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500"
                 placeholder="Repeat new secret key"
               />
             </div>
           </div>
 
-          <button className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2">
-            <ShieldCheck size={20} />
-            Update Password
+          <button
+            className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
+            onClick={handleUpdate}
+          >
+            {loading ? (
+              <>
+                <Loader2 size={20} className="animate-spin" />
+                <span>Updating...</span>
+              </>
+            ) : (
+              <>
+                <ShieldCheck size={20} />
+                <span>Update Password</span>
+              </>
+            )}
           </button>
         </div>
       </div>

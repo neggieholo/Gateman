@@ -25,7 +25,9 @@ import { sendPofileChangeOtpApi } from "../services/apis";
 export default function Settings() {
   const { user } = useUser();
   const [isEditing, setIsEditing] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("manual");
+  const [paymentMethod, setPaymentMethod] = useState(
+    user?.payment_type || "manual",
+  );
   const [banks, setBanks] = useState<{ name: string; code: string }[]>([]);
   const [selectedBank, setSelectedBank] = useState<{
     name: string;
@@ -69,6 +71,7 @@ export default function Settings() {
   });
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
   const [loadingAction, setLoadingAction] = useState(false);
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
   const hasChanges =
     profile.adminName !== (user?.name || "") ||
@@ -83,6 +86,8 @@ export default function Settings() {
 
   useEffect(() => {
     if (user) {
+      console.log("Settings user payment type:", user.payment_type);
+
       setProfile({
         estateName: user.estate_name || "Not set",
         estateCode: user.estate_code,
@@ -93,7 +98,7 @@ export default function Settings() {
         email_verified: true,
       });
 
-      // Apply same fix for account number
+      setPaymentMethod(user.payment_type || "manual");
       setAccountNumber(
         user.bank_account_number || (isEditing ? "" : "Not set"),
       );
@@ -119,7 +124,7 @@ export default function Settings() {
     });
   };
 
-  const handlePhoneChange = (value: string | undefined) => {    
+  const handlePhoneChange = (value: string | undefined) => {
     const phoneValue = value || "";
     setProfile((prev) => {
       const originalPhone = user?.phone_number || "";
@@ -135,7 +140,7 @@ export default function Settings() {
   };
 
   const handleRequestOtp = async (target: string, type: "email" | "phone") => {
-    if (type === 'phone') {
+    if (type === "phone") {
       if (target) {
         if (!isValidPhoneNumber(target)) {
           alert(
@@ -189,10 +194,10 @@ export default function Settings() {
     }
   };
 
-  const handleOtpVerify = async (finalOtp:string) => {
+  const handleOtpVerify = async (finalOtp: string) => {
     setOtpLoading(true);
     try {
-      const res = await fetch("/api/admin/verify-otp-only", {
+      const res = await fetch(`${baseUrl}/api/admin/verify-otp-only`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -265,7 +270,7 @@ export default function Settings() {
       setIsResolving(true);
       try {
         const res = await fetch(
-          `/api/kyc/resolve-bank?accountNumber=${accountNumber}&bankCode=${selectedBank.code}`,
+          `${baseUrl}/api/kyc/resolve-bank?accountNumber=${accountNumber}&bankCode=${selectedBank.code}`,
         );
         const data = await res.json();
         setAccountName(
@@ -317,7 +322,7 @@ export default function Settings() {
     };
 
     try {
-      const res = await fetch("/api/admin/update-config", {
+      const res = await fetch(`${baseUrl}/api/admin/update-config`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -361,7 +366,7 @@ export default function Settings() {
   const confirmAction = async () => {
     setLoadingAction(true);
     try {
-      const res = await fetch("/api/admin/terminate-account", {
+      const res = await fetch(`${baseUrl}/api/admin/terminate-account`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
       });
@@ -426,9 +431,9 @@ export default function Settings() {
             className={`px-6 py-2 rounded-xl text-sm font-bold shadow-sm transition-all ${
               isEditing
                 ? !hasChanges || saving
-                  ? "bg-slate-200 text-slate-400 cursor-not-allowed" 
-                  : "bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95" 
-                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50" 
+                  ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                  : "bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95"
+                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
             }`}
           >
             {isEditing
@@ -588,6 +593,7 @@ export default function Settings() {
                   <button
                     key={type}
                     disabled={!isEditing}
+                    value={paymentMethod}
                     onClick={() => setPaymentMethod(type)}
                     className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
                       paymentMethod === type
@@ -780,7 +786,7 @@ export default function Settings() {
                   <Lock size={18} />
                 </div>
                 <span className="font-bold text-slate-700 text-sm">
-                  Security & Password
+                  Password Change
                 </span>
               </div>
               <ChevronRight size={16} className="text-slate-300" />

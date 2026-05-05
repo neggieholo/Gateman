@@ -18,7 +18,8 @@
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-phone-number-input": "^3.4.16",
-    "react-webcam": "^7.2.0"
+    "react-webcam": "^7.2.0",
+    "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

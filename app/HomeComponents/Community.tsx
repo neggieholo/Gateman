@@ -55,6 +55,7 @@ const AdminAlertManager = () => {
   const [uploadingComment, setUploadingComment] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [notificationType, setNotificationType] = useState("announcement");
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
   useEffect(() => {
     if (activeTab === "alerts") fetchAlerts();
@@ -132,7 +133,7 @@ const AdminAlertManager = () => {
           residents: targetResidents,
           security: targetSecurity,
         },
-        type:notificationType
+        type: notificationType,
       });
 
       alert("Notifications sent to selected groups!");
@@ -141,7 +142,7 @@ const AdminAlertManager = () => {
     } catch (err) {
       alert("Failed to send notifications");
     } finally {
-      setPublishing(false);;
+      setPublishing(false);
     }
   };
 
@@ -226,6 +227,23 @@ const AdminAlertManager = () => {
 
   const handleOpenPost = async (post: Post) => {
     setSelectedPost(post);
+
+    // 1. Instant UI update for the badge
+    if (!post.admin_seen) {
+      setPosts((prevPosts) =>
+        prevPosts.map((p) =>
+          p.id === post.id ? { ...p, admin_seen: true } : p,
+        ),
+      );
+
+      // Sync DB in background
+      fetch(`${baseUrl}/api/community/posts/${post.id}/seen`, {
+        method: "PATCH",
+        credentials: "include",
+      }).catch((err) => console.error("Sync failed:", err));
+    }
+
+    // 2. Reset and Load Details
     setComments([]);
     setLikes([]);
     setLoadingComments(true);
@@ -236,8 +254,7 @@ const AdminAlertManager = () => {
         communityApi.getLikes(post.id),
       ]);
 
-      console.log("Fetched comments:", commentsData);
-      console.log("Fetched likes:", likesData);
+      // 3. Update specific post counts in the list state
       setPosts((prev) =>
         prev.map((p) =>
           p.id === post.id
@@ -271,7 +288,7 @@ const AdminAlertManager = () => {
       id: Date.now(),
       post_id: Number(postId),
       user_id: user?.id || "",
-      user_type: 'admin',
+      user_type: "admin",
       author_name: "ADMIN",
       content: commentText,
       created_at: new Date().toISOString(),
@@ -348,7 +365,7 @@ const AdminAlertManager = () => {
   };
 
   return (
-    <div className="max-w-8xl mx-auto p-6">
+    <div className="max-w-8xl mx-auto p-6 overflow-hidden">
       {/* Header & Tabs */}
       <div className="flex justify-between items-end mb-8 border-b pb-4">
         <div>
@@ -356,7 +373,7 @@ const AdminAlertManager = () => {
             Community Alert Center
           </h1>
           <p className="text-slate-500 text-sm">
-            Broadcast urgent information to {user?.estate_name || "the estate"}
+            Broadcast urgent information to the estate
           </p>
         </div>
 
@@ -760,12 +777,20 @@ const AdminAlertManager = () => {
                           onClick={() => handleOpenPost(post)}
                         >
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="bg-red-100 text-red-600 text-[10px] font-black px-2 py-0.5 rounded">
+                            {/* <span className="bg-red-100 text-red-600 text-[10px] font-black px-2 py-0.5 rounded">
                               ALERT
-                            </span>
-                            <h4 className="font-bold text-slate-900">
-                              {post.title}
-                            </h4>
+                            </span> */}
+                            <div className="flex gap-2">
+                              <h4 className="font-bold text-slate-900">
+                                {post.title}
+                              </h4>
+
+                              {!post.admin_seen && (
+                                <div className="bg-red-600 text-white text-[9px] font-black px-2 py-0.5 rounded shadow-sm animate-pulse">
+                                  NEW
+                                </div>
+                              )}
+                            </div>
                           </div>
                           <p className="text-slate-600 text-sm mb-3 line-clamp-2">
                             {post.content}
@@ -808,7 +833,7 @@ const AdminAlertManager = () => {
                     <div className="text-center py-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
                       <Info className="mx-auto text-slate-300 mb-2" />
                       <p className="text-slate-400 font-bold">
-                        No active alerts found.
+                        {loading ? "Fetching Alerts" : "No active Alerts found"}
                       </p>
                     </div>
                   )

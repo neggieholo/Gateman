@@ -8,10 +8,12 @@ import React, {
   useEffect,
   useRef,
 } from "react";
-// import { io, Socket } from 'socket.io-client';
+import { io, Socket } from 'socket.io-client';
 // import localforage from 'localforage';
-import { UserContextType } from "./services/types";
+import { notification, UserContextType } from "./services/types";
 import { User } from "./services/types";
+import { fetchNotifications } from "./services/apis";
+// import router from "next/router";
 
 interface UnifiedUserContextType extends UserContextType {
   user: User | null;
@@ -20,6 +22,13 @@ interface UnifiedUserContextType extends UserContextType {
   setIsSidebarOpen: (isOpen: boolean) => void;
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
+  notifications: notification[];
+  setNotifications: (notifications: notification[]) => void;
+  triggerRefresh: () => void;
+  badgeCount: number;
+  setBadgeCount: (count: number) => void;
+  loadingNotifications: boolean;
+  socket: Socket | null;
 }
 
 const UserContext = createContext<UnifiedUserContextType | undefined>(
@@ -30,42 +39,76 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [notifications, setNotifications] = useState<notification[]>([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const socketRef = useRef<Socket | null>(null);
+  const baseUrl = "http://localhost:3003";
+  const [isConnected, setIsConnected] = useState(false);
+  const [badgeCount, setBadgeCount] = useState<number>(0);
+  const [refreshTrigger, setRefreshTrigger] = useState<boolean>(false);
+  const triggerRefresh = () => setRefreshTrigger((prev) => !prev);
 
-  //   const [isConnected, setIsConnected] = useState(false);
-  //   const [notifications, setNotifications] = useState<CleanNotification[]>([]);
-  //   const badgeCount = notifications.length;
+  useEffect(() => {
+    const getNotifications = async () => {
+      try {
+        console.log("fetching Notifications")
+        setLoadingNotifications(true);
+        const result = await fetchNotifications();
+        if (result.success) {
+          console.log("fetched notifications:", result.list)
+          setNotifications(result.list);
 
-  //   useEffect(() => {
-  //     const newSocket = io('http://localhost:3066', {
-  //       path: '/api/socket.io',
-  //       withCredentials: true,
-  //       autoConnect: true,
-  //       reconnectionAttempts: 5,
-  //     });
+          const lastRead = new Date(result.lastReadAt || "1970-01-01");
+          const unreadCount = result.list.filter(
+            (n: any) => new Date(n.created_at) > lastRead,
+          ).length;
 
-  //     newSocket.on('connect', () => setIsConnected(true));
-  //     newSocket.on('onlineCheck', (users) => setOnlineMembers(users));
+          setBadgeCount(unreadCount);
+        }
+      } catch (error) {
+        alert("Failed to fetch notifications");
+      } finally {
+        setLoadingNotifications(false);
+      }
+    };
 
-  //     newSocket.on('notification_deleted', (id: string) => {
-  //       setNotifications((prev) => prev.filter((n) => n._id !== id));
-  //     });
+    getNotifications();
+  }, [user, refreshTrigger]);
 
-  //       });
-  //     };
+  useEffect(() => {
 
-  //     newSocket.on('messages', (data) => {
-  //       setNotifications((prev) => {
-  //         const incoming = Array.isArray(data) ? data : [data];
-  //         const combined = [...incoming, ...prev];
-  //         return combined.filter((v, i, a) => a.findIndex((t) => t._id === v._id) === i);
-  //       });
-  //     });
+    const newSocket = io(baseUrl, {
+      path: "/api/socket.io",
+      transports: ["websocket", "polling"], 
+      withCredentials: true,
+    });
 
-  //     socketRef.current = newSocket;
-  //     return () => {
-  //       newSocket.close();
-  //     };
-  //   }, []);
+    newSocket.on("connect", () => {
+      setIsConnected(true);
+      console.log("✅ Socket Connected via Session ID");
+    });
+
+
+    newSocket.on("new_notification", (newNotif: notification) => {
+      console.log("🚀 Real-time notification received:", newNotif);
+      setNotifications((prev) => {
+        const exists = prev.find((n) => n.id === newNotif.id);
+        if (exists) return prev;
+        return [newNotif, ...prev];
+      });
+
+      setBadgeCount((prev) => prev + 1);
+      
+    });
+
+    socketRef.current = newSocket;
+
+    return () => {;
+      newSocket.off("new_notification");
+      newSocket.close();
+      socketRef.current = null;
+    };
+  }, [baseUrl]);
 
   return (
     <UserContext.Provider
@@ -76,6 +119,13 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         setIsSidebarOpen,
         isLoading,
         setIsLoading,
+        notifications,
+        setNotifications,
+        triggerRefresh,
+        badgeCount,
+        setBadgeCount,
+        socket: socketRef.current,
+        loadingNotifications
       }}
     >
       {children}

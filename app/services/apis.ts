@@ -2,8 +2,10 @@
 import {
   AdminIdentityPayload,
   ApproveRequest,
+  DashboardStats,
   EstateDocsPayload,
   EstateEvent,
+  FetchNotificationsResponse,
   Invitation,
   RSVPRequest,
   RSVPResponse,
@@ -15,7 +17,7 @@ const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
 export const checkSession = async (): Promise<sessionResponse> => {
   try {
-    const response = await fetch("/api/session-check", {
+    const response = await fetch(`${baseUrl}/api/session-check`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -31,7 +33,7 @@ export const checkSession = async (): Promise<sessionResponse> => {
 
 export const sendOtpApi = async (email: string) => {
   try {
-    const res = await fetch("/api/auth/otp/send", {
+    const res = await fetch(`${baseUrl}/api/auth/otp/send`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
@@ -45,7 +47,7 @@ export const sendOtpApi = async (email: string) => {
 
 export const sendPofileChangeOtpApi = async (target: string, type: string) => {
   try {
-    const res = await fetch("/api/admin/send-otp", {
+    const res = await fetch(`${baseUrl}/api/admin/send-otp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ target, type }),
@@ -59,7 +61,7 @@ export const sendPofileChangeOtpApi = async (target: string, type: string) => {
 
 export const fetchGatePasses = async (): Promise<Invitation[]> => {
   try {
-    const res = await fetch("/api/invitations", {
+    const res = await fetch(`${baseUrl}/api/invitations`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -84,12 +86,15 @@ export const logActivityApi = async (
   action: "check_in" | "check_out",
 ): Promise<{ success: boolean; invitation?: Invitation; error?: string }> => {
   try {
-    const res = await fetch(`/api/invitations/log-activity/${inviteId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action }),
-      credentials: "include",
-    });
+    const res = await fetch(
+      `${baseUrl}/api/invitations/log-activity/${inviteId}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+        credentials: "include",
+      },
+    );
 
     const data = await res.json();
 
@@ -110,10 +115,11 @@ export const changePassword = async (
   role: string,
 ) => {
   try {
-    const response = await fetch("/api/change-password", {
+    const response = await fetch(`${baseUrl}/api/change-password`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ currentPassword, newPassword, role }),
+      credentials: 'include'
     });
     return await response.json();
   } catch (err) {
@@ -190,7 +196,7 @@ export const kycService = {
       if (value) body.append(key, value);
     });
 
-    const res = await fetch("/api/kyc/save-estate-docs", {
+    const res = await fetch(`${baseUrl}/api/kyc/save-estate-docs`, {
       method: "POST",
       body,
     });
@@ -203,7 +209,7 @@ export const kycService = {
       if (value) body.append(key, value);
     });
 
-    const res = await fetch("/api/kyc/save-admin-identity", {
+    const res = await fetch(`${baseUrl}/api/kyc/save-admin-identity`, {
       method: "POST",
       body,
     });
@@ -211,7 +217,7 @@ export const kycService = {
   },
 
   finalizeKYC: async (data: { selfiePhotos: string[] }) => {
-    const res = await fetch("/api/kyc/finalize-kyc", {
+    const res = await fetch(`${baseUrl}/api/kyc/finalize-kyc`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -224,7 +230,7 @@ export const communityApi = {
   getPosts: async (estateId: string) => {
     try {
       const response = await fetch(
-        `/api/community/posts?estate_id=${estateId}`,
+        `${baseUrl}/api/community/posts?estate_id=${estateId}`,
         { credentials: "include" },
       );
       if (!response.ok)
@@ -241,7 +247,7 @@ export const communityApi = {
 
   createPost: async (data: any) => {
     try {
-      const response = await fetch("/api/community/posts", {
+      const response = await fetch(`${baseUrl}/api/community/posts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -262,7 +268,7 @@ export const communityApi = {
 
   deletePost: async (postId: string) => {
     try {
-      const response = await fetch(`/api/community/posts/${postId}`, {
+      const response = await fetch(`${baseUrl}/api/community/posts/${postId}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -284,7 +290,7 @@ export const communityApi = {
 
   toggleLike: async (postId: string) => {
     try {
-      const response = await fetch("/api/community/like", {
+      const response = await fetch(`${baseUrl}/api/community/like`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ post_id: postId }),
@@ -298,7 +304,7 @@ export const communityApi = {
 
   getLikes: async (postId: string) => {
     try {
-      const response = await fetch(`/api/community/likes/${postId}`, {
+      const response = await fetch(`${baseUrl}/api/community/likes/${postId}`, {
         credentials: "include",
       });
       if (!response.ok) {
@@ -313,7 +319,7 @@ export const communityApi = {
 
   addComment: async (data: any) => {
     try {
-      const response = await fetch("/api/community/comments", {
+      const response = await fetch(`${baseUrl}/api/community/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -327,9 +333,12 @@ export const communityApi = {
 
   getComments: async (postId: string) => {
     try {
-      const response = await fetch(`/api/community/comments/${postId}`, {
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${baseUrl}/api/community/comments/${postId}`,
+        {
+          credentials: "include",
+        },
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -344,11 +353,14 @@ export const communityApi = {
 
   deleteComment: async (commentId: string) => {
     try {
-      const response = await fetch(`/api/community/comments/${commentId}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${baseUrl}/api/community/comments/${commentId}`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+        },
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -369,7 +381,7 @@ export const communityApi = {
     type: string;
   }) => {
     try {
-      const response = await fetch("/api/community/send-direct-notification", {
+      const response = await fetch(`${baseUrl}/api/community/send-direct-notification`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -446,7 +458,7 @@ export const getCloudinaryUrl = async (
 // Get all report for the estate (Admin only)
 export const getEstateReports = async () => {
   try {
-    const res = await fetch("/api/security/report", {
+    const res = await fetch(`${baseUrl}/api/security/report`, {
       method: "GET",
       credentials: "include",
     });
@@ -461,13 +473,14 @@ export const updateReportStatus = async (
   status: "REVIEWED" | "RESOLVED",
   adminFeedback: string,
 ) => {
-  const res = await fetch(`/api/security/report/status/${id}`, {
+  const res = await fetch(`${baseUrl}/api/security/report/status/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status, admin_response: adminFeedback }),
   });
   return await res.json();
 };
+
 
 // export const deleteReport = async (id: string) => {
 //   const res = await fetch(`/api/report/${id}`, {
@@ -485,12 +498,12 @@ const handleResponse = async (response: Response) => {
 };
 
 export const getAllEvents = async (): Promise<EstateEvent[]> => {
-  const response = await fetch("/api/event/all", { credentials: "include" });
+  const response = await fetch(`${baseUrl}/api/event/all`, { credentials: "include" });
   return await handleResponse(response);
 };
 
 export const getEventById = async (id: string): Promise<EstateEvent> => {
-  const response = await fetch(`/api/event/public/${id}`, {
+  const response = await fetch(`${baseUrl}/api/event/public/${id}`, {
     credentials: "include",
   });
   return await handleResponse(response);
@@ -499,7 +512,7 @@ export const getEventById = async (id: string): Promise<EstateEvent> => {
 export const registerForEvent = async (
   rsvpData: RSVPRequest,
 ): Promise<RSVPResponse> => {
-  const response = await fetch("/api/event/rsvp", {
+  const response = await fetch(`${baseUrl}/api/event/rsvp`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(rsvpData),
@@ -517,7 +530,7 @@ export const approveEvent = async (
   eventId: string,
   verdict: string,
 ): Promise<ApproveRequest> => {
-  const response = await fetch(`/api/event/approve/${eventId}`, {
+  const response = await fetch(`${baseUrl}/api/event/approve/${eventId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ verdict }),
@@ -526,5 +539,126 @@ export const approveEvent = async (
 
   const data = await response.json();
   if (!response.ok) throw data.error || "Approval failed";
+  return data;
+};
+
+export const fetchDashboardStats = async (): Promise<DashboardStats> => {
+  try {
+    const response = await fetch(`${baseUrl}/api/dashboard/admin-stats`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(
+        errorData.error || "Failed to fetch dashboard statistics",
+      );
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.message || "API returned an unsuccessful status");
+    }
+    // console.log("Dashboard stats:", result)
+
+    return result.data;
+  } catch (error) {
+    console.error("fetchDashboardStats Error:", error);
+    throw error;
+  }
+};
+
+export const markAlertsAsRead = async (): Promise<boolean> => {
+  try {
+    const response = await fetch(`${baseUrl}/api/admin/mark-alerts-read`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    const result = await response.json();
+    return result.success;
+  } catch (error) {
+    console.error("markAlertsAsRead Error:", error);
+    return false;
+  }
+};
+
+export const fetchNotifications =
+  async (): Promise<FetchNotificationsResponse> => {
+    try {
+      const res = await fetch(`${baseUrl}/api/notifications`, {
+        method: "GET",
+        credentials: "include",
+      });
+      return await res.json();
+    } catch (err) {
+      return { success: false, list: [], lastReadAt: "1970-01-01" };
+    }
+  };
+
+export const markAllAsReadApi = async () => {
+  try {
+    const res = await fetch(`${baseUrl}/api/notifications/read-all`, {
+      method: "PUT",
+      credentials: "include",
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false };
+  }
+};
+
+export const deleteNotificationApi = async (id: string) => {
+  try {
+    const res = await fetch(`${baseUrl}/api/notifications/${id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+    return await res.json();
+  } catch (err) {
+    console.error("Delete API Error:", err);
+    return { success: false };
+  }
+};
+
+export const deleteAllNotificationsApi = async () => {
+  try {
+    const response = await fetch(`${baseUrl}/api/notifications/delete-all`, {
+      method: "DELETE",
+      // Fix: Ensure this is exactly the string "include"
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status} ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Fetch error in deleteAllNotificationsApi:", error);
+    throw error;
+  }
+};
+
+export const postLogout = async () => {
+  const res = await fetch(`${baseUrl}/api/logout`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+  });
+
+  const data = await res.json();
+
   return data;
 };

@@ -6,12 +6,12 @@ import {
 } from "./types";
 import { JoinRequest } from "./types";
 
-// const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
 export const db = {
   authenticate: async (email: string, password: string) => {
     try {
-      const res = await fetch("/api/auth/login/admin", {
+      const res = await fetch(`${baseUrl}/api/auth/login/admin`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -47,7 +47,7 @@ export const db = {
   ) => {
     const body = { name, email, password, state, lga, otp: newOtp, metadata };
 
-    const res = await fetch("api/payment", {
+    const res = await fetch(`${baseUrl}api/payment`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -69,7 +69,7 @@ export const db = {
     amount: number,
     type: "tenant" | "admin" = "tenant",
   ) => {
-    const res = await fetch("/api/wallet/topup", {
+    const res = await fetch(`${baseUrl}/api/wallet/topup`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId, amount, type }),
@@ -90,7 +90,7 @@ export const db = {
     amount: number,
     type: "tenant" | "admin" = "tenant",
   ) => {
-    const res = await fetch("/api/wallet/deduct", {
+    const res = await fetch(`${baseUrl}/api/wallet/deduct`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId, amount, type }),
@@ -106,7 +106,7 @@ export const db = {
   },
 
   getAllTenants: async (): Promise<Tenant[]> => {
-    const res = await fetch("/api/admin/tenants", {
+    const res = await fetch(`${baseUrl}/api/admin/tenants`, {
       credentials: "include",
     });
     if (!res.ok) {
@@ -119,7 +119,7 @@ export const db = {
 
   // Fetch all join requests (admin-only)
   getAllRequests: async (): Promise<JoinRequest[]> => {
-    const res = await fetch("/api/admin/join-requests", {
+    const res = await fetch(`${baseUrl}/api/admin/join-requests`, {
       credentials: "include",
     });
     if (!res.ok) {
@@ -132,7 +132,7 @@ export const db = {
   },
 
   deleteTenant: async (id: string) => {
-    const res = await fetch("/api/admin/tenant/${id}", {
+    const res = await fetch(`${baseUrl}/api/admin/tenant/${id}`, {
       method: "DELETE",
       credentials: "include",
     });
@@ -144,7 +144,7 @@ export const db = {
   },
 
   fetchBlocked: async () => {
-    const res = await fetch("/api/admin/blocked-users", {
+    const res = await fetch(`${baseUrl}/api/admin/blocked-users`, {
       credentials: "include",
     });
     if (!res.ok) throw new Error("Failed to fetch blocked users");
@@ -153,7 +153,7 @@ export const db = {
   },
 
   handleUnblock: async (tempTenantId: string) => {
-    const res = await fetch("/api/admin/join-request/unblock", {
+    const res = await fetch(`${baseUrl}/api/admin/join-request/unblock`, {
       method: "PUT",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -165,7 +165,7 @@ export const db = {
 
   forgotPassword: async (email: string, role: "admin" | "tenant") => {
     try {
-      const response = await fetch("/api/forgot-password", {
+      const response = await fetch(`${baseUrl}/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, role }),
@@ -184,7 +184,7 @@ export const db = {
     password: string,
   ) => {
     try {
-      const response = await fetch("/api/reset-password", {
+      const response = await fetch(`${baseUrl}/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, userId, role, password }),
@@ -203,7 +203,7 @@ export const db = {
 export const securityDb = {
   // 1. Fetch all pending security join requests
   getSecurityRequests: async (): Promise<SecurityJoinRequest[]> => {
-    const res = await fetch("/api/security/join-requests", {
+    const res = await fetch(`${baseUrl}/api/security/join-requests`, {
       credentials: "include",
     });
     if (!res.ok) {
@@ -216,7 +216,7 @@ export const securityDb = {
 
   // 2. Approve a security guard (Promote from temp to official)
   approveSecurity: async (requestId: string) => {
-    const res = await fetch(`/api/security/approve/${requestId}`, {
+    const res = await fetch(`${baseUrl}/api/security/approve/${requestId}`, {
       method: "POST",
       credentials: "include",
     });
@@ -229,7 +229,7 @@ export const securityDb = {
 
   // 3. Decline a security join request (Soft rejection)
   declineSecurity: async (id: string, message: string) => {
-    const res = await fetch("/api/security/join-request/delete", {
+    const res = await fetch(`${baseUrl}/api/security/join-request/delete`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, message }),
@@ -244,7 +244,7 @@ export const securityDb = {
 
   // 4. Block a security applicant permanently
   blockSecurity: async (id: string, message: string) => {
-    const res = await fetch("/api/security/join-request/block", {
+    const res = await fetch(`${baseUrl}/api/security/join-request/block`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, message }),
@@ -259,7 +259,7 @@ export const securityDb = {
 
   // 5. Fetch all blocked security guards
   fetchBlockedGuards: async () => {
-    const res = await fetch("/api/security/blocked-users", {
+    const res = await fetch(`${baseUrl}/api/security/blocked-users`, {
       credentials: "include",
     });
     if (!res.ok) throw new Error("Failed to fetch blocked guards");
@@ -269,7 +269,7 @@ export const securityDb = {
 
   // 6. Unblock a security guard
   unblockSecurity: async (tempSecurityId: string) => {
-    const res = await fetch("/api/security/join-request/unblock", {
+    const res = await fetch(`${baseUrl}/api/security/join-request/unblock`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tempSecurityId }),
@@ -281,7 +281,7 @@ export const securityDb = {
 
   // 7. Fetch all official security guards in the estate
   getAllSecurity: async (): Promise<SecurityUser[]> => {
-    const res = await fetch("/api/security/all", {
+    const res = await fetch(`${baseUrl}/api/security/all`, {
       credentials: "include",
     });
     if (!res.ok) {
@@ -294,7 +294,7 @@ export const securityDb = {
 
   // 8. Delete/Offboard an official security guard
   deleteSecurity: async (id: string) => {
-    const res = await fetch(`/api/security/delete/${id}`, {
+    const res = await fetch(`${baseUrl}/api/security/delete/${id}`, {
       method: "DELETE",
       credentials: "include",
     });
@@ -306,7 +306,7 @@ export const securityDb = {
   },
 
   generateCheckinCode: async () => {
-    const res = await fetch("/api/security/generate-checkin-code", {
+    const res = await fetch(`${baseUrl}/api/security/generate-checkin-code`, {
       method: "PUT",
       credentials: "include",
     });
@@ -321,7 +321,7 @@ export const securityDb = {
   },
 
   getCheckinCode: async (): Promise<string> => {
-    const res = await fetch("/api/security/get-checkin-code", {
+    const res = await fetch(`${baseUrl}/api/security/get-checkin-code`, {
       method: "GET",
       credentials: "include",
     });
@@ -337,7 +337,7 @@ export const securityDb = {
 
   // 9. Fetch security duty logs (Check-in/Check-out history)
   getSecurityLogs: async (): Promise<SecurityLog[]> => {
-    const res = await fetch("/api/security/logs", {
+    const res = await fetch(`${baseUrl}/api/security/logs`, {
       credentials: "include",
     });
     if (!res.ok) {

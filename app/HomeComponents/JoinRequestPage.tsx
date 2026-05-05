@@ -39,7 +39,7 @@ export default function JoinRequestsPage() {
 
   const handleApprove = async (id: string) => {
     try {
-      const res = await fetch(`${baseUrl}/admin/approve-tenant/${id}`, {
+      const res = await fetch(`${baseUrl}/api/admin/approve-tenant/${id}`, {
         method: "POST",
         credentials: "include",
       });
@@ -55,7 +55,7 @@ export default function JoinRequestsPage() {
 
   const handleDecline = async (id: string, feedback: string) => {
     try {
-      const res = await fetch(`${baseUrl}/admin/join-request/delete`, {
+      const res = await fetch(`${baseUrl}/api/admin/join-request/delete`, {
         method: "DELETE",
         credentials: "include",
         headers: {
@@ -75,7 +75,7 @@ export default function JoinRequestsPage() {
 
   const handleBlock = async (id: string, feedback: string) => {
     try {
-      const res = await fetch(`${baseUrl}/admin/join-request/block`, {
+      const res = await fetch(`${baseUrl}/api/admin/join-request/block`, {
         method: "PUT",
         credentials: "include",
         headers: {

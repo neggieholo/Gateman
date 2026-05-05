@@ -29,17 +29,20 @@ export default function EventReviewPage() {
   const [statusFilter, setStatusFilter] = useState<
     "ALL" | "PENDING" | "APPROVED" | "REJECTED"
   >("PENDING");
+  const [startDateFilter, setStartDateFilter] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [strictDateMatch, setStrictDateMatch] = useState(false);
 
   const fetchEvents = async () => {
     setLoading(true);
     try {
       const events = await getAllEvents();
       if (events) {
-        console.log("Events fetched:", events)
-        setAllEvents(events)};
+        console.log("Events fetched:", events);
+        setAllEvents(events);
+      }
     } catch (error) {
       console.error("Fetch error:", error);
     } finally {
@@ -64,9 +67,12 @@ export default function EventReviewPage() {
         e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         e.ref_code.toLowerCase().includes(searchQuery.toLowerCase());
 
-      return matchesStatus && matchesSearch;
+      const eventDate = e.start_date.split("T")[0];
+      const matchesDate = !startDateFilter || eventDate === startDateFilter; // On or after
+
+      return matchesStatus && matchesSearch && matchesDate;
     });
-  }, [allEvents, statusFilter, searchQuery]);
+  }, [allEvents, statusFilter, searchQuery, startDateFilter]);
 
   // Updated to match your new API verdict structure
   const handleUpdateStatus = async (
@@ -381,19 +387,44 @@ export default function EventReviewPage() {
     <div className="h-[calc(100vh-100px)] flex flex-col overflow-hidden p-4 bg-slate-50/50">
       <div className="flex items-center justify-between mb-8 px-2">
         {!selectedEvent && (
-          <div className="relative group w-96">
-            <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-              size={18}
-            />
-            <input
-              type="text"
-              placeholder="Search by event title or ref..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 bg-white border border-slate-100 rounded-3xl text-sm font-bold focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all shadow-sm"
-            />
-          </div>
+          <>
+            {/* Search Input */}
+            <div className="relative group flex-1 w-full">
+              <Search
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                size={18}
+              />
+              <input
+                type="text"
+                placeholder="Search by event title or ref..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-12 pr-4 py-4 bg-white border border-slate-100 rounded-3xl text-sm font-bold focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all shadow-sm"
+              />
+            </div>
+
+            {/* Start Date Filter Input */}
+            <div className="relative group w-full md:w-64">
+              <Calendar
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                size={18}
+              />
+              <input
+                type="date"
+                value={startDateFilter}
+                onChange={(e) => setStartDateFilter(e.target.value)}
+                className="w-full pl-12 pr-4 py-4 bg-white border border-slate-100 rounded-3xl text-sm font-bold focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all shadow-sm uppercase"
+              />
+              {/* {startDateFilter && (
+                <button
+                  onClick={() => setStartDateFilter("")}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-rose-400 hover:text-rose-600"
+                >
+                  <XCircle size={16} />
+                </button>
+              )} */}
+            </div>
+          </>
         )}
       </div>
 
@@ -424,8 +455,10 @@ const DetailBox = ({
   </div>
 );
 
-{/* <div className="flex flex-col items-center justify-center p-10 bg-white rounded-[3rem] border border-dashed border-slate-200">
+{
+  /* <div className="flex flex-col items-center justify-center p-10 bg-white rounded-[3rem] border border-dashed border-slate-200">
   <p className="text-slate-400 font-bold">
     {loading ? "Loading..." : "No events"}
   </p>
-</div>; */}
+</div>; */
+}

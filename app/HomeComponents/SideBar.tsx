@@ -18,6 +18,7 @@ import { ViewState } from "../services/types";
 import { useUser } from "../UserContext";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
+import { postLogout } from "../services/apis";
 
 interface SideBarProps {
   isOpen?: boolean;
@@ -33,11 +34,16 @@ export default function SideBar({
   afterNavClick = defaultAfterNavClick,
 }: SideBarProps) {
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const { user, setUser } = useUser();
+  const { user, setUser, socket } = useUser();
   const router = useRouter();
   const pathname = usePathname();
 
-  const handleLogout = () => {
+  const handleLogout = async() => {
+    if (socket) {
+      console.log("🔌 Disconnecting socket...");
+      socket.disconnect();
+    }
+    await postLogout();
     setUser(null);
     router.push("/");
   };

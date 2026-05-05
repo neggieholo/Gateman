@@ -71,7 +71,7 @@ export default function UnifiedResidentPortal() {
             }`}
           >
             <Users size={18} />
-            RESIDENTS
+            RESIDENTS ({tenants.length})
           </button>
           <button
             onClick={() => setActiveTab("REPORTS")}

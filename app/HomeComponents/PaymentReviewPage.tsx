@@ -33,11 +33,12 @@ export default function PaymentReviewPage() {
   const [loading, setLoading] = useState(true);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [errorPrompt, setErrorPrompt] = useState<string | null>(null);
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
   const fetchPayments = async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/payment/all-payments");
+      const response = await fetch(`${baseUrl}/api/payment/all-payments`);
       const res = await response.json();
       if (res.success) setAllPayments(res.payments);
     } catch (error) {
@@ -71,7 +72,7 @@ export default function PaymentReviewPage() {
     setErrorPrompt(null);
 
     try {
-      const res = await fetch(`/api/payment/verify/${id}`, {
+      const res = await fetch(`${baseUrl}/api/payment/verify/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
@@ -119,7 +120,7 @@ export default function PaymentReviewPage() {
                   : "text-slate-400"
               }`}
             >
-              {s === 'verified' ? 'approved' : s}
+              {s === "verified" ? "approved" : s}
             </button>
           ))}
         </div>

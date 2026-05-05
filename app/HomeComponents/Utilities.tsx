@@ -21,7 +21,7 @@ export default function Utilities() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${baseUrl}/bills`, {
+      const res = await fetch(`${baseUrl}/api/bills`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
