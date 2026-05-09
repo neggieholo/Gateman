@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @next/next/no-img-element */
 import React, { useEffect, useState } from "react";
 import { securityDb } from "../services/database";
@@ -12,7 +13,7 @@ import {
   Loader2,
   Clock,
 } from "lucide-react";
-import { fetchReadableAddress } from "../services/apis";
+import { fetchReadableAddress, requestGuardLocation } from "../services/apis";
 import { formatLastSeen } from "../services/apis";
 
 export default function OnDutyPersonnel() {
@@ -21,6 +22,9 @@ export default function OnDutyPersonnel() {
   const [searchTerm, setSearchTerm] = useState("");
   const [checkinCode, setCheckinCode] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [pendingRequests, setPendingRequests] = useState<
+    Record<string, boolean>
+  >({});
 
   const fetchData = async () => {
     try {
@@ -31,6 +35,7 @@ export default function OnDutyPersonnel() {
 
       setGuards(personnelData.filter((g) => g.is_on_duty));
       setCheckinCode(existingCode);
+      console.log("Guards on duty:", personnelData);
     } catch (err) {
       console.error("Load Error:", err);
     } finally {
@@ -81,6 +86,23 @@ export default function OnDutyPersonnel() {
       g.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       g.email.toLowerCase().includes(searchTerm.toLowerCase()),
   );
+
+  const handleRequestLocation = async (guardId: string, guardName: string) => {
+    if (pendingRequests[guardId]) return;
+
+    setPendingRequests((prev) => ({ ...prev, [guardId]: true }));
+
+    try {
+      await requestGuardLocation(guardId);
+      alert(
+        `Location request sent to ${guardName}. You will be notified when it updates.`,
+      );
+    } catch (err: any) {
+      alert(err.message || "Failed to send request");
+    } finally {
+      setPendingRequests((prev) => ({ ...prev, [guardId]: false }));
+    }
+  };
 
   return (
     <div className="p-6 max-w-7xl mx-auto h-[calc(100vh-200px)] flex flex-col">
@@ -223,11 +245,19 @@ export default function OnDutyPersonnel() {
 
                   <button
                     className="flex items-center justify-center gap-2 w-full py-2 bg-white border border-blue-200 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-600 hover:text-white transition-all shadow-sm"
-                    onClick={() =>
-                      console.log("Requesting location from guard...")
-                    }
+                    onClick={() => handleRequestLocation(guard.id, guard.name)}
                   >
-                    <MapPin size={14} /> Request Live Location
+                    {pendingRequests[guard.id] ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" />
+                        Sending Ping...
+                      </>
+                    ) : (
+                      <>
+                        <MapPin size={14} />
+                        Request Live Location
+                      </>
+                    )}
                   </button>
                 </div>
               </div>

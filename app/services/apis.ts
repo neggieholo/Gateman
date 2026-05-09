@@ -662,3 +662,23 @@ export const postLogout = async () => {
 
   return data;
 };
+
+export const requestGuardLocation = async (guardId: string) => {
+  try {
+    const response = await fetch(`${baseUrl}/api/security/request-guard-location`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ guard_id: guardId }),
+      credentials: 'include'
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to request location");
+    return data;
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error;
+  }
+};

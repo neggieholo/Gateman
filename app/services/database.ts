@@ -47,7 +47,7 @@ export const db = {
   ) => {
     const body = { name, email, password, state, lga, otp: newOtp, metadata };
 
-    const res = await fetch(`${baseUrl}api/payment`, {
+    const res = await fetch(`${baseUrl}/api/payment`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -165,7 +165,7 @@ export const db = {
 
   forgotPassword: async (email: string, role: "admin" | "tenant") => {
     try {
-      const response = await fetch(`${baseUrl}/forgot-password`, {
+      const response = await fetch(`${baseUrl}/api/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, role }),
@@ -184,7 +184,7 @@ export const db = {
     password: string,
   ) => {
     try {
-      const response = await fetch(`${baseUrl}/reset-password`, {
+      const response = await fetch(`${baseUrl}/api/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, userId, role, password }),

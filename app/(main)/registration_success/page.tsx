@@ -1,10 +1,14 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { CheckCircle, Loader2, Ticket, Mail } from "lucide-react";
+import { CheckCircle, Loader2, Mail } from "lucide-react";
 
-export default function RegistrationSuccess() {
+/**
+ * INNER COMPONENT
+ * This handles all the logic and search parameter extraction.
+ */
+function RegistrationContent() {
   const searchParams = useSearchParams();
   const [code, setCode] = useState<string | null>(searchParams.get("code"));
   const [email, setEmail] = useState<string | null>(searchParams.get("email"));
@@ -12,20 +16,19 @@ export default function RegistrationSuccess() {
   const [loading, setLoading] = useState(!code);
 
   useEffect(() => {
+    // If we already have the code or there's no reference to check, stop here.
     if (code || !ref) return;
 
     const checkCallback = async () => {
       try {
-        // Hit the EXACT same callback API you already built
+        // Poll the payment callback API until the registration is finalized
         const res = await fetch(`/api/payment/callback?reference=${ref}`);
 
-        // If the callback redirects to the success page with a code in the URL
         if (
           res.url.includes("registration_success") &&
           res.url.includes("code=")
         ) {
           const urlParams = new URLSearchParams(new URL(res.url).search);
-          console.log("Sent Params:", urlParams)
           const newCode = urlParams.get("code");
           const newEmail = urlParams.get("email");
 
@@ -40,7 +43,6 @@ export default function RegistrationSuccess() {
       }
     };
 
-    // Check every 5 seconds
     const interval = setInterval(checkCallback, 5000);
     return () => clearInterval(interval);
   }, [code, ref]);
@@ -76,7 +78,6 @@ export default function RegistrationSuccess() {
             </p>
 
             <div className="bg-indigo-600 rounded-[2.5rem] p-8 mb-6 relative overflow-hidden shadow-xl shadow-indigo-100">
-              {/* <Ticket className="absolute -right-4 -bottom-4 text-indigo-500 w-24 h-24 rotate-12 opacity-50" /> */}
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-200 mb-2">
                 Guest Access Code
               </p>
@@ -102,5 +103,24 @@ export default function RegistrationSuccess() {
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * MAIN PAGE EXPORT
+ * This is what Next.js looks for. Wrapping the content in Suspense
+ * prevents the "CSR Bailout" build error.
+ */
+export default function RegistrationSuccessPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+          <Loader2 className="animate-spin text-indigo-600" size={40} />
+        </div>
+      }
+    >
+      <RegistrationContent />
+    </Suspense>
   );
 }
