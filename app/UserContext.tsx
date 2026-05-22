@@ -8,7 +8,7 @@ import React, {
   useEffect,
   useRef,
 } from "react";
-import { io, Socket } from 'socket.io-client';
+import { io, Socket } from "socket.io-client";
 // import localforage from 'localforage';
 import { notification, UserContextType } from "./services/types";
 import { User } from "./services/types";
@@ -51,11 +51,11 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const getNotifications = async () => {
       try {
-        console.log("fetching Notifications")
+        // console.log("fetching Notifications");
         setLoadingNotifications(true);
         const result = await fetchNotifications();
         if (result.success) {
-          console.log("fetched notifications:", result.list)
+          // console.log("fetched notifications:", result.list);
           setNotifications(result.list);
 
           const lastRead = new Date(result.lastReadAt || "1970-01-01");
@@ -76,10 +76,21 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   }, [user, refreshTrigger]);
 
   useEffect(() => {
+    if (!user) {
+      if (socketRef.current) {
+        console.log("🔌 User logged out. Disconnecting socket...");
+        socketRef.current.disconnect();
+        socketRef.current = null;
+        setIsConnected(false);
+      }
+      return;
+    }
+
+    console.log("⚡ User session detected. Initializing socket connection...");
 
     const newSocket = io(baseUrl, {
       path: "/api/socket.io",
-      transports: ["websocket", "polling"], 
+      transports: ["websocket", "polling"],
       withCredentials: true,
     });
 
@@ -88,9 +99,8 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       console.log("✅ Socket Connected via Session ID");
     });
 
-
     newSocket.on("new_notification", (newNotif: notification) => {
-      console.log("🚀 Real-time notification received:", newNotif);
+      // console.log("🚀 Real-time notification received:", newNotif);
       setNotifications((prev) => {
         const exists = prev.find((n) => n.id === newNotif.id);
         if (exists) return prev;
@@ -98,17 +108,16 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       setBadgeCount((prev) => prev + 1);
-      
     });
 
     socketRef.current = newSocket;
 
-    return () => {;
+    return () => {
       newSocket.off("new_notification");
       newSocket.close();
       socketRef.current = null;
     };
-  }, [baseUrl]);
+  }, [baseUrl, user]);
 
   return (
     <UserContext.Provider
@@ -125,7 +134,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         badgeCount,
         setBadgeCount,
         socket: socketRef.current,
-        loadingNotifications
+        loadingNotifications,
       }}
     >
       {children}

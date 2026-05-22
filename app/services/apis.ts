@@ -5,6 +5,7 @@ import {
   DashboardStats,
   EstateDocsPayload,
   EstateEvent,
+  EstateLocation,
   FetchNotificationsResponse,
   Invitation,
   RSVPRequest,
@@ -40,7 +41,6 @@ export const sendOtpApi = async (email: string) => {
     });
     return await res.json();
   } catch (err) {
-    console.log("OTP error:", err);
     return { success: false, message: "Network error" };
   }
 };
@@ -54,7 +54,6 @@ export const sendPofileChangeOtpApi = async (target: string, type: string) => {
     });
     return await res.json();
   } catch (err) {
-    console.log("OTP error:", err);
     return { success: false, message: "Network error" };
   }
 };
@@ -119,7 +118,7 @@ export const changePassword = async (
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ currentPassword, newPassword, role }),
-      credentials: 'include'
+      credentials: "include",
     });
     return await response.json();
   } catch (err) {
@@ -228,9 +227,10 @@ export const kycService = {
 
 export const communityApi = {
   getPosts: async (estateId: string) => {
+    // console.log("Fetching post:", estateId)
     try {
       const response = await fetch(
-        `${baseUrl}/api/community/posts?estate_id=${estateId}`,
+        `${baseUrl}/api/community/admin-posts?estate_id=${estateId}`,
         { credentials: "include" },
       );
       if (!response.ok)
@@ -262,6 +262,31 @@ export const communityApi = {
 
       return result;
     } catch (error) {
+      throw error;
+    }
+  },
+
+  archivePost: async (postId: string) => {
+    try {
+      const response = await fetch(
+        `${baseUrl}/api/community/posts/${postId}/archive`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.error || `HTTP error! status: ${response.status}`,
+        );
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("archivePost Service Error:", error);
       throw error;
     }
   },
@@ -381,12 +406,15 @@ export const communityApi = {
     type: string;
   }) => {
     try {
-      const response = await fetch(`${baseUrl}/api/community/send-direct-notification`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${baseUrl}/api/community/send-direct-notification`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          credentials: "include",
+        },
+      );
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Broadcast failed");
       return data;
@@ -481,7 +509,6 @@ export const updateReportStatus = async (
   return await res.json();
 };
 
-
 // export const deleteReport = async (id: string) => {
 //   const res = await fetch(`/api/report/${id}`, {
 //     method: "DELETE",
@@ -498,7 +525,9 @@ const handleResponse = async (response: Response) => {
 };
 
 export const getAllEvents = async (): Promise<EstateEvent[]> => {
-  const response = await fetch(`${baseUrl}/api/event/all`, { credentials: "include" });
+  const response = await fetch(`${baseUrl}/api/event/all`, {
+    credentials: "include",
+  });
   return await handleResponse(response);
 };
 
@@ -540,6 +569,74 @@ export const approveEvent = async (
   const data = await response.json();
   if (!response.ok) throw data.error || "Approval failed";
   return data;
+};
+
+export const getAllLocations = async (): Promise<EstateLocation[]> => {
+  const response = await fetch(`${baseUrl}/api/event/locations/all`, {
+    credentials: "include",
+  });
+  return await handleResponse(response);
+};
+
+export const getLocationById = async (id: number): Promise<EstateLocation> => {
+  const response = await fetch(`${baseUrl}/api/event/locations/${id}`, {
+    credentials: "include",
+  });
+  return await handleResponse(response);
+};
+
+export const createLocation = async (
+  locData: Partial<EstateLocation>,
+): Promise<EstateLocation> => {
+  const response = await fetch(`${baseUrl}/api/event/locations/create`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(locData),
+    credentials:'include'
+  });
+  return await handleResponse(response);
+};
+
+export const editLocation = async (
+  id: number,
+  locData: Partial<EstateLocation>,
+): Promise<{ message: string; location: EstateLocation }> => {
+  const response = await fetch(`${baseUrl}/api/event/locations/edit/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(locData),
+    credentials: "include",
+  });
+  return await handleResponse(response);
+};
+
+export const deleteLocation = async (
+  id: number,
+): Promise<{ message: string }> => {
+  const response = await fetch(`${baseUrl}/api/event/locations/delete/${id}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  return await handleResponse(response);
+};
+
+export const getEventAtLocationDate = async (
+  locationId: number,
+  dateStr: string,
+): Promise<{ event: EstateEvent | null }> => {
+  const response = await fetch(
+    `${baseUrl}/api/event/locations/${locationId}/event-at-date?date=${dateStr}`,
+    {
+      credentials: "include",
+    },
+  );
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(
+      errorData.error || "Failed loading date slot content data.",
+    );
+  }
+  return await response.json();
 };
 
 export const fetchDashboardStats = async (): Promise<DashboardStats> => {
@@ -665,17 +762,21 @@ export const postLogout = async () => {
 
 export const requestGuardLocation = async (guardId: string) => {
   try {
-    const response = await fetch(`${baseUrl}/api/security/request-guard-location`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+    const response = await fetch(
+      `${baseUrl}/api/security/request-guard-location`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ guard_id: guardId }),
+        credentials: "include",
       },
-      body: JSON.stringify({ guard_id: guardId }),
-      credentials: 'include'
-    });
+    );
 
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Failed to request location");
+    if (!response.ok)
+      throw new Error(data.error || "Failed to request location");
     return data;
   } catch (error) {
     console.error("API Error:", error);

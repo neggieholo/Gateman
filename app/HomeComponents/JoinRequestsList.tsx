@@ -12,6 +12,8 @@ import {
   Ban,
   ExternalLink,
   Loader2,
+  FileText,
+  Home,
 } from "lucide-react";
 import { useUser } from "../UserContext";
 
@@ -36,7 +38,6 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
     null,
   );
   const [feedback, setFeedback] = useState("");
-  // const [showPrompt, setShowPrompt] = useState<boolean>(false);
   const [showPrompt, setShowPrompt] = useState<{
     id: string;
     type: "decline" | "block";
@@ -45,11 +46,17 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
   const [loadingApproveAction, setLoadingApproveAction] = useState(false);
   const { user } = useUser();
 
-  // const MultipliedReqs = Array(16).fill(requests).flat();
+  // FIXED: Default fallback now strictly set to selfie and rent_contract ONLY
+  const kycConfig = user?.kyc_selection || {
+    ids: false,
+    selfie: true,
+    utility_bill: false,
+    rent_contract: true,
+  };
 
   useEffect(() => {
-    console.log("User from Requests:", user);
-  }, []);
+    hideTabs(!!selectedRequest);
+  }, [selectedRequest, hideTabs]);
 
   const handleApprove = async (id: string) => {
     setLoadingApproveAction(true);
@@ -65,22 +72,18 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
 
   const confirmAction = async () => {
     if (!showPrompt) return;
-
     setLoadingAction(true);
-
     try {
       if (showPrompt.type === "decline") {
         await onDecline(showPrompt.id, feedback);
       } else {
         await onBlock(showPrompt.id, feedback);
       }
-
       setFeedback("");
       setShowPrompt(null);
       setSelectedRequest(null);
     } catch (err: any) {
       console.error(`Failed to ${showPrompt.type}:`, err);
-
       alert(
         err.message || `An error occurred while trying to ${showPrompt.type}.`,
       );
@@ -89,101 +92,179 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
     }
   };
 
-  useEffect(() => {
-    hideTabs(!!selectedRequest);
-  }, [selectedRequest, hideTabs]);
+  const KYCDetailView = ({ req }: { req: JoinRequest }) => {
+    const locationAssets = React.useMemo(() => {
+      if (!req.locations) return [];
+      if (Array.isArray(req.locations)) return req.locations;
+      try {
+        return typeof req.locations === "string"
+          ? JSON.parse(req.locations)
+          : [];
+      } catch {
+        return [];
+      }
+    }, [req.locations]);
 
-  const KYCDetailView = ({ req }: { req: JoinRequest }) => (
-    <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-y-auto h-[calc(100vh-200px)]">
-      <div className="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-        <div>
-          <h3 className="text-xl font-bold text-slate-900">
-            {req.temp_tenant_name}
-          </h3>
-          <p className="text-sm text-slate-500">{req.temp_tenant_email}</p>
-          <p className="text-sm text-slate-500">{req.temp_tenant_phone}</p>
-        </div>
-        <button
-          onClick={() => setSelectedRequest(null)}
-          className="flex items-center gap-1 text-slate-500 hover:text-slate-800 transition-colors"
-        >
-          <ArrowLeft size={18} /> Back to list
-        </button>
-      </div>
-
-      <div className="p-6">
-        <div className="grid grid-cols-2 gap-4 mb-8 bg-blue-50 p-4 rounded-lg">
-          <p className="text-sm">
-            <strong>Unit:</strong> {req.unit || "-"}
-          </p>
-          <p className="text-sm">
-            <strong>Block:</strong> {req.block || "-"}
-          </p>
-          <p className="text-sm">
-            <strong>ID Type:</strong>{" "}
-            <span className="uppercase font-bold text-blue-700">
-              {req.id_type}
-            </span>
-          </p>
-          <p className="text-sm">
-            <strong>Requested:</strong>{" "}
-            {new Date(req.requested_at).toLocaleString()}
-          </p>
-        </div>
-
-        {/* Credentials Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <DocPreview url={req.selfie_url} label="Selfie" />
-          <DocPreview url={req.id_front_url} label="ID Front" />
-          <DocPreview url={req.id_back_url} label="ID Back" />
-          <DocPreview url={req.utility_bill_url} label="Utility Bill" />
-        </div>
-
-        {/* Admin Action Row */}
-        <div className="flex flex-row gap-3 mt-10 pt-6 border-t border-slate-100">
+    return (
+      <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-y-auto h-[calc(100vh-200px)]">
+        <div className="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+          <div>
+            <h3 className="text-xl font-bold text-slate-900">
+              {req.temp_tenant_name}
+            </h3>
+            <p className="text-sm text-slate-500">{req.temp_tenant_email}</p>
+            <p className="text-sm text-slate-500">{req.temp_tenant_phone}</p>
+          </div>
           <button
-            onClick={() => handleApprove(req.id)}
-            className="w-32 flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition-shadow shadow-md "
+            onClick={() => setSelectedRequest(null)}
+            className="flex items-center gap-1 text-slate-500 hover:text-slate-800 transition-colors font-bold text-sm"
           >
-            {loadingApproveAction && req.id === selectedRequest?.id ? (
-              <span className="flex items-center gap-2 text-sm">
-                <Loader2 className="animate-spin" size={16} /> Processing...
-              </span>
-            ) : (
-              <>
-                <Check size={18} /> <span>Accept</span>
-              </>
+            <ArrowLeft size={18} /> Back to list
+          </button>
+        </div>
+
+        <div className="p-6 space-y-8">
+          {/* Summary Header Line */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-blue-50/70 p-4 rounded-xl border border-blue-100/50">
+            {kycConfig.ids && req.id_type && (
+              <p className="text-sm text-slate-700">
+                <strong>ID Type:</strong>{" "}
+                <span className="uppercase font-black text-blue-700 bg-blue-100 px-2 py-0.5 rounded text-xs">
+                  {req.id_type}
+                </span>
+              </p>
             )}
-          </button>
-          <button
-            onClick={() => setShowPrompt({ id: req.id, type: "decline" })}
-            className="w-32 flex items-center justify-center gap-2 bg-amber-500 text-white py-3 rounded-lg font-bold hover:bg-amber-600 transition-shadow shadow-md"
-          >
-            <X size={18} /> Decline
-          </button>
-          <button
-            onClick={() => setShowPrompt({ id: req.id, type: "block" })}
-            className="w-32 flex items-center justify-center gap-2 bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition-shadow shadow-md"
-          >
-            <Ban size={18} /> Block
-          </button>
+            <p className="text-sm text-slate-700">
+              <strong>Requested On:</strong>{" "}
+              {new Date(req.requested_at).toLocaleString()}
+            </p>
+          </div>
+
+          {/* DYNAMIC LOCATIONS & RENT CONTRACTS */}
+          {kycConfig.rent_contract && (
+            <div className="space-y-3">
+              <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                <Home size={14} /> Assigned Locations & Contracts
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {locationAssets.length > 0 ? (
+                  locationAssets.map((blockGroup: any, idx: number) => (
+                    <div
+                      key={idx}
+                      className="border border-slate-100 rounded-xl p-4 bg-slate-50/50 space-y-3"
+                    >
+                      <div className="text-sm font-bold text-slate-900 bg-slate-200/60 px-3 py-1 rounded-lg w-fit">
+                        Block: {blockGroup.block}
+                      </div>
+                      <div className="space-y-2">
+                        {blockGroup.units?.map(
+                          (unitItem: any, uIdx: number) => (
+                            <div
+                              key={uIdx}
+                              className="flex justify-between items-center bg-white p-3 border border-slate-100 rounded-lg shadow-sm"
+                            >
+                              <span className="text-sm font-medium text-slate-700">
+                                Unit {unitItem.unit}
+                              </span>
+                              {unitItem.contract_url ? (
+                                <a
+                                  href={unitItem.contract_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="flex items-center gap-1.5 text-xs text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg font-bold transition-all"
+                                >
+                                  <FileText size={14} /> View Contract{" "}
+                                  <ExternalLink size={12} />
+                                </a>
+                              ) : (
+                                <span className="text-xs text-amber-500 italic font-medium">
+                                  No Contract Doc
+                                </span>
+                              )}
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-2 p-4 border border-dashed border-slate-200 rounded-xl text-center text-sm text-slate-400 italic">
+                    No location units provided.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* CREDENTIALS ATTACHMENTS GRID */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider">
+              Verification Credentials
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {kycConfig.selfie && (
+                <DocPreview url={req.selfie_url} label="Selfie Image" />
+              )}
+              {kycConfig.ids && (
+                <>
+                  <DocPreview
+                    url={req.id_front_url}
+                    label="ID Document Front"
+                  />
+                  <DocPreview url={req.id_back_url} label="ID Document Back" />
+                </>
+              )}
+              {kycConfig.utility_bill && (
+                <DocPreview url={req.utility_bill_url} label="Utility Bill" />
+              )}
+            </div>
+          </div>
+
+          {/* Action Row Buttons */}
+          <div className="flex flex-row flex-wrap gap-3 mt-10 pt-6 border-t border-slate-100">
+            <button
+              onClick={() => handleApprove(req.id)}
+              disabled={loadingApproveAction}
+              className="w-32 flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition-shadow shadow-md disabled:opacity-50"
+            >
+              {loadingApproveAction ? (
+                <Loader2 className="animate-spin" size={16} />
+              ) : (
+                <>
+                  <Check size={18} /> <span>Accept</span>
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => setShowPrompt({ id: req.id, type: "decline" })}
+              className="w-32 flex items-center justify-center gap-2 bg-amber-500 text-white py-3 rounded-lg font-bold hover:bg-amber-600 transition-shadow shadow-md"
+            >
+              <X size={18} /> Decline
+            </button>
+            <button
+              onClick={() => setShowPrompt({ id: req.id, type: "block" })}
+              className="w-32 flex items-center justify-center gap-2 bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition-shadow shadow-md"
+            >
+              <Ban size={18} /> Block
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
-  // Helper for rendering images with placeholders
   const DocPreview = ({ url, label }: { url?: string; label: string }) => (
-    <div className="space-y-2">
+    <div className="space-y-2 border border-slate-100 p-3 rounded-xl bg-slate-50/30">
       <div className="flex justify-between items-center">
-        <span className="text-xs font-bold text-slate-400 uppercase tracking-tighter">
+        <span className="text-xs font-black text-slate-400 uppercase tracking-tighter">
           {label}
         </span>
         {url && (
           <a
             href={url}
             target="_blank"
-            className="text-blue-500 hover:text-blue-700"
+            rel="noreferrer"
+            className="text-indigo-600 hover:text-indigo-800 transition-colors"
           >
             <ExternalLink size={14} />
           </a>
@@ -192,12 +273,12 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
       {url ? (
         <img
           src={url}
-          className="w-full h-40 object-cover rounded-lg border border-slate-200 bg-slate-100"
+          className="w-full h-44 object-cover rounded-lg border border-slate-200 bg-slate-100"
           alt={label}
         />
       ) : (
-        <div className="w-full h-40 bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center">
-          <span className="text-slate-300 text-sm italic font-medium">
+        <div className="w-full h-44 bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center">
+          <span className="text-slate-300 text-xs italic font-semibold">
             Not Provided
           </span>
         </div>
@@ -207,7 +288,6 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
 
   return (
     <>
-      {/* 1. Main View Area (Background) */}
       {selectedRequest ? (
         <KYCDetailView req={selectedRequest} />
       ) : requests.length === 0 ? (
@@ -221,14 +301,14 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
               key={req.id}
               className="flex justify-between items-center bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-all group"
             >
-              <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 rounded-full flex items-center justify-center border border-blue-100 shrink-0">
-                  <span className="text-blue-600 font-bold text-base sm:text-lg">
-                    {req.temp_tenant_name[0]}
-                  </span>
+              <div className="flex items-center gap-4 overflow-hidden">
+                <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center border border-indigo-100 shrink-0 font-black text-lg">
+                  {req.temp_tenant_name
+                    ? req.temp_tenant_name[0].toUpperCase()
+                    : "T"}
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-lg font-bold text-slate-800 group-hover:text-blue-700 transition-colors">
+                  <span className="text-base font-black text-slate-800 group-hover:text-indigo-600 transition-colors">
                     {req.temp_tenant_name}
                   </span>
                   <span className="text-xs text-slate-400 font-medium">
@@ -239,7 +319,7 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
 
               <button
                 onClick={() => setSelectedRequest(req)}
-                className="flex items-center gap-2 bg-slate-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold border border-slate-100 hover:bg-blue-600 hover:text-white transition-all"
+                className="flex items-center gap-2 bg-slate-50 text-indigo-600 px-4 py-2 rounded-lg text-sm font-black border border-slate-100 hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
               >
                 See Details <ArrowRight size={16} />
               </button>
@@ -248,17 +328,17 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
         </div>
       )}
 
-      {/* 2. Global Modal (The Overlay) */}
+      {/* Decline/Block Reason Prompt Modal Overlay */}
       {showPrompt && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
-            <h3 className="text-lg font-bold mb-2">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            <h3 className="text-base font-black mb-2 text-slate-900">
               Add a reason for{" "}
               {showPrompt.type === "block" ? "blocking" : "declining"}?
             </h3>
             <textarea
-              className="w-full border rounded-lg p-3 text-sm h-32 focus:ring-2 focus:ring-blue-500 outline-none text-slate-800"
-              placeholder="e.g. ID is blurry, please take a clearer photo."
+              className="w-full border border-slate-200 rounded-lg p-3 text-sm h-32 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-slate-800 font-medium"
+              placeholder="e.g. Contract copy is unreadable, please upload a clearer scan."
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
               autoFocus
@@ -266,26 +346,21 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
             <div className="flex gap-3 mt-4">
               <button
                 onClick={() => setShowPrompt(null)}
-                className="flex-1 py-2 text-slate-500 font-medium hover:bg-slate-50 rounded-lg transition-colors"
+                className="flex-1 py-2 text-slate-500 font-bold hover:bg-slate-50 rounded-lg transition-colors text-sm"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmAction}
                 disabled={loadingAction}
-                className={`flex-1 py-2 text-white rounded-lg font-bold transition-opacity flex items-center justify-center gap-2 ${
+                className={`flex-1 py-2 text-white rounded-lg font-black transition-opacity flex items-center justify-center gap-2 text-sm shadow ${
                   loadingAction
                     ? "opacity-70 cursor-not-allowed"
                     : "hover:opacity-90"
-                } ${
-                  showPrompt.type === "block" ? "bg-red-600" : "bg-blue-600"
-                }`}
+                } ${showPrompt.type === "block" ? "bg-red-600" : "bg-indigo-600"}`}
               >
                 {loadingAction ? (
-                  <>
-                    <Loader2 className="animate-spin" size={18} />
-                    <span>Processing...</span>
-                  </>
+                  <Loader2 className="animate-spin" size={18} />
                 ) : (
                   <span>
                     {showPrompt.type === "block" ? "Block" : "Decline"}

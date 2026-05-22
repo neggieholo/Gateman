@@ -8,9 +8,6 @@ import {
   Megaphone,
   Send,
   Trash2,
-  Info,
-  AlertTriangle,
-  CheckCircle2,
   MessageSquare,
   Heart,
   ArrowLeft,
@@ -20,7 +17,9 @@ import {
   Loader2,
   ImageIcon,
   X,
-  ShieldAlert,
+  Archive,
+  Users,
+  Search,
 } from "lucide-react";
 import {
   communityApi,
@@ -32,8 +31,8 @@ import { Like, Post, Comment } from "../services/types";
 
 const AdminAlertManager = () => {
   const { user } = useUser();
-  const [activeTab, setActiveTab] = useState<"alerts" | "notifications">(
-    "alerts",
+  const [activeTab, setActiveTab] = useState<"communication" | "notifications">(
+    "communication",
   );
   const [activeSelectedPostTab, setActiveSelectedPostTab] = useState<
     "comments" | "likes"
@@ -41,6 +40,11 @@ const AdminAlertManager = () => {
   const [loading, setLoading] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+
+  // Archive & Search View States
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
+
   // Form States
   const [selectedImage, setSelectedImage] = useState<any>(null);
   const [title, setTitle] = useState("");
@@ -58,30 +62,40 @@ const AdminAlertManager = () => {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
   useEffect(() => {
-    if (activeTab === "alerts") fetchAlerts();
-  }, [activeTab]);
-
-  // Add this near your other state hooks
-  useEffect(() => {
     if (!selectedImage) return;
-
     const objectUrl = URL.createObjectURL(selectedImage);
-    // You could store this in a separate 'preview' state if you want
-
     return () => URL.revokeObjectURL(objectUrl);
   }, [selectedImage]);
 
-  const fetchAlerts = async () => {
+  const fetchPosts = async () => {
     setLoading(true);
     try {
       const data = await communityApi.getPosts(user!.estate_id);
-      setPosts(data.filter((p: any) => p.category === "Alerts"));
+      setPosts(data || []);
     } catch (err) {
       console.error("Failed to fetch alerts");
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (activeTab === "communication" && user?.estate_id) {
+      fetchPosts();
+    }
+  }, [activeTab, user?.estate_id]);
+
+  // Frontend Filter: Handles text matching and is_archived toggle status
+  const filteredPosts = posts.filter((post) => {
+    const matchesSearch =
+      post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      post.content.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const postIsArchived = !!(post.is_archived || (post as any).archived);
+    const matchesArchiveStatus = postIsArchived === showArchived;
+
+    return matchesSearch && matchesArchiveStatus;
+  });
 
   const handlePostAlert = async () => {
     if (!title || !content) return alert("Please fill all fields");
@@ -100,17 +114,17 @@ const AdminAlertManager = () => {
         author_role: "admin",
         title: title,
         content: content,
-        category: "Alerts",
+        category: "General",
         image_url: uploadedUrl,
         thumbnail_url: uploadedUrl,
         send_push: alsoNotify,
       });
 
-      alert("Alert published successfully!");
+      alert("Post published successfully!");
       setTitle("");
       setContent("");
       setSelectedImage(null);
-      fetchAlerts();
+      fetchPosts();
     } catch (err) {
       console.error(err);
       alert("Failed to post alert");
@@ -195,8 +209,7 @@ const AdminAlertManager = () => {
     if (!window.confirm("Are you sure you want to remove this comment?"))
       return;
 
-    // 1. Optimistic UI update
-    const previousComments = [...comments]; // Keep for fallback
+    const previousComments = [...comments];
     setComments((prev) => prev.filter((c) => c.id !== commentId));
 
     setPosts((prev) =>
@@ -220,15 +233,14 @@ const AdminAlertManager = () => {
     } catch (error) {
       console.error("Delete Comment Error:", error);
       alert("Could not delete comment. Reverting...");
-      setComments(previousComments); // Revert UI
-      fetchAlerts(); // Re-sync counts
+      setComments(previousComments);
+      fetchPosts();
     }
   };
 
   const handleOpenPost = async (post: Post) => {
     setSelectedPost(post);
 
-    // 1. Instant UI update for the badge
     if (!post.admin_seen) {
       setPosts((prevPosts) =>
         prevPosts.map((p) =>
@@ -236,14 +248,12 @@ const AdminAlertManager = () => {
         ),
       );
 
-      // Sync DB in background
       fetch(`${baseUrl}/api/community/posts/${post.id}/seen`, {
         method: "PATCH",
         credentials: "include",
       }).catch((err) => console.error("Sync failed:", err));
     }
 
-    // 2. Reset and Load Details
     setComments([]);
     setLikes([]);
     setLoadingComments(true);
@@ -254,7 +264,6 @@ const AdminAlertManager = () => {
         communityApi.getLikes(post.id),
       ]);
 
-      // 3. Update specific post counts in the list state
       setPosts((prev) =>
         prev.map((p) =>
           p.id === post.id
@@ -283,7 +292,6 @@ const AdminAlertManager = () => {
     setNewComment("");
     setUploadingComment(true);
 
-    // 1. Create the Optimistic Comment object
     const optimisticComment: Comment = {
       id: Date.now(),
       post_id: Number(postId),
@@ -294,7 +302,6 @@ const AdminAlertManager = () => {
       created_at: new Date().toISOString(),
     };
 
-    // 2. Update UI states immediately
     setComments((prev) => [...prev, optimisticComment]);
 
     setPosts((prev) =>
@@ -316,30 +323,55 @@ const AdminAlertManager = () => {
         content: commentText,
       });
 
-      // 3. Replace the optimistic comment with the real one from the DB (for the real ID)
       setComments((prev) =>
         prev.map((c) => (c.id === optimisticComment.id ? response : c)),
       );
     } catch (error) {
       console.error("GateMan Comment Error:", error);
       alert("Failed to add comment.");
-      // Optional: Revert states here if you want to be strict
-      fetchAlerts();
+      fetchPosts();
     } finally {
       setUploadingComment(false);
     }
   };
 
-  // 3. Function to handle comment submission from inside the modal
   const handleCommentSubmit = async () => {
     if (!newComment.trim() || !selectedPost) return;
 
-    await handleAddComment(selectedPost.id); // Uses your existing logic
+    await handleAddComment(selectedPost.id);
     setNewComment("");
 
-    // Re-fetch comments to show the new one immediately
     const updatedComments = await communityApi.getComments(selectedPost.id);
     setComments(updatedComments);
+  };
+
+  const handleArchivePost = async (postId: string) => {
+    const actionLabel = showArchived ? "Unarchive" : "Archive";
+    const confirmed = window.confirm(
+      `${actionLabel} Post\nAre you sure you want to change this post's visibility status?`,
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const response = await communityApi.archivePost(postId.toString());
+      if (response.success || response) {
+        alert(`Post ${actionLabel.toLowerCase()}d successfully.`);
+
+        setPosts((prevPosts) =>
+          prevPosts.map((p) =>
+            p.id === postId ? { ...p, is_archived: !showArchived } : p,
+          ),
+        );
+
+        if (selectedPost && selectedPost.id === postId) {
+          setSelectedPost(null);
+        }
+      }
+    } catch (err) {
+      console.error("Archive UI handler failure:", err);
+      alert("Could not complete archiving action.");
+    }
   };
 
   const handleDelete = async (postId: string) => {
@@ -349,12 +381,9 @@ const AdminAlertManager = () => {
 
     if (confirmed) {
       try {
-        // 1. Call the API
         const response = await communityApi.deletePost(postId.toString());
-
         if (response.success || response) {
           setPosts((prevPosts) => prevPosts.filter((p) => p.id !== postId));
-
           alert("Post deleted successfully.");
         }
       } catch (error: any) {
@@ -380,10 +409,10 @@ const AdminAlertManager = () => {
         {!selectedPost && (
           <div className="flex bg-slate-100 p-1 rounded-xl">
             <button
-              onClick={() => setActiveTab("alerts")}
-              className={`flex items-center gap-2 px-6 py-2 rounded-lg font-bold transition ${activeTab === "alerts" ? "bg-white shadow text-indigo-600" : "text-slate-500"}`}
+              onClick={() => setActiveTab("communication")}
+              className={`flex items-center gap-2 px-6 py-2 rounded-lg font-bold transition ${activeTab === "communication" ? "bg-white shadow text-indigo-600" : "text-slate-500"}`}
             >
-              <AlertTriangle size={18} /> ALERTS
+              <Users size={18} /> COMMUNICATION BOARD
             </button>
             <button
               onClick={() => setActiveTab("notifications")}
@@ -399,12 +428,13 @@ const AdminAlertManager = () => {
         {/* LEFT COLUMN: COMPOSER */}
         <div className="lg:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 h-fit">
           <h2 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-            {activeTab === "alerts" ? (
+            {activeTab === "communication" ? (
               <Megaphone className="text-indigo-600" />
             ) : (
               <Bell className="text-indigo-600" />
             )}
-            Compose {activeTab === "alerts" ? "Public Alert" : "Direct Message"}
+            Compose{" "}
+            {activeTab === "communication" ? "Public Alert" : "Direct Message"}
           </h2>
 
           <div className="space-y-4">
@@ -423,7 +453,7 @@ const AdminAlertManager = () => {
             />
 
             {/* Image Upload UI */}
-            {activeTab === "alerts" ? (
+            {activeTab === "communication" ? (
               <div className="space-y-2">
                 <p className="text-xs font-black text-slate-400 uppercase">
                   Attachment
@@ -452,7 +482,7 @@ const AdminAlertManager = () => {
                       className="w-full h-40 object-cover"
                     />
                     <button
-                      type="button" // Prevents accidental form submission
+                      type="button"
                       onClick={() => setSelectedImage(null)}
                       className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 shadow-md"
                     >
@@ -463,7 +493,7 @@ const AdminAlertManager = () => {
               </div>
             ) : null}
 
-            {activeTab === "alerts" ? (
+            {activeTab === "communication" ? (
               <label className="flex items-center gap-3 p-3 bg-indigo-50 rounded-xl cursor-pointer group">
                 <input
                   type="checkbox"
@@ -477,42 +507,6 @@ const AdminAlertManager = () => {
               </label>
             ) : (
               <div className="space-y-4 p-3 bg-slate-50 rounded-xl">
-                {/* <div className="space-y-2">
-                  <p className="text-xs font-black text-slate-400 uppercase tracking-wider">
-                    Notification Priority
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setNotificationType("announcement")}
-                      className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition font-bold text-xs ${
-                        notificationType === "announcement"
-                          ? "bg-indigo-50 border-indigo-600 text-indigo-700"
-                          : "bg-white border-slate-100 text-slate-400 hover:border-slate-200"
-                      }`}
-                    >
-                      <Megaphone size={14} />
-                      Announcement
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setNotificationType("emergency")}
-                      className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition font-bold text-xs ${
-                        notificationType === "emergency"
-                          ? "bg-red-50 border-red-600 text-red-700"
-                          : "bg-white border-slate-100 text-slate-400 hover:border-slate-200"
-                      }`}
-                    >
-                      <ShieldAlert size={14} />
-                      Emergency
-                    </button>
-                  </div>
-                  {notificationType === "emergency" && (
-                    <p className="text-[10px] text-red-500 font-medium px-1 italic">
-                      * This will trigger the emergency alarm sound on devices.
-                    </p>
-                  )}
-                </div> */}
                 <p className="text-xs font-black text-slate-400 uppercase mb-2">
                   Target Audience
                 </p>
@@ -539,7 +533,7 @@ const AdminAlertManager = () => {
 
             <button
               onClick={
-                activeTab === "alerts"
+                activeTab === "communication"
                   ? handlePostAlert
                   : handleSendNotification
               }
@@ -550,9 +544,8 @@ const AdminAlertManager = () => {
                 "Processing..."
               ) : (
                 <>
-                  {" "}
-                  <Send size={18} />{" "}
-                  {activeTab === "alerts" ? "PUBLISH" : "DISPATCH"}{" "}
+                  <Send size={18} />
+                  {activeTab === "communication" ? "PUBLISH" : "DISPATCH"}
                 </>
               )}
             </button>
@@ -562,9 +555,8 @@ const AdminAlertManager = () => {
         {/* RIGHT COLUMN: HISTORY/LOGS */}
         <div className="lg:col-span-2 h-[calc(100vh-250px)] p-2 flex flex-col">
           {selectedPost ? (
-            /* --- DETAIL VIEW (REPLACES LIST) --- */
+            /* --- DETAIL VIEW --- */
             <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden animate-in fade-in slide-in-from-right-4 duration-300 flex flex-col h-full">
-              {/* Detail Header */}
               <div className="p-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/50 shrink-0">
                 <button
                   onClick={() => {
@@ -618,10 +610,9 @@ const AdminAlertManager = () => {
                   </button>
                 </div>
               </div>
-              {/* Detail Content - SCROLLABLE CONTENT AREA */}
+
               <div className="p-2 overflow-y-auto flex-1">
                 {loadingComments ? (
-                  /* This now covers BOTH tabs */
                   <div className="flex flex-col items-center justify-center py-20">
                     <Loader2
                       size={24}
@@ -632,7 +623,6 @@ const AdminAlertManager = () => {
                     </p>
                   </div>
                 ) : activeSelectedPostTab === "likes" ? (
-                  /* --- LIKES TAB CONTENT --- */
                   <div className="flex-1 p-4">
                     {likes.length > 0 ? (
                       likes.map((like: any, index: number) => (
@@ -671,7 +661,6 @@ const AdminAlertManager = () => {
                     )}
                   </div>
                 ) : (
-                  /* --- COMMENTS TAB CONTENT --- */
                   <div className="flex-1 p-4">
                     {comments.length > 0 ? (
                       comments.map((comment: any) => (
@@ -711,7 +700,6 @@ const AdminAlertManager = () => {
                 )}
               </div>
 
-              {/* Stats - STICKY BOTTOM */}
               <div className="pl-3 bg-slate-50 flex gap-6 border-t shrink-0">
                 <div className="flex gap-3 h-12 items-center">
                   <button
@@ -731,9 +719,7 @@ const AdminAlertManager = () => {
                         className="flex-1 text-sm text-gray-900 bg-gray-100 rounded-2xl p-2"
                         placeholder="Write a comment..."
                         value={newComment}
-                        onChange={(e) => {
-                          setNewComment(e.target.value);
-                        }}
+                        onChange={(e) => setNewComment(e.target.value)}
                       />
                       <button
                         onClick={handleCommentSubmit}
@@ -759,38 +745,80 @@ const AdminAlertManager = () => {
             <div className="flex flex-col h-full">
               <div className="flex justify-between items-center mb-4 shrink-0">
                 <h3 className="font-bold text-slate-400 uppercase text-xs tracking-widest">
-                  Recent {activeTab} Activity
+                  {showArchived
+                    ? "Archived Logs"
+                    : `Recent ${activeTab} Activity`}
                 </h3>
               </div>
 
-              {/* SCROLLABLE LIST AREA */}
-              <div className="space-y-4 overflow-y-auto pr-2 custom-scrollbar flex-1">
-                {activeTab === "alerts" ? (
-                  posts.length > 0 ? (
-                    posts.map((post) => (
+              {activeTab === "communication" && (
+                <div className="flex flex-col sm:flex-row gap-3 bg-slate-50 p-3 pr-9 rounded-2xl border border-slate-100 shrink-0">
+                  {/* Search Input Bar */}
+                  <div className="flex-1 relative flex items-center">
+                    <Search
+                      size={16}
+                      className="absolute left-3 text-slate-400"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Search board entries..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full text-xs pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-500 transition"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery("")}
+                        className="absolute right-3 text-slate-400 hover:text-slate-600"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => setShowArchived(!showArchived)}
+                    className={`flex items-center gap-2 px-4 py-2 border rounded-xl text-xs font-bold transition whitespace-nowrap bg-white ${
+                      showArchived
+                        ? "border-indigo-200 text-indigo-600 hover:bg-indigo-50/50"
+                        : "border-slate-200 text-slate-600 hover:bg-slate-100"
+                    }`}
+                  >
+                    <Archive
+                      size={14}
+                      className={
+                        showArchived ? "text-indigo-600" : "text-slate-400"
+                      }
+                    />
+                    <span>
+                      {showArchived ? "Feed" : "View Archives"}
+                    </span>
+                  </button>
+                </div>
+              )}
+
+              {/* SCROLLABLE FEED LIST AREA */}
+              <div className="space-y-4 overflow-y-auto pr-2 custom-scrollbar flex-1 mt-2">
+                {activeTab === "communication" ? (
+                  filteredPosts.length > 0 ? (
+                    filteredPosts.map((post) => (
                       <div
                         key={post.id}
-                        className="bg-white p-5 rounded-2xl border border-slate-100 flex justify-between items-start cursor-pointer hover:border-indigo-200 transition"
+                        className="bg-white p-5 rounded-2xl border border-slate-100 flex justify-between items-start cursor-pointer hover:border-indigo-200 transition animate-in fade-in duration-200"
                       >
                         <div
                           className="flex-1"
                           onClick={() => handleOpenPost(post)}
                         >
                           <div className="flex items-center gap-2 mb-1">
-                            {/* <span className="bg-red-100 text-red-600 text-[10px] font-black px-2 py-0.5 rounded">
-                              ALERT
-                            </span> */}
-                            <div className="flex gap-2">
-                              <h4 className="font-bold text-slate-900">
-                                {post.title}
-                              </h4>
-
-                              {!post.admin_seen && (
-                                <div className="bg-red-600 text-white text-[9px] font-black px-2 py-0.5 rounded shadow-sm animate-pulse">
-                                  NEW
-                                </div>
-                              )}
-                            </div>
+                            <h4 className="font-bold text-slate-900">
+                              {post.title}
+                            </h4>
+                            {!post.admin_seen && !showArchived && (
+                              <div className="bg-red-600 text-white text-[9px] font-black px-2 py-0.5 rounded shadow-sm animate-pulse">
+                                NEW
+                              </div>
+                            )}
                           </div>
                           <p className="text-slate-600 text-sm mb-3 line-clamp-2">
                             {post.content}
@@ -799,61 +827,74 @@ const AdminAlertManager = () => {
                             Published on{" "}
                             {new Date(post.created_at).toLocaleString()}
                           </p>
-                          <div className="flex items-center justify-between my-3">
-                            <span className="flex items-center">
+                          <div className="flex items-center gap-6 my-3 text-slate-500">
+                            <span className="flex items-center gap-1">
                               <ThumbsUp
-                                size={18}
-                                color={post.has_liked ? "#2563eb" : "#9ca3af"}
+                                size={16}
+                                className={
+                                  post.has_liked
+                                    ? "text-indigo-600 fill-indigo-100"
+                                    : "text-slate-400"
+                                }
                               />
-                              <p className="ml-1 font-bold text-sm">
+                              <p className="font-bold text-xs">
                                 {post.likes_count}
                               </p>
                             </span>
-                            <div className="flex items-center">
-                              <MessageSquare size={18} color="#9ca3af" />
-                              <p className="ml-1 font-bold text-sm">
+                            <span className="flex items-center gap-1">
+                              <MessageSquare
+                                size={16}
+                                className="text-slate-400"
+                              />
+                              <p className="font-bold text-xs">
                                 {post.comments_count}
                               </p>
-                            </div>
+                            </span>
                           </div>
                         </div>
-                        <div>
-                          {user?.id === post.author_id && (
-                            <button
-                              onClick={() => handleDelete(post.id)}
-                              className="text-red-500"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          )}
+
+                        <div className="flex flex-col gap-2 ml-4 self-start">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleArchivePost(post.id);
+                            }}
+                            className={`p-1.5 rounded-lg transition ${
+                              showArchived
+                                ? "text-indigo-600 hover:bg-indigo-50"
+                                : "text-slate-400 hover:text-amber-600 hover:bg-amber-50"
+                            }`}
+                            title={
+                              showArchived
+                                ? "Restore to public feed"
+                                : "Archive notice"
+                            }
+                          >
+                            <Archive size={16} />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(post.id);
+                            }}
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                            title="Delete Post"
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
-                      <Info className="mx-auto text-slate-300 mb-2" />
-                      <p className="text-slate-400 font-bold">
-                        {loading ? "Fetching Alerts" : "No active Alerts found"}
-                      </p>
+                    <div className="text-center py-20 text-slate-400 text-sm font-medium bg-white rounded-2xl border border-slate-100">
+                      {showArchived
+                        ? "Archive board history is empty."
+                        : "No active announcements published here yet."}
                     </div>
                   )
                 ) : (
-                  <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
-                    {/* Notification content */}
-                    <div className="flex gap-4">
-                      <div className="bg-blue-600 p-3 rounded-xl h-fit text-white">
-                        <CheckCircle2 size={24} />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-blue-900">
-                          Direct Notification Mode
-                        </h4>
-                        <p className="text-blue-700 text-sm mt-1">
-                          Messages sent here do not appear on the community
-                          board.
-                        </p>
-                      </div>
-                    </div>
+                  <div className="text-center py-20 text-slate-400 text-sm font-medium bg-white rounded-2xl border border-slate-100">
+                    No system dispatch logs tracked under this category.
                   </div>
                 )}
               </div>

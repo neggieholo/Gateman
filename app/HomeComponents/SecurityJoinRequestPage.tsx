@@ -66,7 +66,6 @@ export default function SecurityJoinRequestsPage() {
 
   const handleBlock = async (id: string, feedback: string) => {
     try {
-      console.log("Blocking req with ID:", id, "with feedback:", feedback);
       const res = await securityDb.blockSecurity(id, feedback);
 
       if (!res.success) throw new Error(res.error || "Failed to block request");
@@ -83,7 +82,6 @@ export default function SecurityJoinRequestsPage() {
       const res = await securityDb.unblockSecurity(id);
 
       if (!res.success) throw new Error("Failed to unblock user");
-      console.log("Unblock Data:", res);
 
       // setBlockedUsers((prev) => prev.filter((u) => u.id !== id));
       loadData();

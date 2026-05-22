@@ -25,7 +25,6 @@ export default function UnifiedResidentPortal() {
       setLoading(true);
       try {
         const tenantData = await db.getAllTenants();
-        console.log("Tenant data:", tenantData)
         setTenants(tenantData);
       } catch (err) {
         console.error("Fetch error:", err);

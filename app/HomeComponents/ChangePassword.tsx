@@ -16,7 +16,6 @@ export default function ChangePassword() {
 
   const handleUpdate = async () => {
     if (formData.new !== formData.confirm) {
-      console.log("Passwords:", formData.new, formData.confirm);
       return alert("New Passwords do not match");
     }
 

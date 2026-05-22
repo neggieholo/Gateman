@@ -60,9 +60,7 @@ export default function Dashboard() {
         <h2 className="text-slate-600 font-semibold text-lg">
           Loading Command Center...
         </h2>
-        <p className="text-slate-400 text-sm">
-          Syncing estate records
-        </p>
+        <p className="text-slate-400 text-sm">Syncing estate records</p>
       </div>
     );
   }
@@ -155,13 +153,13 @@ export default function Dashboard() {
 
         <StatCard
           icon={<BellRing size={22} />}
-          label="Community Alerts"
+          label="Community Board"
           value={stats.community.totalAlerts}
           color="rose"
           onClick={() => router.push("/home/community")}
           metrics={[
             {
-              label: "Unread Alerts",
+              label: "Unread Posts",
               value: stats.community.unreadAlerts,
               color: "text-rose-600",
             },
@@ -212,11 +210,11 @@ export default function Dashboard() {
         />
       </div>
 
-      <div
-        className="bg-white rounded-4xl border border-slate-100 shadow-sm overflow-hidden flex flex-col"
-        onClick={() => router.push("/home/tenantmanagement")}
-      >
-        <div className="p-6 border-b border-slate-50 flex flex-col md:flex-row justify-between items-center gap-4 bg-linear-to-r from-white to-blue-50/20">
+      <div className="bg-white rounded-4xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+        <div
+          className="p-6 border-b border-slate-50 flex flex-col md:flex-row justify-between items-center gap-4 bg-linear-to-r cursor-pointer from-white to-blue-50/20"
+          onClick={() => router.push("/home/tenantmanagement")}
+        >
           <div className="flex items-center gap-4">
             <div className="p-3 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-100">
               <UserCheck size={24} />
@@ -241,7 +239,10 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="p-6 bg-slate-50/20">
+        <div
+          className="p-6 bg-slate-50/20 cursor-pointer"
+          onClick={() => router.push("/home/joinrequestpage")}
+        >
           <div className="flex items-center gap-2 mb-4">
             <PlusCircle size={14} className="text-blue-600" />
             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">

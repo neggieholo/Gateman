@@ -8,6 +8,13 @@ export interface EmergencyContact {
   phone: string;
 }
 
+export interface KYCSelection {
+  ids: boolean;
+  selfie: boolean;
+  utility_bill: boolean;
+  rent_contract: boolean;
+}
+
 export interface User {
   id: string;
   estate_id: string;
@@ -53,6 +60,7 @@ export interface User {
   has_seen_kyc_success: boolean;
   consent_given: boolean;
   consent_timestamp?: string;
+  kyc_selection: KYCSelection;
 }
 
 export interface Estate {
@@ -169,10 +177,12 @@ export interface Tenant {
   email: string;
   phone: string;
   created_at: string | null;
-  estate_id?: string;
-  unit?: string;
-  block?: string;
-  avatar?: string | null;
+  estate_ids: string[];
+  locations: {
+    [estateId: string]: LocationPair[];
+  };
+  sub_users: string[];
+  parent_account_id: string;
   id_type?: string;
   id_front_url?: string;
   id_back_url?: string;
@@ -181,12 +191,16 @@ export interface Tenant {
   push_token?: string;
 }
 
+export interface LocationPair {
+  block: string;
+  unit: string[]; // Dynamic string array for multi-unit selection
+}
+
 export interface JoinRequest {
   id: string;
   temp_tenant_id: string;
   estate_id: string;
-  block?: string;
-  unit?: string;
+  locations:LocationPair;
   status: "PENDING" | "APPROVED" | "DECLINED" | "BLOCKED"; // Added BLOCKED for the new action
   requested_at: string;
 
@@ -427,6 +441,7 @@ export interface Post {
   has_liked: boolean;
   created_at: string;
   admin_seen: boolean;
+  is_archived: boolean;
 }
 
 export interface Comment {
@@ -525,6 +540,7 @@ export interface EstateEvent {
   registered_number: number;
   expected_guests: number;
   banner_url: string | null;
+  booked_dates: string[];
 
   // Financial & Security
   is_paid: boolean;
@@ -534,6 +550,23 @@ export interface EstateEvent {
   is_approved: boolean;
   is_rejected: boolean;
 
+  created_at: string;
+}
+
+export interface EstateLocation {
+  id: number;
+  estate_id: string;
+  name: string;
+  location_in_estate: string | null;
+  permitted_days: number[];
+  event_booked_on: Record<
+    string,
+    {
+      event_banner_url: string;
+      dates: string[];
+    }
+  >;
+  capacity?: number;
   created_at: string;
 }
 
@@ -571,6 +604,7 @@ export interface ApproveRequest {
   success: boolean;
   message: string;
   event: EstateEvent;
+  updatedLocation: EstateLocation;
   error?: string;
 }
 
@@ -643,4 +677,38 @@ export interface FetchNotificationsResponse {
   success: boolean;
   list: notification[];
   lastReadAt: string;
+}
+
+// 1. Blueprint for individual vendor objects within the JSONB array
+export interface Vendor {
+  name: string;
+  phone: string;
+  email: string;
+}
+
+// 2. Interface for the Estate Services Catalog row
+export interface EstateService {
+  id: string;
+  estate_id: string;
+  service_name: string;
+  vendors: Vendor[]; // Strictly typed JSONB array mapping
+  is_available: boolean;
+  created_at: string;
+}
+
+// 3. Interface for Resident Work Order Bookings
+export interface ServiceRequest {
+  id: string;
+  estate_id: string;
+  service_id: string | null;
+  service_name?: string;  // Left Joined from estate_services
+  vendor_name?: string;   // Left Joined from estate_services
+  resident_id: string;
+  resident_name: string;
+  resident_unit: string;  // e.g., "Block G, Unit 4"
+  time_preferred: string; // e.g., "Morning (9AM - 12PM)"
+  description: string;
+  is_dispatched: boolean;
+  is_completed: boolean;
+  requested_at: string;
 }

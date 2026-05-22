@@ -5,7 +5,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
   ChevronRight,
-  Search,
   ArrowLeft,
   CheckCircle,
   XCircle,
@@ -18,14 +17,28 @@ import {
   Clock,
   LayoutGrid,
   AlertCircle,
+  Search,
 } from "lucide-react";
-import { EstateEvent } from "../services/types";
-import { approveEvent, getAllEvents } from "../services/apis";
+import { EstateEvent, EstateLocation } from "../services/types";
+import { useSearchParams } from "next/navigation";
+import { approveEvent, getAllEvents, getAllLocations } from "../services/apis";
+import LocationsView from "./LocationsView";
+// Import your freshly decoupled external view here:
+
+const formatToLocalDateString = (dateInput: string) => {
+  if (!dateInput) return "";
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return dateInput.split("T")[0];
+
+  // Shift out the UTC offset so extraction reflects local calendar metrics
+  const offset = d.getTimezoneOffset();
+  const adjusted = new Date(d.getTime() - offset * 60 * 1000);
+  return adjusted.toISOString().split("T")[0];
+};
 
 export default function EventReviewPage() {
   const [allEvents, setAllEvents] = useState<EstateEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<EstateEvent | null>(null);
-  // Updated Filter logic to include REJECTED
   const [statusFilter, setStatusFilter] = useState<
     "ALL" | "PENDING" | "APPROVED" | "REJECTED"
   >("PENDING");
@@ -33,30 +46,56 @@ export default function EventReviewPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
-  const [strictDateMatch, setStrictDateMatch] = useState(false);
+  const [locations, setLocations] = useState<EstateLocation[]>([]);
+  const [activeViewTab, setActiveViewTab] = useState<"events" | "locations">(
+    "events",
+  );
+  const [isDetailedLocation, setIsDetailedLocation] = useState<boolean>(false);
+  const searchParams = useSearchParams();
+  const targetIdParam = searchParams.get("id");
 
-  const fetchEvents = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
-      const events = await getAllEvents();
+      const [events, locationsData] = await Promise.all([
+        getAllEvents(),
+        getAllLocations(),
+      ]);
+
       if (events) {
-        console.log("Events fetched:", events);
         setAllEvents(events);
       }
+
+      if (locationsData) {
+        setLocations(locationsData);
+      }
     } catch (error) {
-      console.error("Fetch error:", error);
+      console.error("Error Fetching Data:", error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchEvents();
+    fetchData();
   }, []);
+
+  useEffect(() => {
+    if (!targetIdParam || allEvents.length === 0) return;
+
+    const matchedEvent = allEvents.find(
+      (e) => e.id.toString() === targetIdParam,
+    );
+    if (matchedEvent) {
+      setActiveViewTab("events");
+      setSelectedEvent(matchedEvent);
+      const newUrl = window.location.pathname;
+      window.history.replaceState({ path: newUrl }, "", newUrl);
+    }
+  }, [targetIdParam, allEvents]);
 
   const filteredEvents = useMemo(() => {
     return allEvents.filter((e) => {
-      // Logic for 3-way status filtering
       const matchesStatus =
         statusFilter === "ALL" ||
         (statusFilter === "APPROVED" && e.is_approved) ||
@@ -67,14 +106,13 @@ export default function EventReviewPage() {
         e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         e.ref_code.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const eventDate = e.start_date.split("T")[0];
-      const matchesDate = !startDateFilter || eventDate === startDateFilter; // On or after
+      const eventDate = formatToLocalDateString(e.start_date);
+      const matchesDate = !startDateFilter || eventDate === startDateFilter;
 
       return matchesStatus && matchesSearch && matchesDate;
     });
   }, [allEvents, statusFilter, searchQuery, startDateFilter]);
 
-  // Updated to match your new API verdict structure
   const handleUpdateStatus = async (
     id: string,
     verdict: "approve" | "reject",
@@ -95,6 +133,14 @@ export default function EventReviewPage() {
               : e,
           ),
         );
+
+        if (data.updatedLocation) {
+          setLocations((prevLocs) =>
+            prevLocs.map((loc) =>
+              loc.id === data.updatedLocation.id ? data.updatedLocation : loc,
+            ),
+          );
+        }
         setSelectedEvent(null);
       } else {
         alert(data.error || "Update failed");
@@ -175,7 +221,7 @@ export default function EventReviewPage() {
                   </div>
                   <div className="text-right hidden md:block">
                     <p className="text-sm font-black text-slate-400 uppercase tracking-tighter">
-                      Starts : {event.start_date.split("T")[0]}
+                      Starts : {formatToLocalDateString(event.start_date)}
                     </p>
                     <div className="flex items-center justify-end gap-2 mt-1">
                       <span
@@ -213,7 +259,49 @@ export default function EventReviewPage() {
 
   // --- SUB-COMPONENT: DETAIL VIEW ---
   const DetailView = ({ event }: { event: EstateEvent }) => {
-    const isMultiDay = event.end_date && event.end_date !== event.start_date;
+    // Line ~230 (Multi-day flag check)
+    const isMultiDay =
+      event.end_date &&
+      formatToLocalDateString(event.end_date) !==
+        formatToLocalDateString(event.start_date);
+
+    // Line ~245 & ~246 (Excluded range setup metrics)
+    const start = new Date(formatToLocalDateString(event.start_date));
+    const end = new Date(formatToLocalDateString(event.end_date));
+
+    // Line ~248 (Booked dates item mapper loop)
+    const bookedSet = new Set(
+      event.booked_dates.map((d) => formatToLocalDateString(d)),
+    );
+    const resolvedVenueName = useMemo(() => {
+      // Cast location_id safely depending on whether your schema handles it as a string or number
+      const match = locations.find(
+        (loc) => loc.id.toString() === (event as any).venue_detail?.toString(),
+      );
+      return match ? match.name : event.venue_detail || "Not Specified";
+    }, [event]);
+    const excludedDatesList = useMemo(() => {
+      if (
+        !event.booked_dates ||
+        !Array.isArray(event.booked_dates) ||
+        event.booked_dates.length === 0
+      ) {
+        return [];
+      }
+
+      // const start = new Date(event.start_date.split("T")[0]);
+      // const end = new Date(event.end_date.split("T")[0]);
+      const excluded: string[] = [];
+      const bookedSet = new Set(event.booked_dates.map((d) => d.split("T")[0]));
+
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const currentStr = d.toISOString().split("T")[0];
+        if (!bookedSet.has(currentStr)) {
+          excluded.push(currentStr);
+        }
+      }
+      return excluded;
+    }, [event.start_date, event.end_date, event.booked_dates]);
 
     return (
       <div className="bg-white rounded-[3rem] border border-slate-100 p-8 animate-in slide-in-from-right duration-300 flex flex-col h-full overflow-hidden">
@@ -266,9 +354,7 @@ export default function EventReviewPage() {
                 </h2>
               </div>
 
-              {/* Show actions only if not already approved/rejected, OR allow changing status */}
               <div className="flex items-center gap-4">
-                {/* APPROVE SECTION */}
                 <div className="flex items-center gap-3">
                   {event.is_rejected && (
                     <span className="text-[10px] font-black uppercase tracking-widest text-rose-500 animate-pulse">
@@ -291,7 +377,6 @@ export default function EventReviewPage() {
                   )}
                 </div>
 
-                {/* REJECT SECTION */}
                 <div className="flex items-center gap-3">
                   {(!event.is_rejected || event.is_approved) && (
                     <button
@@ -316,7 +401,6 @@ export default function EventReviewPage() {
               </div>
             </div>
 
-            {/* Status Indicator */}
             {(event.is_approved || event.is_rejected) && (
               <div
                 className={`p-4 rounded-2xl flex items-center gap-3 border ${event.is_approved ? "bg-emerald-50 border-emerald-100 text-emerald-700" : "bg-rose-50 border-rose-100 text-rose-700"}`}
@@ -338,8 +422,8 @@ export default function EventReviewPage() {
                 label="Date"
                 value={
                   isMultiDay
-                    ? `${event.start_date.split("T")[0]} - ${event.end_date.split("T")[0]}`
-                    : event.start_date.split("T")[0]
+                    ? `${formatToLocalDateString(event.start_date)} - ${formatToLocalDateString(event.end_date)}`
+                    : formatToLocalDateString(event.start_date)
                 }
               />
               <DetailBox
@@ -347,10 +431,29 @@ export default function EventReviewPage() {
                 label="Time"
                 value={`${event.start_time} - ${event.end_time}`}
               />
+            </div>
+            {excludedDatesList.length > 0 && (
+              <div className="pt-2 border-t border-dashed border-rose-100 ml-2">
+                <span className="text-[10px] font-black uppercase text-rose-500 tracking-wider block mb-0.5">
+                  Excluded Dates:
+                </span>
+                <div className="flex flex-wrap gap-1">
+                  {excludedDatesList.map((d) => (
+                    <span
+                      key={d}
+                      className="text-[12px] font-bold bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded"
+                    >
+                      {d}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-4">
               <DetailBox
                 icon={<MapPin size={18} />}
                 label="Venue"
-                value={event.venue_detail || "Not Specified"}
+                value={resolvedVenueName}
               />
               <DetailBox
                 icon={<Ticket size={18} />}
@@ -381,14 +484,48 @@ export default function EventReviewPage() {
         </div>
       </div>
     );
-  };
+  };;
 
   return (
-    <div className="h-[calc(100vh-100px)] flex flex-col overflow-hidden p-4 bg-slate-50/50">
-      <div className="flex items-center justify-between mb-8 px-2">
-        {!selectedEvent && (
+    <div className="h-[calc(100vh-100px)] flex flex-col overflow-hidden p-4 bg-slate-50/50 relative">
+      {/* ABOVE SEARCH BAR TAB SELECTION PANEL */}
+      {!selectedEvent && !isDetailedLocation && (
+        <div className="flex justify-start mb-4 px-2">
+          <div className="flex bg-slate-100 p-1 rounded-2xl shadow-inner">
+            <button
+              onClick={() => {
+                setActiveViewTab("events");
+                setSearchQuery("");
+              }}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all ${
+                activeViewTab === "events"
+                  ? "bg-white shadow text-indigo-600"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              <LayoutGrid size={14} /> Events
+            </button>
+            <button
+              onClick={() => {
+                setActiveViewTab("locations");
+                setSearchQuery("");
+              }}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all ${
+                activeViewTab === "locations"
+                  ? "bg-white shadow text-indigo-600"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              <MapPin size={14} /> Venues
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* FILTER SEARCH AREA */}
+      <div className="flex items-center justify-between mb-8 px-2 gap-4">
+        {!selectedEvent && !isDetailedLocation && (
           <>
-            {/* Search Input */}
             <div className="relative group flex-1 w-full">
               <Search
                 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
@@ -396,40 +533,52 @@ export default function EventReviewPage() {
               />
               <input
                 type="text"
-                placeholder="Search by event title or ref..."
+                placeholder={
+                  activeViewTab === "events"
+                    ? "Search by event title or ref..."
+                    : "Search by venue name or area..."
+                }
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-12 pr-4 py-4 bg-white border border-slate-100 rounded-3xl text-sm font-bold focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all shadow-sm"
               />
             </div>
 
-            {/* Start Date Filter Input */}
-            <div className="relative group w-full md:w-64">
-              <Calendar
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-                size={18}
-              />
-              <input
-                type="date"
-                value={startDateFilter}
-                onChange={(e) => setStartDateFilter(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 bg-white border border-slate-100 rounded-3xl text-sm font-bold focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all shadow-sm uppercase"
-              />
-              {/* {startDateFilter && (
-                <button
-                  onClick={() => setStartDateFilter("")}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-rose-400 hover:text-rose-600"
-                >
-                  <XCircle size={16} />
-                </button>
-              )} */}
-            </div>
+            {activeViewTab === "events" && (
+              <div className="relative group w-full md:w-64">
+                <Calendar
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                  size={18}
+                />
+                <input
+                  type="date"
+                  value={startDateFilter}
+                  onChange={(e) => setStartDateFilter(e.target.value)}
+                  className="w-full pl-12 pr-4 py-4 bg-white border border-slate-100 rounded-3xl text-sm font-bold focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all shadow-sm uppercase"
+                />
+              </div>
+            )}
           </>
         )}
       </div>
 
+      {/* RENDER BODY SWITCHER */}
       <div className="flex-1 overflow-hidden">
-        {selectedEvent ? <DetailView event={selectedEvent} /> : <EventList />}
+        {activeViewTab === "events" ? (
+          selectedEvent ? (
+            <DetailView event={selectedEvent} />
+          ) : (
+            <EventList />
+          )
+        ) : (
+          <LocationsView
+            locations={locations}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            setIsDetailedLocation={setIsDetailedLocation}
+            refreshData={fetchData}
+          />
+        )}
       </div>
     </div>
   );
@@ -439,10 +588,12 @@ const DetailBox = ({
   icon,
   label,
   value,
+  extraElement,
 }: {
   icon: any;
   label: string;
   value: string;
+  extraElement?: React.ReactNode;
 }) => (
   <div className="p-5 bg-white border border-slate-100 rounded-3xl flex items-center gap-4 hover:border-indigo-100 transition-colors">
     <div className="p-3 bg-slate-50 rounded-xl text-indigo-600">{icon}</div>
@@ -452,13 +603,6 @@ const DetailBox = ({
       </p>
       <p className="text-sm font-bold text-slate-800 line-clamp-1">{value}</p>
     </div>
+    {extraElement && extraElement}
   </div>
 );
-
-{
-  /* <div className="flex flex-col items-center justify-center p-10 bg-white rounded-[3rem] border border-dashed border-slate-200">
-  <p className="text-slate-400 font-bold">
-    {loading ? "Loading..." : "No events"}
-  </p>
-</div>; */
-}

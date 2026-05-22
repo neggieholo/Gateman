@@ -8,7 +8,6 @@ export async function fetchTenantInvoices(): Promise<InvoiceWithTenant[]> {
   const data = await res.json();
   if (!data.success)
     throw new Error(data.message || "Failed to fetch invoices");
-  console.log("tenant invoices:", data.invoices);
   return data.invoices;
 }
 
@@ -19,7 +18,6 @@ export async function fetchEstateInvoices(): Promise<EstateInvoice[]> {
   const data = await res.json();
   if (!data.success)
     throw new Error(data.message || "Failed to fetch general invoices");
-  console.log("estate invoices:", data.estateInvoices);
   return data.estateInvoices;
 }
 

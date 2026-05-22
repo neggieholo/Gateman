@@ -38,7 +38,6 @@ export default function ResidentsSuggestionsView() {
       setLoading(true);
       try {
         const res = await getEstateReports();
-        console.log("Fetched reports:", res);
 
         if (res.success) {
           // Filter strictly for SECURITY type before updating state
@@ -73,7 +72,6 @@ export default function ResidentsSuggestionsView() {
 
     setLoadingAction(true);
     try {
-      console.log("Admin Feedback:", adminFeedback);
       const res = await updateReportStatus(
         showFeedbackModal.id,
         showFeedbackModal.status,

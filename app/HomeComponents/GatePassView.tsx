@@ -338,7 +338,6 @@ export default function GatePassesView() {
         setInvitations((prev) =>
           prev.map((inv) => (inv.id === inviteId ? result.invitation! : inv)),
         );
-        console.log(`Successfully logged ${action}`);
       }
     } catch (error) {
       console.error("Critical Log Activity Error:", error);

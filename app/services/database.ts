@@ -14,7 +14,7 @@ export const db = {
       const res = await fetch(`${baseUrl}/api/auth/login/admin`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password}),
         credentials: "include",
       });
 
@@ -127,7 +127,6 @@ export const db = {
       throw new Error(err.error || "Could not fetch join requests");
     }
     const data = await res.json();
-    console.log("Request:", data);
     return data.joinRequests as JoinRequest[];
   },
 

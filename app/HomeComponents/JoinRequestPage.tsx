@@ -104,10 +104,6 @@ export default function JoinRequestsPage() {
 
   return (
     <div className="p-6">
-      <h2 className="text-3xl font-bold text-slate-900 mb-8 tracking-tight">
-        Tenant Management
-      </h2>
-
       {/* --- Tab Navigation --- */}
       {!hideTabs && (
         <div className="flex space-x-2 mb-8 bg-slate-100 p-1 rounded-xl w-fit">

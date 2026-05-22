@@ -35,7 +35,6 @@ export default function OnDutyPersonnel() {
 
       setGuards(personnelData.filter((g) => g.is_on_duty));
       setCheckinCode(existingCode);
-      console.log("Guards on duty:", personnelData);
     } catch (err) {
       console.error("Load Error:", err);
     } finally {

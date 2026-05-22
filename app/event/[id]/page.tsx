@@ -9,7 +9,6 @@ interface PageProps {
 
 export default async function EventRSVPPage({ params }: PageProps) {
   const { id } = await params;
-  console.log("Event page hit for event:", id)
 
   return <EventDisplayClient eventRef={id} />;
 }

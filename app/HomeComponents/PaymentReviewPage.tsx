@@ -38,7 +38,10 @@ export default function PaymentReviewPage() {
   const fetchPayments = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${baseUrl}/api/payment/all-payments`);
+      const response = await fetch(`${baseUrl}/api/payment/all-payments`,{
+        method:"GET",
+        credentials:"include"
+      });
       const res = await response.json();
       if (res.success) setAllPayments(res.payments);
     } catch (error) {

@@ -86,7 +86,6 @@ export default function Settings() {
 
   useEffect(() => {
     if (user) {
-      console.log("Settings user payment type:", user.payment_type);
 
       setProfile({
         estateName: user.estate_name || "Not set",
@@ -156,11 +155,9 @@ export default function Settings() {
     try {
       const otpRes = await sendPofileChangeOtpApi(target, type);
       if (otpRes.success) {
-        console.log("OTP return:", otpRes);
         setMetadata(otpRes.metadata);
         setShowOtpInput(true);
       } else {
-        console.log("OTP fail return:", otpRes);
         alert(otpRes.message);
         setError(otpRes.message || "Failed to send OTP");
       }

@@ -178,7 +178,6 @@ export default function Auth() {
           setUser(data.user);
           router.push("/home/dashboard");
         } else {
-          console.log("login error:",data.error)
           const errorMessage =
             data.error || data.message || "Authentication failed";
 
