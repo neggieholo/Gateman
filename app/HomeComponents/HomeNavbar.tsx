@@ -47,8 +47,11 @@ const HomeNavbar = () => {
         <div className="flex items-center gap-2">
           <div className="w-1 h-1 rounded-full bg-primary animate-pulse"></div>
         </div>
-        <h1 className="font-(family-name:--font-inter) text-3xl font-black text-slate-800 tracking-tight">
-          Welcome, <span className="text-primary">{fullname}</span>
+        <h1 className="text-3xl font-montserrat text-slate-800 tracking-tight">
+          Welcome,{" "}
+          <span className="text-primary font-montserrat font-extrabold">
+            {fullname}
+          </span>
         </h1>
       </div>
 

@@ -1,12 +1,11 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { useUser } from '@/app/UserContext';
-import { useRouter } from 'next/navigation';
-import { checkSession } from '@/app/services/apis';
+import React, { useEffect, useState } from "react";
+import { useUser } from "@/app/UserContext";
+import { useRouter } from "next/navigation";
+import { checkSession } from "@/app/services/apis";
 // import Link from 'next/link';
-import { Menu } from 'lucide-react';
-
+import { Menu } from "lucide-react";
 
 export default function MobHomeNavbar() {
   const { user, setUser, isLoading, setIsLoading } = useUser();
@@ -23,50 +22,48 @@ export default function MobHomeNavbar() {
     checkUserAndMount();
   }, [user]);
 
-  
- useEffect(() => {
-   async function cSessionCheck() {
-     try {
-       setMounted(true);
-       setIsLoading(true);
-       const res = await checkSession();
+  useEffect(() => {
+    async function cSessionCheck() {
+      try {
+        setMounted(true);
+        setIsLoading(true);
+        const res = await checkSession();
 
-       if (!res.success) {
-         console.warn("Session invalid, redirecting...");
-         window.location.replace("/");
-       } else {
-         setUser(res.user);
-         setIsLoading(false);
-       }
-     } catch (err) {
-       console.error("Session check failed:", err);
-       window.location.replace("/");
-     }
-   }
+        if (!res.success) {
+          console.warn("Session invalid, redirecting...");
+          window.location.replace("/");
+        } else {
+          setUser(res.user);
+          setIsLoading(false);
+        }
+      } catch (err) {
+        console.error("Session check failed:", err);
+        window.location.replace("/");
+      }
+    }
 
-   cSessionCheck();
- }, [setUser, setIsLoading]);
- 
- const fullname = mounted ? (user?.name || 'Admin') : '';
+    cSessionCheck();
+  }, [setUser, setIsLoading]);
+
+  const fullname = mounted ? user?.name || "Admin" : "";
   // const displayEmail = mounted ? (user?.email || '') : '';
 
   return (
-    <header
-      className="bg-white/80 backdrop-blur-md border-b border-slate-100 flex flex-col items-center justify-between px-2 sticky top-0 z-30 h-fit"
-    >
-        <div className="flex items-center w-full bg-primary/40 rounded-2xl px-2 text-secondary">
-            <h1 className="font-(family-name:--font-inter) text-md text-start font-black text-slate-800 tracking-tight">
-                Welcome, <span className="text-primary">{fullname}</span>
-            </h1>
-        </div>
+    <header className="bg-white/80 backdrop-blur-md border-b border-slate-100 flex flex-col items-center justify-between px-2 sticky top-0 z-30 h-fit font-sans">
+      <div className="flex items-center w-full bg-primary/40 rounded-2xl px-2 text-secondary">
+        <h1 className="font-montserrat text-md text-start font-black text-slate-800 tracking-tight py-2">
+          Welcome, <span className="text-primary">{fullname}</span>
+        </h1>
+      </div>
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center w-fit bg-white/40 rounded-2xl text-secondary">
-            <button 
-            onClick={() => setIsSidebarOpen(true)} 
+          <button
+            type="button"
+            onClick={() => setIsSidebarOpen(true)}
             className="p-1 text-primary m-2 hover:bg-white/20 rounded-lg transition-colors"
-            >
+          >
             <Menu size={20} />
-            </button>
+          </button>
         </div>
         <div className="flex items-center gap-3 p-2 w-full justify-end">
           <div className="indicator group">
@@ -76,8 +73,9 @@ export default function MobHomeNavbar() {
               </span>
             )} */}
             <button
+              type="button"
               className="btn btn-ghost btn-circle bg-slate-50 hover:bg-primary/10 hover:text-primary transition-all duration-300 shadow-sm border border-slate-100"
-              onClick={() => router.push('/home/dashboard')}
+              onClick={() => router.push("/home/dashboard")}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -97,8 +95,9 @@ export default function MobHomeNavbar() {
           </div>
 
           <button
+            type="button"
             className="btn btn-ghost btn-circle bg-slate-50 hover:bg-secondary/10 hover:text-secondary transition-all duration-300 shadow-sm border border-slate-100"
-            onClick={() => router.push('/home/settings')}
+            onClick={() => router.push("/home/settings")}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -125,4 +124,4 @@ export default function MobHomeNavbar() {
       </div>
     </header>
   );
-};
+}

@@ -52,9 +52,9 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-240 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 animate-pulse h-[calc(100vh-200px)]">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 font-sans p-6 animate-pulse">
         <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <h2 className="text-slate-600 font-semibold text-lg">
+        <h2 className="text-slate-600 font-montserrat font-semibold text-lg">
           Loading Command Center...
         </h2>
         <p className="text-slate-400 text-sm">Syncing estate records</p>
@@ -64,7 +64,7 @@ export default function Dashboard() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-240 p-8 text-center bg-white rounded-xl shadow-sm border border-red-100">
+      <div className="flex flex-col items-center justify-center min-h-screen font-sans p-6 text-center bg-white">
         <div className="bg-red-50 p-4 rounded-full mb-4">
           <svg
             className="w-8 h-8 text-red-500"
@@ -80,13 +80,13 @@ export default function Dashboard() {
             />
           </svg>
         </div>
-        <h2 className="text-xl font-bold text-slate-800 mb-2">
+        <h2 className="text-xl font-bold font-montserrat text-slate-800 mb-2">
           Connection Issue
         </h2>
         <p className="text-slate-500 mb-6 max-w-xs">{error}</p>
         <button
           onClick={() => window.location.reload()}
-          className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors"
+          className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-montserrat font-medium hover:bg-indigo-700 transition-colors shadow-md"
         >
           Retry Connection
         </button>
@@ -96,7 +96,7 @@ export default function Dashboard() {
 
   if (!stats) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-160 bg-slate-50 rounded-xl border border-slate-200">
+      <div className="flex flex-col items-center justify-center min-h-screen font-sans bg-slate-50 p-6">
         <p className="text-slate-500 italic">
           No activity data found for this estate yet.
         </p>
@@ -105,24 +105,24 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="relative space-y-4 h-[calc(100vh-150px)] overflow-y-auto p-5 bg-slate-50/50">
-      {/* Header - Compact */}
-      <div className="flex justify-between items-center">
+    <div className="relative space-y-6 w-full min-h-screen overflow-y-auto p-4 sm:p-6 bg-slate-50/50 pb-safe font-sans">
+      {/* Header - Compact & Mobile Friendly */}
+      <div className="flex justify-between items-center border-b border-slate-100 pb-3">
         <div>
-          <div className="text-[16px] font-bold text-slate-400 uppercase tracking-widest">
+          <div className="text-xs font-oswald font-bold text-slate-400 uppercase tracking-widest">
             {currentDate}
           </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-montserrat font-black text-slate-900 tracking-tight">
             Command Center
           </h1>
         </div>
         {loading && (
-          <Loader2 className="animate-spin text-indigo-600" size={20} />
+          <Loader2 className="animate-spin text-indigo-600" size={22} />
         )}
       </div>
 
-      {/* Primary Stats Grid - Reduced padding/margins */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+      {/* Primary Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
         <StatCard
           icon={<ShieldCheck size={22} />}
           label="Security"
@@ -207,29 +207,32 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="bg-white rounded-4xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+      {/* Resident Management Row Block */}
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col transition-all hover:border-slate-200">
         <div
-          className="p-6 border-b border-slate-50 flex flex-col md:flex-row justify-between items-center gap-4 bg-linear-to-r cursor-pointer from-white to-blue-50/20"
+          className="p-5 sm:p-6 border-b border-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-linear-to-r cursor-pointer from-white to-blue-50/20"
           onClick={() => router.push("/home/tenantmanagement")}
         >
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-100">
+          <div className="flex items-start sm:items-center gap-4">
+            <div className="p-3 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-100 shrink-0">
               <UserCheck size={24} />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-black text-slate-900 text-xl tracking-tight">
-                  Resident Management
-                </h3>
-              </div>
-              <div className="flex gap-4 mt-1 text-sm font-bold text-slate-400 uppercase tracking-tighter">
+              <h3 className="font-montserrat font-black text-slate-900 text-xl tracking-tight">
+                Resident Management
+              </h3>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs font-oswald font-bold text-slate-400 uppercase tracking-wider">
                 <span>
                   Tenants:{" "}
-                  <b className="text-slate-900">{stats.residents.total}</b>
+                  <b className="text-slate-900 font-sans">
+                    {stats.residents.total}
+                  </b>
                 </span>
                 <span>
                   Suggestions & Reports:{" "}
-                  <b className="text-rose-500">{stats.residents.complaints}</b>
+                  <b className="text-rose-500 font-sans">
+                    {stats.residents.complaints}
+                  </b>
                 </span>
               </div>
             </div>
@@ -237,18 +240,18 @@ export default function Dashboard() {
         </div>
 
         <div
-          className="p-6 bg-slate-50/20 cursor-pointer"
+          className="p-5 sm:p-6 bg-slate-50/20 cursor-pointer"
           onClick={() => router.push("/home/joinrequestpage")}
         >
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-3">
             <PlusCircle size={14} className="text-blue-600" />
-            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            <h4 className="text-[11px] font-oswald font-bold text-slate-400 uppercase tracking-widest">
               Pending Requests
             </h4>
           </div>
 
-          <div className="bg-white p-4 rounded-2xl border border-slate-100 inline-block min-w-50">
-            <span className="text-xl font-black text-slate-900">
+          <div className="bg-white px-5 py-3 rounded-2xl border border-slate-100 inline-block min-w-[120px] shadow-2xs">
+            <span className="text-2xl font-montserrat font-black text-slate-900">
               {stats.residents.pendingRequests}
             </span>
           </div>
@@ -268,32 +271,36 @@ function StatCard({ icon, label, value, color, metrics, onClick }: any) {
 
   return (
     <div
-      className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 flex flex-col justify-between transition-all"
+      className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 flex flex-col justify-between transition-all hover:shadow-md cursor-pointer active:scale-[0.99]"
       onClick={onClick}
     >
       <div>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 gap-2">
           <div
-            className={`p-2.5 rounded-xl ${colorMap[color].split(" ")[0]} ${colorMap[color].split(" ")[1]}`}
+            className={`p-2.5 rounded-xl shrink-0 ${colorMap[color].split(" ")[0]} ${colorMap[color].split(" ")[1]}`}
           >
             {icon}
           </div>
-          <span className="text-[14px] font-black text-slate-400 uppercase tracking-widest">
+          <span className="text-xs font-oswald font-bold text-slate-400 text-right uppercase tracking-wider line-clamp-1">
             {label}
           </span>
         </div>
-        <div className="text-2xl font-black text-slate-900 tracking-tighter truncate">
+        <div className="text-3xl font-montserrat font-black text-slate-900 tracking-tight truncate">
           {value}
         </div>
       </div>
 
-      <div className="mt-3 pt-3 border-t border-slate-50 space-y-1">
+      <div className="mt-4 pt-3 border-t border-slate-100 space-y-1.5">
         {metrics.map((m: any, idx: number) => (
-          <div key={idx} className="flex justify-between items-center">
-            <span className="text-[12px] font-black text-slate-400 uppercase tracking-tighter">
+          <div key={idx} className="flex justify-between items-start gap-2">
+            <span className="text-[11px] font-oswald font-bold text-slate-400 uppercase tracking-wide leading-tight">
               {m.label}
             </span>
-            <span className={`text-md font-black ${m.color}`}>{m.value}</span>
+            <span
+              className={`text-sm font-montserrat font-bold shrink-0 ${m.color}`}
+            >
+              {m.value}
+            </span>
           </div>
         ))}
       </div>

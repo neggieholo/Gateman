@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @next/next/no-img-element */
+"use client";
+
 import React, { useEffect, useState } from "react";
 import { securityDb } from "../services/database";
 import { SecurityUser } from "../services/types";
@@ -45,39 +47,39 @@ export default function SecurityPersonnelsList() {
     } catch (err) {
       alert("Failed to delete personnel");
     } finally {
-      setDeletingId(null); // Stop loading
+      setDeletingId(null);
     }
   };
 
   return (
-    <div className="h-[calc(100vh-250px)] flex flex-col">
-      {/* Search Toolbar - Simplified per your request */}
-      <div className="flex flex-col md:flex-row gap-4 mb-8 items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-slate-100 mx-4">
-        <div className="relative w-full md:w-96">
+    <div className="h-[calc(100vh-250px)] flex flex-col font-sans">
+      {/* Search Toolbar */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-6 items-center justify-between bg-white p-4 rounded-2xl shadow-2xs border border-slate-100 mx-4">
+        <div className="relative w-full sm:w-96 group">
           <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            size={18}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"
+            size={16}
           />
           <input
             type="text"
             placeholder="Search personnel..."
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-sans text-sm font-medium focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 focus:bg-white transition-all shadow-2xs"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
         {filteredGuards.length > 0 ? (
           <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-6 p-4">
             {filteredGuards.map((guard) => (
               <div
                 key={guard.id}
-                className="flex flex-col bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm h-72"
+                className="flex flex-col bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-2xs hover:shadow-xs hover:border-slate-200 transition-all h-72"
               >
-                <div className="flex flex-row flex-1 p-3 gap-4">
-                  <div className="w-32 h-full bg-slate-100 rounded-lg overflow-hidden shrink-0 border border-slate-200">
+                <div className="flex flex-row flex-1 p-4 gap-4 min-w-0">
+                  <div className="w-28 sm:w-32 h-full bg-slate-50 rounded-2xl overflow-hidden shrink-0 border border-slate-100 relative">
                     {guard.avatar ? (
                       <img
                         src={guard.avatar}
@@ -85,42 +87,45 @@ export default function SecurityPersonnelsList() {
                         alt={guard.name}
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-blue-50 text-blue-300 font-bold text-2xl">
+                      <div className="w-full h-full flex items-center justify-center bg-blue-50 text-blue-400 font-montserrat font-black text-3xl uppercase">
                         {guard.name[0]}
                       </div>
                     )}
                   </div>
 
-                  <div className="flex flex-col justify-center gap-4 flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-slate-800 text-lg truncate">
+                  <div className="flex flex-col justify-center gap-3 flex-1 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <h3 className="font-montserrat font-black text-slate-800 text-base sm:text-lg truncate tracking-tight flex-1">
                         {guard.name}
                       </h3>
                       {guard.is_on_duty && (
-                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 text-slate-500">
-                      <Mail size={14} className="shrink-0" />
-                      <p className="text-xs truncate">{guard.email}</p>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-slate-500">
-                      <Phone size={14} className="shrink-0" />
-                      <p className="text-xs truncate">
-                        {guard.phone || "No phone"}
+                    <div className="flex items-center gap-2 text-slate-400 min-w-0">
+                      <Mail size={14} className="shrink-0 text-slate-300" />
+                      <p className="text-xs truncate font-sans font-medium">
+                        {guard.email}
                       </p>
                     </div>
 
-                    <div className="flex flex-col gap-3">
-                      <div className="space-y-1">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    <div className="flex items-center gap-2 text-slate-400 min-w-0">
+                      <Phone size={14} className="shrink-0 text-slate-300" />
+                      <p className="text-xs truncate font-sans font-semibold">
+                        {guard.phone || "No phone connected"}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col gap-2 mt-1">
+                      {/* Last Check-in Section */}
+                      <div className="space-y-0.5">
+                        <p className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-widest">
                           Last Check-in
                         </p>
-                        <div className="flex items-center gap-2 text-blue-600 bg-blue-50 px-2 py-1 rounded-md w-fit">
-                          <Clock size={14} />
-                          <span className="text-[10px] font-bold uppercase tracking-tighter">
+                        <div className="flex items-center gap-1.5 text-blue-600 bg-blue-50/70 px-2 py-0.5 rounded-lg w-fit border border-blue-100/50">
+                          <Clock size={12} />
+                          <span className="text-[10px] font-oswald font-bold uppercase tracking-wider">
                             {guard.last_checkin
                               ? formatLastSeen(guard.last_checkin)
                               : "No record"}
@@ -129,13 +134,13 @@ export default function SecurityPersonnelsList() {
                       </div>
 
                       {/* Last Check-out Section */}
-                      <div className="space-y-1">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      <div className="space-y-0.5">
+                        <p className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-widest">
                           Last Check-out
                         </p>
-                        <div className="flex items-center gap-2 text-slate-600 bg-slate-100 px-2 py-1 rounded-md w-fit">
-                          <Clock size={14} />
-                          <span className="text-[10px] font-bold uppercase tracking-tighter">
+                        <div className="flex items-center gap-1.5 text-slate-600 bg-slate-50 px-2 py-0.5 rounded-lg w-fit border border-slate-100">
+                          <Clock size={12} />
+                          <span className="text-[10px] font-oswald font-bold uppercase tracking-wider">
                             {guard.last_checkout
                               ? formatLastSeen(guard.last_checkout)
                               : "No record"}
@@ -150,20 +155,20 @@ export default function SecurityPersonnelsList() {
                 <button
                   onClick={() => handleDelete(guard.id)}
                   disabled={deletingId === guard.id}
-                  className={`w-full py-3 border-t border-slate-100 font-bold text-sm flex items-center justify-center gap-2 transition-colors ${
+                  className={`w-full py-3.5 border-t border-slate-50 font-montserrat font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-colors shrink-0 ${
                     deletingId === guard.id
-                      ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                      : "bg-slate-50 text-red-600 hover:bg-red-50"
+                      ? "bg-slate-50 text-slate-300 cursor-not-allowed"
+                      : "bg-slate-50/50 text-red-600 hover:bg-red-50/80 hover:text-red-700"
                   }`}
                 >
                   {deletingId === guard.id ? (
                     <>
-                      <Loader2 size={16} className="animate-spin" />
+                      <Loader2 size={14} className="animate-spin" />
                       Removing...
                     </>
                   ) : (
                     <>
-                      <Trash2 size={16} />
+                      <Trash2 size={14} />
                       Remove Personnel
                     </>
                   )}
@@ -172,19 +177,23 @@ export default function SecurityPersonnelsList() {
             ))}
           </div>
         ) : error ? (
-          <div className="p-10 bg-red-50 rounded-xl border border-red-100 border-dashed flex flex-col items-center">
-            <p className="text-red-600 font-bold">Server Error</p>
+          <div className="m-4 p-8 bg-rose-50 rounded-2xl border border-rose-100 border-dashed flex flex-col items-center justify-center">
+            <p className="text-rose-600 font-montserrat font-bold text-sm">
+              Server Connection Failure
+            </p>
             <button
               onClick={fetchGuards}
-              className="mt-2 text-xs text-red-500 underline"
+              className="mt-2 text-xs font-oswald font-bold uppercase tracking-wider text-rose-500 hover:text-rose-700 underline"
             >
               Try again
             </button>
           </div>
         ) : (
           <div className="p-4">
-            <p className="text-gray-500 p-5 bg-white rounded-lg border border-dashed text-center">
-              {loading ? "Loading..." : "No security personnel found"}
+            <p className="text-slate-400 p-8 bg-white rounded-2xl border border-dashed border-slate-200 text-center font-medium text-sm">
+              {loading
+                ? "Loading guards database..."
+                : "No security personnel found"}
             </p>
           </div>
         )}

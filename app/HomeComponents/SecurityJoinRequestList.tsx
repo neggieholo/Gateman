@@ -41,26 +41,21 @@ const SecurityJoinRequestsList: React.FC<SecurityJoinRequestsListProps> = ({
   const [loadingAction, setLoadingAction] = useState(false);
   const [loadingApproveAction, setLoadingApproveAction] = useState(false);
 
-  // const MultipliedReqs = Array(16).fill(requests).flat();
-
   const confirmAction = async () => {
     if (!showPrompt) return;
 
     setLoadingAction(true);
 
     try {
-      if (showPrompt.type === "decline") {
-        await onDecline(showPrompt.id, feedback);
-      } else {
-        await onBlock(showPrompt.id, feedback);
-      }
+      await (showPrompt.type === "decline"
+        ? onDecline(showPrompt.id, feedback)
+        : onBlock(showPrompt.id, feedback));
 
       setFeedback("");
       setShowPrompt(null);
       setSelectedRequest(null);
     } catch (err: any) {
       console.error(`Failed to ${showPrompt.type}:`, err);
-
       alert(
         err.message || `An error occurred while trying to ${showPrompt.type}.`,
       );
@@ -86,69 +81,82 @@ const SecurityJoinRequestsList: React.FC<SecurityJoinRequestsListProps> = ({
   }, [selectedRequest, hideTabs]);
 
   const KYCDetailView = ({ req }: { req: SecurityJoinRequest }) => (
-    <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-y-auto h-[calc(100vh-300px)] flex flex-col">
-      <div className="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-        <div>
-          <h3 className="text-xl font-bold text-slate-900">{req.name}</h3>
-          <p className="text-sm text-slate-500">{req.email}</p>
-          <p className="text-sm text-slate-500">{req.phone}</p>
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-y-auto h-[calc(100vh-300px)] flex flex-col font-sans">
+      <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex sm:flex-row flex-col gap-3 justify-between sm:items-center min-w-0">
+        <div className="min-w-0 flex-1">
+          <h3 className="text-xl font-montserrat font-black text-slate-800 tracking-tight truncate block w-full">
+            {req.name}
+          </h3>
+          <p className="text-xs text-slate-400 font-medium mt-0.5 truncate block w-full">
+            {req.email}
+          </p>
+          <p className="text-xs text-slate-400 font-semibold mt-0.5 tracking-wide font-mono">
+            {req.phone}
+          </p>
         </div>
         <button
           onClick={() => setSelectedRequest(null)}
-          className="flex items-center gap-1 text-slate-500 hover:text-slate-800 transition-colors"
+          className="flex items-center gap-1.5 text-blue-600 font-montserrat font-bold text-xs uppercase tracking-wider hover:text-blue-700 transition-colors shrink-0 self-start sm:self-center"
         >
-          <ArrowLeft size={18} /> Back to list
+          <ArrowLeft size={14} /> Back to list
         </button>
       </div>
 
-      <div className="p-6 flex-1 overflow-y-auto">
-        <div className="grid grid-cols-2 gap-4 mb-8 bg-blue-50 p-4 rounded-lg">
-          <p className="text-sm">
-            <strong>ID Type:</strong>{" "}
-            <span className="uppercase font-bold text-blue-700">
+      <div className="p-5 flex-1 overflow-y-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 bg-blue-50/40 border border-blue-100/30 p-4 rounded-xl">
+          <p className="text-xs text-slate-600 font-medium">
+            <strong className="text-slate-400 font-normal uppercase font-oswald tracking-wide mr-1">
+              ID Type:
+            </strong>{" "}
+            <span className="uppercase font-oswald font-bold text-blue-600 tracking-wider">
               {req.id_type}
             </span>
           </p>
-          <p className="text-sm">
-            <strong>Requested:</strong>{" "}
-            {new Date(req.requested_at).toLocaleString()}
+          <p className="text-xs text-slate-600 font-medium">
+            <strong className="text-slate-400 font-normal uppercase font-oswald tracking-wide mr-1">
+              Requested:
+            </strong>{" "}
+            <span className="font-oswald font-bold text-slate-700 tracking-wide">
+              {new Date(req.requested_at).toLocaleString()}
+            </span>
           </p>
         </div>
 
         {/* Credentials Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <DocPreview url={req.selfie_url} label="Selfie" />
           <DocPreview url={req.id_front_url} label="ID Front" />
           <DocPreview url={req.id_back_url} label="ID Back" />
         </div>
       </div>
+
       {/* Admin Action Row */}
-      <div className="flex flex-row gap-3 items-center mx-2 p-6 border-t border-slate-100">
+      <div className="flex flex-wrap gap-3 items-center p-4 bg-slate-50/60 border-t border-slate-100">
         <button
           onClick={() => handleApprove(req.id)}
-          className="w-32 flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition-shadow shadow-md "
+          className="flex-1 sm:flex-initial min-w-[120px] flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 px-4 rounded-xl font-montserrat font-bold text-xs uppercase tracking-wider transition-all shadow-2xs shadow-emerald-100 active:scale-98"
         >
           {loadingApproveAction && req.id === selectedRequest?.id ? (
-            <span className="flex items-center gap-2 text-sm">
-              <Loader2 className="animate-spin" size={16} /> Processing...
-            </span>
+            <>
+              <Loader2 className="animate-spin" size={14} /> Processing...
+            </>
           ) : (
             <>
-              <Check size={18} /> <span>Accept</span>
+              <Check size={14} /> Accept
             </>
           )}
         </button>
         <button
           onClick={() => setShowPrompt({ id: req.id, type: "decline" })}
-          className="w-32 flex items-center justify-center gap-2 bg-amber-500 text-white py-3 rounded-lg font-bold hover:bg-amber-600 transition-shadow shadow-md"
+          className="flex-1 sm:flex-initial min-w-[120px] flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white py-2.5 px-4 rounded-xl font-montserrat font-bold text-xs uppercase tracking-wider transition-all shadow-2xs shadow-amber-100 active:scale-98"
         >
-          <X size={18} /> Decline
+          <X size={14} /> Decline
         </button>
         <button
           onClick={() => setShowPrompt({ id: req.id, type: "block" })}
-          className="w-32 flex items-center justify-center gap-2 bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition-shadow shadow-md"
+          className="flex-1 sm:flex-initial min-w-[120px] flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white py-2.5 px-4 rounded-xl font-montserrat font-bold text-xs uppercase tracking-wider transition-all shadow-2xs shadow-rose-100 active:scale-98"
         >
-          <Ban size={18} /> Block
+          <Ban size={14} /> Block
         </button>
       </div>
     </div>
@@ -157,29 +165,30 @@ const SecurityJoinRequestsList: React.FC<SecurityJoinRequestsListProps> = ({
   const DocPreview = ({ url, label }: { url?: string; label: string }) => (
     <div className="space-y-2">
       <div className="flex justify-between items-center">
-        <span className="text-xs font-bold text-slate-400 uppercase tracking-tighter">
+        <span className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-wider">
           {label}
         </span>
         {url && (
           <a
             href={url}
             target="_blank"
-            className="text-blue-500 hover:text-blue-700"
+            rel="noopener noreferrer"
+            className="text-blue-500 hover:text-blue-700 p-1 bg-slate-50 hover:bg-slate-100 rounded-md transition-colors"
           >
-            <ExternalLink size={14} />
+            <ExternalLink size={12} />
           </a>
         )}
       </div>
       {url ? (
         <img
           src={url}
-          className="w-full h-40 object-cover rounded-lg border border-slate-200 bg-slate-100"
+          className="w-full h-44 object-cover rounded-xl border border-slate-200/60 bg-slate-50"
           alt={label}
         />
       ) : (
-        <div className="w-full h-40 bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center">
-          <span className="text-slate-300 text-sm italic font-medium">
-            Not Provided
+        <div className="w-full h-44 bg-slate-50/50 border-2 border-dashed border-slate-200/60 rounded-xl flex flex-col items-center justify-center p-4 text-center">
+          <span className="text-slate-300 text-xs italic font-medium">
+            No document provided
           </span>
         </div>
       )}
@@ -188,31 +197,34 @@ const SecurityJoinRequestsList: React.FC<SecurityJoinRequestsListProps> = ({
 
   return (
     <>
-      {/* 1. Main View Area (Background) */}
       {selectedRequest ? (
         <KYCDetailView req={selectedRequest} />
       ) : requests.length === 0 ? (
-        <p className="text-gray-500 p-5 bg-white rounded-lg border border-dashed text-center">
-          {loading ? "Loading..." : "No pending join requests"}
-        </p>
+        <div className="p-8 bg-white rounded-2xl border-2 border-dashed border-slate-200/60 text-center font-sans">
+          <p className="text-slate-400 font-medium text-sm">
+            {loading
+              ? "Loading personnel requests..."
+              : "No pending registration requests"}
+          </p>
+        </div>
       ) : (
-        <div className="space-y-3 h-[calc(100vh-380px)] overflow-y-auto p-3">
+        <div className="space-y-3 h-[calc(100vh-380px)] overflow-y-auto p-1 font-sans custom-scrollbar">
           {requests.map((req) => (
             <div
               key={req.id}
-              className="flex justify-between items-center bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-all group my-2"
+              className="flex items-center justify-between gap-4 bg-white border border-slate-200/70 rounded-2xl p-4 shadow-2xs hover:shadow-xs transition-all duration-200 group min-w-0"
             >
-              <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 rounded-full flex items-center justify-center border border-blue-100 shrink-0">
-                  <span className="text-blue-600 font-bold text-base sm:text-lg">
+              <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                <div className="w-11 h-11 bg-blue-50 rounded-xl flex items-center justify-center border border-blue-100/50 shrink-0">
+                  <span className="text-blue-600 font-montserrat font-black text-base uppercase">
                     {req.name[0]}
                   </span>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-lg font-bold text-slate-800 group-hover:text-blue-700 transition-colors">
+                <div className="min-w-0 flex-1">
+                  <span className="block text-base font-montserrat font-bold text-slate-800 group-hover:text-blue-600 transition-colors truncate w-full tracking-tight">
                     {req.name}
                   </span>
-                  <span className="text-xs text-slate-400 font-medium">
+                  <span className="block text-[11px] font-oswald font-bold text-slate-400 uppercase tracking-wide mt-0.5">
                     Received: {new Date(req.requested_at).toLocaleDateString()}
                   </span>
                 </div>
@@ -220,29 +232,29 @@ const SecurityJoinRequestsList: React.FC<SecurityJoinRequestsListProps> = ({
 
               <button
                 onClick={() => setSelectedRequest(req)}
-                className="flex items-center gap-2 bg-slate-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold border border-slate-100 hover:bg-blue-600 hover:text-white transition-all"
+                className="flex items-center gap-1.5 bg-slate-50 text-blue-600 px-4 py-2.5 rounded-xl text-xs font-montserrat font-bold uppercase tracking-wider border border-slate-100 hover:bg-blue-600 hover:text-white transition-all shrink-0 shadow-3xs active:scale-98"
               >
-                See Details <ArrowRight size={16} />
+                Details <ArrowRight size={13} />
               </button>
             </div>
           ))}
         </div>
       )}
 
-      {/* 2. Global Modal (The Overlay) */}
+      {/* Global Confirmation Modal */}
       {showPrompt && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
-            <h3 className="text-lg font-bold mb-2">
-              Add a reason for{" "}
+        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl border border-slate-100/80 font-sans">
+            <h3 className="text-base font-montserrat font-black text-slate-800 tracking-tight mb-2">
+              Provide justification for{" "}
               {showPrompt.type === "block" ? "blocking" : "declining"}?
             </h3>
             <textarea
-              className="w-full border rounded-lg p-3 text-sm h-32 focus:ring-2 focus:ring-blue-500 outline-none text-slate-800"
+              className="w-full border border-slate-200 rounded-xl p-3 text-sm h-28 focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none text-slate-700 placeholder:text-slate-400 transition-all font-medium resize-none"
               placeholder={
                 showPrompt.type === "block"
-                  ? "You don't belong in this estate"
-                  : "e.g. ID is blurry, please take a clearer photo."
+                  ? "e.g. Identity verification failed or unauthorized credentials."
+                  : "e.g. Uploaded document is unclear, please resubmit a legible image."
               }
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
@@ -251,29 +263,33 @@ const SecurityJoinRequestsList: React.FC<SecurityJoinRequestsListProps> = ({
             <div className="flex gap-3 mt-4">
               <button
                 onClick={() => setShowPrompt(null)}
-                className="flex-1 py-2 text-slate-500 font-medium hover:bg-slate-50 rounded-lg transition-colors"
+                className="flex-1 py-2.5 text-slate-400 font-montserrat font-bold text-xs uppercase tracking-wider hover:bg-slate-50 hover:text-slate-600 rounded-xl transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmAction}
                 disabled={loadingAction}
-                className={`flex-1 py-2 text-white rounded-lg font-bold transition-opacity flex items-center justify-center gap-2 ${
+                className={`flex-1 py-2.5 text-white rounded-xl font-montserrat font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-2xs active:scale-98 ${
                   loadingAction
-                    ? "opacity-70 cursor-not-allowed"
-                    : "hover:opacity-90"
+                    ? "opacity-60 cursor-not-allowed"
+                    : "hover:opacity-95"
                 } ${
-                  showPrompt.type === "block" ? "bg-red-600" : "bg-blue-600"
+                  showPrompt.type === "block"
+                    ? "bg-rose-600 shadow-rose-100"
+                    : "bg-blue-600 shadow-blue-100"
                 }`}
               >
                 {loadingAction ? (
                   <>
-                    <Loader2 className="animate-spin" size={18} />
+                    <Loader2 className="animate-spin" size={14} />
                     <span>Processing...</span>
                   </>
                 ) : (
                   <span>
-                    {showPrompt.type === "block" ? "Block" : "Decline"}
+                    {showPrompt.type === "block"
+                      ? "Block Personnel"
+                      : "Decline Access"}
                   </span>
                 )}
               </button>

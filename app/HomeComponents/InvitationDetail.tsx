@@ -28,11 +28,11 @@ const InvitationDetailModal = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto font-sans"
       onClick={onClose}
     >
       <div
-        className="bg-white w-full max-w-[60%] rounded-[3rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200"
+        className="bg-white w-full max-w-md lg:max-w-[60%] rounded-[2rem] lg:rounded-[3rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 my-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Status Bar */}
@@ -40,18 +40,19 @@ const InvitationDetailModal = ({
           className={`h-3 ${invite.is_cancelled ? "bg-rose-500" : invite.invite_type === "multi_entry" ? "bg-indigo-500" : "bg-emerald-500"}`}
         />
 
-        <div className="p-8">
+        <div className="p-4 sm:p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
           <div className="flex flex-col items-center text-center">
-            <div className="flex gap-3 w-full justify-center">
-              <div className="flex-1 min-w-70 max-w-[45%] bg-slate-100 rounded-[2.5rem] border-4 border-white shadow-md overflow-hidden flex items-center justify-center relative">
+            <div className="flex flex-col lg:flex-row gap-4 lg:gap-3 w-full justify-center items-center lg:items-start">
+              {/* Image Container */}
+              <div className="w-full max-w-[260px] lg:flex-1 lg:min-w-70 lg:max-w-[45%] bg-slate-100 rounded-[2rem] lg:rounded-[2.5rem] border-4 border-white shadow-md overflow-hidden flex items-center justify-center relative aspect-square lg:aspect-auto">
                 {invite.guest_image_url ? (
                   <img
                     src={invite.guest_image_url}
                     alt=""
-                    className="w-full h-full max-h-150 object-cover object-center"
+                    className="w-full h-full lg:max-h-150 object-cover object-center"
                   />
                 ) : (
-                  <div className="text-slate-300 py-20">
+                  <div className="text-slate-300 py-16 lg:py-20">
                     {isStaffEntry ? (
                       <Briefcase size={48} className="text-indigo-600/40" />
                     ) : (
@@ -61,31 +62,32 @@ const InvitationDetailModal = ({
                 )}
               </div>
 
-              <div className="flex-1">
+              {/* Text/Content Area */}
+              <div className="flex-1 w-full text-center lg:text-left">
                 <h2
-                  className={`text-2xl font-black text-slate-900 ${invite.is_cancelled ? "line-through opacity-50" : ""}`}
+                  className={`text-xl lg:text-2xl font-montserrat font-black text-slate-900 break-words ${invite.is_cancelled ? "line-through opacity-50" : ""}`}
                 >
                   {invite.guest_name}
                 </h2>
                 {isStaffEntry && invite.staff_position && (
-                  <p className="font-bold text-xs mt-0.5 mb-0.5 text-slate-500">
+                  <p className="font-sans font-bold text-xs mt-0.5 mb-0.5 text-slate-500">
                     💼 {invite.staff_position}
                   </p>
                 )}
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
+                <p className="text-xs font-oswald font-bold text-slate-400 uppercase tracking-widest mb-1 lg:mb-4">
                   {invite.guest_phone}
                 </p>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
+                <p className="text-xs font-oswald font-bold text-slate-400 uppercase tracking-widest mb-4">
                   {invite.invite_type.replace("_", " ")}
                 </p>
 
                 {/* Status Badge */}
                 {!isStaffEntry && (
                   <div
-                    className={`${statusDetails?.container} px-4 py-1.5 rounded-full mb-8 w-fit mx-auto`}
+                    className={`${statusDetails?.container} px-4 py-1.5 rounded-full mb-6 lg:mb-8 w-fit mx-auto lg:mx-0`}
                   >
                     <span
-                      className={`${statusDetails?.text} text-xs font-black`}
+                      className={`${statusDetails?.text} text-xs font-sans font-black`}
                     >
                       {statusDetails?.label}
                     </span>
@@ -94,12 +96,12 @@ const InvitationDetailModal = ({
 
                 {isStaffEntry && (
                   <div
-                    className={`px-2 py-2 m-2 rounded-md w-fit mx-auto ${
+                    className={`px-2 py-2 m-2 rounded-md w-fit mx-auto lg:mx-0 ${
                       invite.is_activated ? "bg-emerald-100" : "bg-rose-100"
                     }`}
                   >
                     <p
-                      className={`text-[9px] font-extrabold ${invite.is_activated ? "text-emerald-500" : "text-rose-500"}`}
+                      className={`text-[9px] font-oswald font-extrabold ${invite.is_activated ? "text-emerald-500" : "text-rose-500"}`}
                     >
                       {invite.is_activated
                         ? invite.status === "checked_in"
@@ -114,30 +116,27 @@ const InvitationDetailModal = ({
                   </div>
                 )}
 
-                <div
-                  className={`bg-slate-50 w-full rounded-[30px] p-5 mb-6 border border-slate-100`}
-                >
-                  <div className="flex justify-center">
-                    <Home size={16} color="#6366f1" />
-                    <p className="text-[10px] text-slate-400 uppercase font-bold">
+                {/* Location Details Subcard */}
+                <div className="bg-slate-50 w-full rounded-[24px] lg:rounded-[30px] p-4 lg:p-5 mb-6 border border-slate-100 text-left">
+                  <div className="flex items-center gap-1.5 justify-start lg:justify-start">
+                    <Home size={16} className="text-indigo-500" />
+                    <p className="text-[10px] text-slate-400 uppercase font-oswald font-bold tracking-wider">
                       Visiting Resident
                     </p>
                   </div>
                   <div className="mb-1">
-                    <p
-                      className={`text-gm-navy ml-2 tracking-widest text-base  font-bold`}
-                    >
+                    <p className="text-gm-navy tracking-widest text-base font-sans font-bold">
                       {invite.resident_name || "Resident"}
                     </p>
                   </div>
 
-                  <p className="text-[10px] text-indigo-600 uppercase mb-1 ml-6 tracking-widest  font-bold ">
+                  <p className="text-[10px] text-indigo-600 uppercase mb-1 lg:ml-6 tracking-widest font-sans font-bold">
                     {invite.estate_name || "Estate Security"}
                   </p>
-                  <p className="text-[10px] text-indigo-600 uppercase mb-1 ml-6 tracking-widest font-oswald-semibold ">
+                  <p className="text-[10px] text-indigo-600 uppercase mb-1 lg:ml-6 tracking-widest font-sans font-medium">
                     {invite.estate_address || "Estate Security"}
                   </p>
-                  <p className="text-[10px] text-indigo-600 uppercase mb-3 ml-6 tracking-widest font-oswald-semibold ">
+                  <p className="text-[10px] text-indigo-600 uppercase mb-3 lg:ml-6 tracking-widest font-sans font-medium">
                     {invite.town} / {invite.lga}
                   </p>
 
@@ -153,9 +152,9 @@ const InvitationDetailModal = ({
                         return (
                           <div
                             key={`detail-loc-${idx}`}
-                            className={`border px-3 py-1.5 rounded-xl flex-row items-center "bg-indigo-50/90 border-indigo-100"`}
+                            className="border bg-indigo-50/90 border-indigo-100 px-3 py-1.5 rounded-xl flex items-center"
                           >
-                            <p className={`font-black text-xs text-indigo-950`}>
+                            <p className="font-sans font-black text-xs text-indigo-950">
                               Blk {loc.block}{" "}
                               <span className="text-slate-300">|</span> Unit(s):{" "}
                               {unitsString}
@@ -165,38 +164,36 @@ const InvitationDetailModal = ({
                       })}
                     </div>
                   ) : (
-                    <div
-                      className={`flex-row items-center p-3 rounded-2xl border bg-white border-slate-100`}
-                    >
-                      <MapPin size={14} color="#64748b" />
-                      <p className="text-gray-400 text-xs ml-2 italic">
+                    <div className="flex items-center p-3 rounded-2xl border bg-white border-slate-100">
+                      <MapPin size={14} className="text-slate-400" />
+                      <p className="text-gray-400 text-xs ml-2 italic font-sans">
                         No locations assigned
                       </p>
                     </div>
                   )}
                 </div>
 
-                {/* Big Access Code */}
+                {/* Big Access Code Area */}
                 <div
-                  className={`w-full ${invite.is_cancelled ? "bg-slate-100" : "bg-slate-900"} rounded-4xl py-8 mb-8`}
+                  className={`w-full ${invite.is_cancelled ? "bg-slate-100" : "bg-slate-900"} rounded-3xl lg:rounded-4xl py-6 lg:py-8 mb-6 lg:mb-8 text-center`}
                 >
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-2">
+                  <p className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-[0.2em] mb-2">
                     Access Code
                   </p>
                   <div
-                    className={`text-5xl font-mono font-black tracking-widest ${invite.is_cancelled ? "text-slate-300 line-through" : "text-white"}`}
+                    className={`text-3xl lg:text-5xl font-mono font-black tracking-widest ${invite.is_cancelled ? "text-slate-300 line-through" : "text-white"}`}
                   >
                     {invite.access_code}
                   </div>
                 </div>
 
-                {/* Dates/Times List */}
-                <div className="w-full space-y-4 px-2">
+                {/* Validity Logs */}
+                <div className="w-full space-y-3 lg:space-y-4 px-1 lg:px-2 text-left">
                   <div className="flex justify-between border-b border-slate-50 pb-2">
-                    <span className="text-slate-400 text-sm italic">
+                    <span className="text-slate-400 text-sm font-sans italic">
                       Validity
                     </span>
-                    <span className="text-slate-700 font-bold">
+                    <span className="text-slate-700 font-sans font-bold text-sm">
                       {(() => {
                         const isStaffEntry =
                           invite.invite_type === "staff_entry";
@@ -218,10 +215,10 @@ const InvitationDetailModal = ({
                     </span>
                   </div>
                   <div className="flex justify-between border-b border-slate-50 pb-2">
-                    <span className="text-slate-400 text-sm italic">
+                    <span className="text-slate-400 text-sm font-sans italic">
                       Daily Time
                     </span>
-                    <span className="text-slate-900 font-bold text-sm">
+                    <span className="text-slate-900 font-sans font-bold text-sm">
                       {formatTime(invite.start_time)} -{" "}
                       {formatTime(invite.end_time)}
                     </span>
@@ -232,8 +229,9 @@ const InvitationDetailModal = ({
           </div>
 
           <button
+            type="button"
             onClick={onClose}
-            className="w-full mt-8 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-4 rounded-2xl transition-colors"
+            className="w-full mt-6 lg:mt-8 bg-slate-100 hover:bg-slate-200 text-slate-600 font-sans font-bold py-4 rounded-2xl transition-colors text-sm lg:text-base active:scale-[0.99]"
           >
             Close Details
           </button>

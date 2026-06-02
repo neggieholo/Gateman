@@ -236,7 +236,7 @@ export default function Auth() {
         <div className="relative w-32 h-32 flex items-center justify-center">
           {/* Your Logo */}
           <Image
-            src="/gmlogo.jpg"
+            src="/gmlogo_nobg.jpg"
             alt="GateMan Logo"
             width={80}
             height={80}

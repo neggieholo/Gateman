@@ -46,7 +46,6 @@ export default function SecurityReportsView() {
         const res = await getEstateReports();
 
         if (res.success) {
-          // Filter strictly for SECURITY type before updating state
           const securityOnly = res.reports.filter(
             (report: EstateReport) => report.type === "SECURITY",
           );
@@ -99,13 +98,11 @@ export default function SecurityReportsView() {
     }
   };
 
-  // 1. Just opens the modal and sets the context
   const triggerStatusUpdate = (id: string, status: "REVIEWED" | "RESOLVED") => {
     setShowFeedbackModal({ id, status });
-    setAdminFeedback(""); // Reset feedback
+    setAdminFeedback("");
   };
 
-  // 2. Final confirmation that calls the API
   const confirmStatusUpdate = async () => {
     if (!showFeedbackModal) return;
 
@@ -153,36 +150,27 @@ export default function SecurityReportsView() {
       (statusFilter === "ALL" || r.status === statusFilter),
   );
 
-  //   if (loading) {
-  //     return (
-  //       <div className="flex flex-col items-center justify-center p-20 bg-white rounded-[3rem] border border-slate-100">
-  //         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-rose-600"></div>
-  //         <p className="mt-4 text-slate-500 font-medium">Loading reports...</p>
-  //       </div>
-  //     );
-  //   }
-
   if (selectedReport) {
     const isReviewed = selectedReport.status === "REVIEWED";
     const isResolved = selectedReport.status === "RESOLVED";
     return (
-      <div className="bg-white rounded-[3rem] border border-slate-100 p-8 animate-in slide-in-from-right duration-300 flex flex-col  h-[calc(100vh-100px)]  overflow-hidden pb-20">
+      <div className="bg-white rounded-[2.5rem] sm:rounded-[3rem] border border-slate-100 p-5 sm:p-8 animate-in slide-in-from-right duration-300 flex flex-col h-[calc(100vh-100px)] overflow-hidden pb-24 md:pb-20 font-sans">
         <button
           onClick={() => setSelectedReport(null)}
-          className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors mb-6 font-bold"
+          className="flex items-center gap-2 text-slate-400 hover:text-slate-700 transition-colors mb-6 font-montserrat font-bold text-xs uppercase tracking-wider self-start"
         >
-          <ArrowLeft size={20} /> Back to List
+          <ArrowLeft size={16} /> Back to List
         </button>
 
-        <div className="flex flex-col md:flex-row justify-between gap-6 border-b border-slate-50 pb-8">
-          <div className="flex-1">
-            <div className="flex justify-between">
-              <div className="flex items-center gap-3 mb-4">
+        <div className="flex flex-col xl:flex-row justify-between gap-6 border-b border-slate-50 pb-6 sm:pb-8">
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+              <div className="flex items-center gap-3">
                 <span
-                  className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest ${
+                  className={`px-3 py-1 rounded-lg text-[10px] font-oswald font-bold uppercase tracking-widest border ${
                     selectedReport.category === "COMPLAINT"
-                      ? "bg-rose-100 text-rose-600"
-                      : "bg-blue-100 text-blue-600"
+                      ? "bg-rose-50 text-rose-600 border-rose-100"
+                      : "bg-blue-50 text-blue-600 border-blue-100"
                   }`}
                 >
                   {selectedReport.category === "COMPLAINT"
@@ -190,22 +178,22 @@ export default function SecurityReportsView() {
                     : "GENERAL"}{" "}
                   REPORT
                 </span>
-                <span className="text-slate-400 font-medium text-sm flex items-center gap-1">
-                  <Calendar size={14} />{" "}
+                <span className="text-slate-400 font-oswald font-bold text-xs flex items-center gap-1 uppercase tracking-wide">
+                  <Calendar size={13} className="text-slate-300" />{" "}
                   {new Date(selectedReport.created_at).toLocaleDateString()}
                 </span>
               </div>
 
-              <div className="flex gap-8">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <button
                   disabled={isReviewed || isResolved}
                   onClick={() =>
                     triggerStatusUpdate(selectedReport.id, "REVIEWED")
                   }
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all ${isReviewed || isResolved ? "bg-slate-50 text-slate-300" : "bg-amber-50 text-amber-600 hover:bg-amber-100"}`}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl font-montserrat font-bold text-xs uppercase tracking-wider transition-all ${isReviewed || isResolved ? "bg-slate-50 text-slate-300" : "bg-amber-50 text-amber-600 hover:bg-amber-100"}`}
                 >
-                  <Eye size={16} />{" "}
-                  {isReviewed || isResolved ? "Reviewed" : "Mark as Reviewed"}
+                  <Eye size={14} />{" "}
+                  {isReviewed || isResolved ? "Reviewed" : "Review"}
                 </button>
 
                 <button
@@ -213,34 +201,36 @@ export default function SecurityReportsView() {
                   onClick={() =>
                     triggerStatusUpdate(selectedReport.id, "RESOLVED")
                   }
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all ${isResolved ? "bg-emerald-50 text-emerald-300" : "bg-emerald-600 text-white hover:bg-emerald-700"}`}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl font-montserrat font-bold text-xs uppercase tracking-wider transition-all shadow-2xs ${isResolved ? "bg-emerald-50 text-emerald-300 shadow-none" : "bg-emerald-600 text-white hover:bg-emerald-700 hover:scale-101 active:scale-98"}`}
                 >
-                  <CheckCircle size={16} />{" "}
-                  {isResolved ? "Resolved" : "Mark as Resolved"}
+                  <CheckCircle size={14} />{" "}
+                  {isResolved ? "Resolved" : "Resolve"}
                 </button>
               </div>
             </div>
-            <h2 className="text-3xl font-black text-slate-900 mb-4">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-montserrat font-black text-slate-900 tracking-tight mb-4 break-words">
               {selectedReport.subject}
             </h2>
-            <div className="flex items-center gap-2 text-slate-600 font-bold bg-slate-50 self-start px-4 py-2 rounded-xl">
-              <User size={18} /> Reporter:{" "}
-              {selectedReport.reporter_name || "Resident"}
+            <div className="inline-flex items-center gap-2 text-slate-500 font-sans font-semibold text-xs bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl">
+              <User size={14} className="text-slate-400" /> Reporter:{" "}
+              <span className="text-slate-700 font-bold">
+                {selectedReport.reporter_name || "Resident"}
+              </span>
             </div>
           </div>
         </div>
 
-        <h4 className="text-slate-400 text-[10px] uppercase tracking-[0.2em] font-black mb-4">
+        <h4 className="text-slate-400 text-[10px] uppercase tracking-widest font-oswald font-bold mt-6 mb-3">
           Report Description
         </h4>
-        <div className="py-8 flex-1 flex flex-col gap-4 overflow-y-auto pb-10">
-          <p className="text-slate-700 leading-relaxed text-lg font-medium whitespace-pre-wrap">
+        <div className="py-2 flex-1 flex flex-col gap-4 overflow-y-auto pb-10 custom-scrollbar">
+          <p className="text-slate-600 leading-relaxed text-sm sm:text-base font-medium whitespace-pre-wrap break-words bg-slate-50/30 p-4 sm:p-5 border border-slate-100/50 rounded-2xl">
             {selectedReport.description}
           </p>
 
           {selectedReport.category === "COMPLAINT" && (
-            <div className="mt-4 pt-8 border-t border-slate-50">
-              <h4 className="text-slate-400 text-[10px] uppercase tracking-[0.2em] font-black mb-6">
+            <div className="mt-2 pt-6 border-t border-slate-100">
+              <h4 className="text-slate-400 text-[10px] uppercase tracking-widest font-oswald font-bold mb-4">
                 Mentioned Personnel
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -248,102 +238,106 @@ export default function SecurityReportsView() {
                   associatedGuards.map((guard) => (
                     <div
                       key={guard.id}
-                      className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100"
+                      className="flex items-center gap-4 p-3.5 rounded-2xl bg-white border border-slate-100 shadow-2xs group/card"
                     >
-                      <img
-                        src={guard.avatar}
-                        onClick={() =>
-                          guard.avatar && setSelectedImage(guard.avatar)
-                        }
-                        alt=""
-                        className="w-12 h-12 rounded-xl object-cover"
-                      />
-                      <div>
-                        <p className="font-black text-slate-800">
+                      <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-slate-50 border border-slate-100 cursor-pointer relative">
+                        <img
+                          src={guard.avatar}
+                          onClick={() =>
+                            guard.avatar && setSelectedImage(guard.avatar)
+                          }
+                          alt=""
+                          className="w-full h-full object-cover transition-transform group-hover/card:scale-105"
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-montserrat font-black text-slate-800 text-sm truncate">
                           {guard.name}
                         </p>
-                        <p className="text-xs text-slate-500 font-bold">
+                        <p className="text-xs text-slate-400 font-sans font-semibold mt-0.5 truncate">
                           {guard.phone}
                         </p>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <p className="text-slate-400 text-sm font-medium italic">
-                    No personnel details found.
+                  <p className="text-slate-400 text-xs font-medium italic p-2">
+                    No linked operational personnel entries connected.
                   </p>
                 )}
               </div>
             </div>
           )}
         </div>
+
         {selectedImage && (
           <div
-            className="fixed inset-0 z-100 bg-slate-900/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+            className="fixed inset-0 z-100 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
             onClick={() => setSelectedImage(null)}
           >
             <div className="relative max-w-4xl w-full flex flex-col items-center">
               <button
-                className="absolute -top-12 right-0 p-2 text-white hover:bg-white/10 rounded-full transition-all"
+                className="absolute -top-12 right-0 p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-all"
                 onClick={() => setSelectedImage(null)}
               >
-                <X size={32} />
+                <X size={28} />
               </button>
               <img
                 src={selectedImage}
-                className="max-h-[80vh] w-auto rounded-3xl shadow-2xl border-4 border-white/10 object-contain"
-                alt="Guard"
+                className="max-h-[75vh] w-auto rounded-2xl shadow-2xl border-2 border-white/10 object-contain"
+                alt="Guard Attachment Preview"
               />
             </div>
           </div>
         )}
 
         {showFeedbackModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-200">
-            <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
-              <div className="flex items-center gap-3 mb-6">
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-200 animate-in fade-in duration-150">
+            <div className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
+              <div className="flex items-start gap-4 mb-6">
                 <div
-                  className={`p-3 rounded-2xl ${showFeedbackModal.status === "RESOLVED" ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600"}`}
+                  className={`p-3 rounded-2xl shrink-0 ${showFeedbackModal.status === "RESOLVED" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-amber-50 text-amber-600 border border-amber-100"}`}
                 >
                   {showFeedbackModal.status === "RESOLVED" ? (
-                    <CheckCircle size={24} />
+                    <CheckCircle size={22} />
                   ) : (
-                    <Eye size={24} />
+                    <Eye size={22} />
                   )}
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-slate-900">
+                  <h3 className="text-lg font-montserrat font-black text-slate-900 tracking-tight">
                     Mark as {showFeedbackModal.status.toLowerCase()}?
                   </h3>
-                  <p className="text-slate-500 text-sm font-medium">
-                    Add an optional message for the resident.
+                  <p className="text-slate-400 text-xs font-medium mt-0.5">
+                    Provide optional notification log feedback data for
+                    residents.
                   </p>
                 </div>
               </div>
 
               <textarea
-                className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-sm h-40 focus:ring-2 focus:ring-indigo-500 outline-none text-slate-800 font-medium placeholder:text-slate-400"
-                placeholder="e.g. This issue has been noted and addressed by the head of security."
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm h-36 focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 focus:bg-white outline-none text-slate-800 font-medium placeholder:text-slate-400 transition-all shadow-2xs resize-none"
+                placeholder="e.g. Action completed. Issue review processed by administrative team channels."
                 value={adminFeedback}
                 onChange={(e) => setAdminFeedback(e.target.value)}
                 autoFocus
               />
 
-              <div className="flex gap-3 mt-8">
+              <div className="flex gap-3 mt-6">
                 <button
                   onClick={() => setShowFeedbackModal(null)}
-                  className="flex-1 py-4 text-slate-500 font-black hover:bg-slate-50 rounded-2xl transition-colors text-sm uppercase tracking-widest"
+                  className="flex-1 py-3.5 text-slate-400 font-montserrat font-bold hover:bg-slate-50 rounded-xl transition-colors text-xs uppercase tracking-wider border border-transparent hover:border-slate-100"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirmStatusUpdate}
                   disabled={loadingAction}
-                  className={`flex-1 py-4 text-white rounded-2xl font-black transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-widest shadow-lg ${
+                  className={`flex-1 py-3.5 text-white rounded-xl font-montserrat font-bold transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider shadow-sm ${
                     loadingAction
-                      ? "opacity-70 cursor-not-allowed"
-                      : "hover:scale-[1.02] active:scale-95"
-                  } ${showFeedbackModal.status === "RESOLVED" ? "bg-emerald-600 shadow-emerald-200" : "bg-amber-600 shadow-amber-200"}`}
+                      ? "opacity-60 cursor-not-allowed"
+                      : "hover:scale-102 active:scale-97"
+                  } ${showFeedbackModal.status === "RESOLVED" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-amber-600 hover:bg-amber-700"}`}
                 >
                   {loadingAction ? "Updating..." : "Confirm"}
                 </button>
@@ -356,17 +350,17 @@ export default function SecurityReportsView() {
   }
 
   return (
-    <div className="space-y-6 p-3 flex flex-col  h-[calc(100vh-100px)]  overflow-hidden pb-20">
-      {/* Filter Bar */}
-      <div className="flex justify-between">
-        <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl w-fit">
+    <div className="space-y-6 p-1 sm:p-3 flex flex-col h-[calc(100vh-100px)] overflow-hidden pb-24 md:pb-20 font-sans">
+      {/* Filter Toolbar Subsystem */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white p-3 rounded-2xl border border-slate-100/80 shadow-2xs">
+        <div className="flex gap-1 p-1 bg-slate-50 rounded-xl w-full lg:w-auto overflow-x-auto no-scrollbar border border-slate-100">
           {["ALL", "PERSONNEL", "GENERAL"].map((f) => (
             <button
               key={f}
               onClick={() => typeFilterSet(f as any)}
-              className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${
+              className={`px-5 py-2 rounded-lg text-xs font-montserrat font-bold uppercase tracking-wider whitespace-nowrap transition-all ${
                 tabLabel === f
-                  ? "bg-white text-slate-900 shadow-sm"
+                  ? "bg-white text-slate-900 shadow-2xs border border-slate-200/40"
                   : "text-slate-400 hover:text-slate-600"
               }`}
             >
@@ -375,12 +369,12 @@ export default function SecurityReportsView() {
           ))}
         </div>
 
-        <div className="flex gap-1 p-1 bg-slate-100 rounded-2xl w-fit">
+        <div className="flex gap-1 p-1 bg-slate-50 rounded-xl w-full lg:w-auto overflow-x-auto no-scrollbar border border-slate-100">
           {["ALL", "PENDING", "REVIEWED", "RESOLVED"].map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s as any)}
-              className={`px-4 py-1.5 rounded-xl text-[10px] font-black tracking-widest ${statusFilter === s ? "bg-white text-slate-900 shadow-sm" : "text-slate-400"}`}
+              className={`px-4 py-2 rounded-lg text-[10px] font-oswald font-bold tracking-widest whitespace-nowrap transition-all ${statusFilter === s ? "bg-white text-slate-900 shadow-2xs border border-slate-200/40" : "text-slate-400 hover:text-slate-500"}`}
             >
               {s}
             </button>
@@ -388,61 +382,65 @@ export default function SecurityReportsView() {
         </div>
       </div>
 
-      {/* Reports List */}
-      <div className="flex-1 flex flex-col gap-4 overflow-y-auto pb-10">
+      {/* Reports Dynamic List Track */}
+      <div className="flex-1 flex flex-col gap-3 overflow-y-auto pb-10 custom-scrollbar">
         {filteredReports.length > 0 ? (
           filteredReports.map((report) => (
             <button
               key={report.id}
               onClick={() => handleViewDetails(report)}
-              className="group flex items-center justify-between p-6 bg-white border border-slate-100 rounded-4xl hover:border-rose-200 hover:shadow-xl hover:shadow-rose-500/5 transition-all text-left"
+              className="group flex items-center justify-between p-4 sm:p-5 bg-white border border-slate-100 rounded-3xl hover:border-blue-200 hover:shadow-xs transition-all text-left min-w-0 gap-4"
             >
-              <div className="flex items-center gap-6">
+              <div className="flex items-center gap-4 min-w-0">
                 <div
-                  className={`p-4 rounded-2xl ${report.type === "SECURITY" ? "bg-rose-50 text-rose-500" : "bg-blue-50 text-blue-500"}`}
+                  className={`p-3 rounded-xl shrink-0 ${report.type === "SECURITY" ? "bg-rose-50 text-rose-500 border border-rose-100/40" : "bg-blue-50 text-blue-500 border border-blue-100/40"}`}
                 >
                   {report.type === "SECURITY" ? (
-                    <Shield size={24} />
+                    <Shield size={20} />
                   ) : (
-                    <Info size={24} />
+                    <Info size={20} />
                   )}
                 </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-black text-slate-900 group-hover:text-rose-600 transition-colors">
-                      {report.subject}
-                    </h3>
+                <div className="min-w-0">
+                  <h3 className="font-montserrat font-bold text-slate-800 group-hover:text-blue-600 transition-colors text-sm sm:text-base truncate tracking-tight pr-2">
+                    {report.subject}
+                  </h3>
+                  <div className="flex items-center gap-2 mt-1 md:hidden">
+                    <span className="text-[10px] font-sans font-bold text-slate-700 truncate max-w-[100px]">
+                      {report.reporter_name}
+                    </span>
+                    <span className="w-1 h-1 rounded-full bg-slate-300" />
+                    <span className="text-[10px] font-oswald font-bold text-slate-400 tracking-wide">
+                      {new Date(report.created_at).toLocaleDateString()}
+                    </span>
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right hidden md:block">
-                  <p className="text-xs font-black text-slate-900">
+              <div className="flex items-center gap-4 shrink-0">
+                <div className="text-right hidden md:block min-w-[100px]">
+                  <p className="text-xs font-montserrat font-bold text-slate-800 truncate">
                     {report.reporter_name}
                   </p>
-                  <p className="text-[10px] font-bold text-slate-400">
+                  <p className="text-[10px] font-oswald font-bold text-slate-400 mt-0.5 tracking-wider">
                     {new Date(report.created_at).toLocaleDateString()}
                   </p>
                 </div>
-                <div className="p-2 rounded-xl bg-slate-50 text-slate-400 group-hover:bg-rose-600 group-hover:text-white transition-all">
-                  <ChevronRight size={20} />
+                <div className="p-2 rounded-xl bg-slate-50 text-slate-400 group-hover:bg-blue-600 group-hover:text-white border border-slate-100 group-hover:border-blue-600 transition-all shadow-3xs">
+                  <ChevronRight size={16} />
                 </div>
               </div>
             </button>
           ))
         ) : (
-          <p className="text-gray-500 p-5 bg-white rounded-lg border border-dashed text-center">
-            {loading ? "Loading..." : "No reports"}
-          </p>
+          <div className="p-10 bg-white rounded-3xl border border-dashed border-slate-200 text-center">
+            <p className="text-slate-400 font-sans font-medium text-sm">
+              {loading
+                ? "Syncing operational platform channels..."
+                : "No administrative security reports recorded."}
+            </p>
+          </div>
         )}
       </div>
     </div>
   );
-}
-
-{
-  /* <div className="p-20 bg-white rounded-[3rem] border border-slate-100 border-dashed flex flex-col items-center">
-  <AlertOctagon size={48} className="text-slate-200 mb-4" />
-  <p className="text-slate-400 font-bold">No reports found in this category.</p>
-</div>; */
 }

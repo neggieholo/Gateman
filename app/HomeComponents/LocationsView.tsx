@@ -42,7 +42,7 @@ export default function LocationsView({
   const [selectedLoc, setSelectedLoc] = useState<EstateLocation | null>(null);
   const [selectedDateStr, setSelectedDateStr] = useState<string>("");
 
-  // FIXED: Multi-Event & Pagination tracking states
+  // Multi-Event & Pagination tracking states
   const [activeDateEvents, setActiveDateEvents] = useState<EstateEvent[]>([]);
   const [currentEventIndex, setCurrentEventIndex] = useState<number>(0);
   const [loadingEvent, setLoadingEvent] = useState<boolean>(false);
@@ -73,7 +73,7 @@ export default function LocationsView({
     return d;
   }, []);
 
-  // FIXED: Maps individual date strings ("YYYY-MM-DD") to an ARRAY of event contexts
+  // Maps individual date strings ("YYYY-MM-DD") to an ARRAY of event contexts
   const performanceReservationMap = useMemo(() => {
     if (!selectedLoc)
       return new Map<string, Array<{ title: string; banner: string | null }>>();
@@ -166,19 +166,18 @@ export default function LocationsView({
     );
   }, [locations, searchQuery]);
 
-  // FIXED: Fetch multiple scheduled event profiles and manage pagination reset routines
+  // Fetch multiple scheduled event profiles and manage pagination reset routines
   useEffect(() => {
     if (!selectedLoc || !selectedDateStr) return;
 
     const fetchActiveSlotContent = async () => {
       setLoadingEvent(true);
-      setCurrentEventIndex(0); // Reset index frame on date view changes
+      setCurrentEventIndex(0);
       try {
         const data = await getEventAtLocationDate(
           selectedLoc.id,
           selectedDateStr,
         );
-        // Clean structural assignment normalization check layers
         const eventsList = Array.isArray(data.event)
           ? data.event
           : data.event
@@ -196,7 +195,6 @@ export default function LocationsView({
     fetchActiveSlotContent();
   }, [selectedDateStr, selectedLoc]);
 
-  // Derive isolated index item instance safely from array payload matrix references
   const currentActiveEvent = useMemo(() => {
     return activeDateEvents[currentEventIndex] || null;
   }, [activeDateEvents, currentEventIndex]);
@@ -307,59 +305,61 @@ export default function LocationsView({
   // --- VIEW 1: DETAILED GRID CALENDAR PERSPECTIVE MATRIX ---
   if (selectedLoc) {
     return (
-      <div className="bg-white rounded-[3rem] border border-slate-100 p-8 animate-in slide-in-from-right duration-300 flex flex-col h-full overflow-hidden">
-        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-100 pb-6 mb-6 gap-4">
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">
+      <div className="bg-white rounded-2xl border border-slate-200/70 p-5 sm:p-6 shadow-2xs animate-in slide-in-from-right duration-300 flex flex-col h-full overflow-hidden min-w-0 font-sans">
+        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-100 pb-4 mb-5 gap-4 min-w-0 shrink-0">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl sm:text-2xl font-montserrat font-black text-slate-800 tracking-tight truncate block w-full">
               {selectedLoc.name}
             </h1>
-            <div className="flex items-center gap-4 text-slate-400 font-bold text-xs mt-1">
-              <span className="flex items-center gap-1">
-                <MapPin size={14} />
+            <div className="flex flex-wrap items-center gap-4 text-slate-400 font-bold text-[11px] mt-1 uppercase tracking-wide font-oswald">
+              <span className="flex items-center gap-1.5 text-slate-500 font-sans normal-case tracking-normal font-semibold">
+                <MapPin size={13} className="text-blue-600" />
                 {selectedLoc.location_in_estate || "Main Area Asset Zone"}
               </span>
               <span className="flex items-center gap-1">
-                <Users size={14} />
+                <Users size={13} className="text-blue-600" />
                 Capacity Limit:{" "}
-                {selectedLoc.capacity
-                  ? `${selectedLoc.capacity} Max`
-                  : "Unspecified Layout Capacity"}
+                <span className="text-slate-600 ml-0.5">
+                  {selectedLoc.capacity
+                    ? `${selectedLoc.capacity} Max`
+                    : "Unspecified"}
+                </span>
               </span>
             </div>
           </div>
           <button
             onClick={handleBackToList}
-            className="flex items-center gap-2 px-5 py-2.5 bg-slate-50 border border-slate-100 text-slate-500 hover:text-slate-900 rounded-2xl transition-all font-black text-xs uppercase tracking-widest self-start md:self-center"
+            className="flex items-center gap-1.5 px-4 py-2 bg-slate-50 border border-slate-200/60 text-slate-500 hover:text-blue-600 rounded-xl transition-all font-montserrat font-bold text-xs uppercase tracking-wider self-start md:self-center shrink-0 shadow-3xs"
           >
-            <ArrowLeft size={16} /> Back to Directory
+            <ArrowLeft size={14} /> Back to Directory
           </button>
         </div>
 
-        <div className="flex-1 flex flex-col lg:flex-row gap-6 overflow-hidden">
-          {/* LEFT PANEL: Calendar */}
-          <div className="flex-1 bg-slate-50/50 border border-slate-100 rounded-[2.5rem] p-6 flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-sm font-black text-slate-700 uppercase tracking-wider">
+        <div className="flex-1 flex flex-col lg:flex-row gap-5 overflow-hidden min-w-0">
+          {/* LEFT PANEL: Calendar Layout */}
+          <div className="flex-1 bg-slate-50/50 border border-slate-200/60 rounded-xl p-4 flex flex-col overflow-hidden min-w-0">
+            <div className="flex items-center justify-between mb-4 shrink-0">
+              <h2 className="text-xs font-montserrat font-black text-slate-700 uppercase tracking-wide">
                 {currentCalendarDate.toLocaleDateString("en-US", {
                   month: "long",
                   year: "numeric",
                 })}
               </h2>
-              <div className="flex gap-1.5">
+              <div className="flex gap-1">
                 <button
                   onClick={handlePrevMonth}
-                  className="p-2 bg-white border border-slate-100 rounded-xl text-slate-600 hover:bg-slate-100 transition disabled:opacity-30"
+                  className="p-1.5 bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-100 hover:border-slate-300 transition-colors disabled:opacity-30 shrink-0 shadow-3xs"
                   disabled={
                     currentCalendarDate.getMonth() === todayStart.getMonth() &&
                     currentCalendarDate.getFullYear() ===
                       todayStart.getFullYear()
                   }
                 >
-                  <ChevronLeft size={16} />
+                  <ChevronLeft size={14} />
                 </button>
                 <button
                   onClick={handleNextMonth}
-                  className="p-2 bg-white border border-slate-100 rounded-xl text-slate-600 hover:bg-slate-100 transition disabled:opacity-30"
+                  className="p-1.5 bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-100 hover:border-slate-300 transition-colors disabled:opacity-30 shrink-0 shadow-3xs"
                   disabled={
                     currentCalendarDate.getMonth() ===
                       oneYearHenceEnd.getMonth() &&
@@ -367,12 +367,12 @@ export default function LocationsView({
                       oneYearHenceEnd.getFullYear()
                   }
                 >
-                  <ChevronRight size={16} />
+                  <ChevronRight size={14} />
                 </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">
+            <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-wider mb-2 shrink-0">
               <div>Sun</div>
               <div>Mon</div>
               <div>Tue</div>
@@ -383,7 +383,7 @@ export default function LocationsView({
             </div>
 
             {/* Monthly Day Render Grid Matrix block */}
-            <div className="flex-1 grid grid-cols-7 grid-rows-6 gap-1.5 overflow-y-auto">
+            <div className="flex-1 grid grid-cols-7 grid-rows-6 gap-1.5 overflow-y-auto pr-0.5 custom-scrollbar min-w-0">
               {calendarGridDays.map((cell, idx) => {
                 if (!cell.date) {
                   return (
@@ -396,8 +396,6 @@ export default function LocationsView({
                   performanceReservationMap.get(cell.dateStr) || [];
                 const hasEvents = dayEvents.length > 0;
                 const isDisabled = cell.isOutsideAllowedRange;
-
-                // FIXED: Grab the first available event flyer background safely
                 const firstBanner = dayEvents.find((e) => e.banner)?.banner;
 
                 return (
@@ -405,15 +403,14 @@ export default function LocationsView({
                     key={cell.dateStr}
                     disabled={isDisabled}
                     onClick={() => setSelectedDateStr(cell.dateStr)}
-                    className={`rounded-xl border flex flex-col items-center justify-between transition-all relative font-bold text-sm h-12 overflow-hidden ${
+                    className={`rounded-xl border flex flex-col items-center justify-between transition-all relative font-sans font-bold text-xs h-12 overflow-hidden ${
                       isDisabled
-                        ? "bg-slate-100/50 border-gray-200 text-slate-400 cursor-not-allowed"
+                        ? "bg-slate-100/50 border-slate-200 text-slate-300 cursor-not-allowed"
                         : isSelected
-                          ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-100 z-10"
-                          : "bg-white border-slate-100 text-slate-700 hover:border-slate-300"
+                          ? "bg-blue-600 border-blue-600 text-white shadow-xs z-10"
+                          : "bg-white border-slate-200/70 text-slate-700 hover:border-slate-400"
                     }`}
                   >
-                    {/* FIXED: Single Background Asset Render */}
                     {hasEvents && firstBanner && !isDisabled && (
                       <div className="absolute inset-0 w-full h-full z-0">
                         <img
@@ -422,30 +419,28 @@ export default function LocationsView({
                           className="w-full h-full object-cover"
                         />
                         <div
-                          className={`absolute inset-0 ${isSelected ? "bg-indigo-600/40" : "bg-slate-900/40"}`}
+                          className={`absolute inset-0 ${isSelected ? "bg-blue-600/40" : "bg-slate-900/40"}`}
                         />
                       </div>
                     )}
 
-                    {/* Day Text Number */}
                     <span
-                      className={`relative z-10 mt-1 pl-1.5 self-start ${
+                      className={`relative z-10 mt-1 pl-1.5 self-start font-oswald font-bold text-xs ${
                         hasEvents && firstBanner && !isSelected
-                          ? "text-white font-black drop-shadow-[0_1.5px_1.5px_rgba(0,0,0,0.9)]"
+                          ? "text-white font-black drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]"
                           : ""
                       }`}
                     >
                       {cell.date.getDate()}
                     </span>
 
-                    {/* FIXED: Dynamic Counter Badges */}
                     {hasEvents && (
                       <div className="relative z-10 mb-1 flex items-center justify-center w-full px-1">
                         <span
-                          className={`text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm border ${
+                          className={`text-[9px] font-oswald font-bold px-1.5 py-0.5 rounded shadow-3xs border ${
                             isSelected
-                              ? "bg-white text-indigo-600 border-white"
-                              : "bg-amber-500 text-white border-amber-600"
+                              ? "bg-white text-blue-600 border-white"
+                              : "bg-amber-500 text-white border-amber-600/50"
                           }`}
                         >
                           {dayEvents.length}{" "}
@@ -460,13 +455,13 @@ export default function LocationsView({
           </div>
 
           {/* RIGHT PANEL: Sidebar Agenda Display */}
-          <div className="w-full lg:w-96 border border-slate-100 rounded-[2.5rem] bg-white p-6 flex flex-col overflow-hidden shadow-sm">
-            <div className="border-b border-slate-50 pb-3 mb-4 flex items-center justify-between">
-              <div className="text-left">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
+          <div className="w-full lg:w-80 border border-slate-200/70 rounded-xl bg-white p-4 flex flex-col overflow-hidden shadow-2xs shrink-0 min-w-0">
+            <div className="border-b border-slate-100 pb-3 mb-4 flex items-center justify-between shrink-0 min-w-0">
+              <div className="text-left min-w-0 flex-1">
+                <span className="text-[9px] font-oswald font-bold text-slate-400 uppercase tracking-wider block">
                   Schedule Display Context
                 </span>
-                <span className="text-xs font-black text-indigo-600 mt-1 block">
+                <span className="text-xs font-montserrat font-bold text-blue-600 mt-0.5 block truncate">
                   {new Date(selectedDateStr + "T00:00:00").toLocaleDateString(
                     "en-US",
                     {
@@ -479,100 +474,102 @@ export default function LocationsView({
                 </span>
               </div>
 
-              {/* FIXED: Multi-Event pagination control triggers if dates share asset records */}
               {activeDateEvents.length > 1 && (
-                <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-100 p-1 rounded-xl">
+                <div className="flex items-center gap-1 bg-slate-50 border border-slate-200/60 p-0.5 rounded-lg shrink-0">
                   <button
                     disabled={currentEventIndex === 0}
                     onClick={() => setCurrentEventIndex((prev) => prev - 1)}
-                    className="p-1 rounded-lg text-slate-500 hover:bg-white border border-transparent hover:border-slate-100 transition disabled:opacity-20 disabled:hover:bg-transparent"
+                    className="p-1 rounded text-slate-500 hover:bg-white border border-transparent hover:border-slate-200/60 transition disabled:opacity-20 disabled:hover:bg-transparent"
                   >
-                    <ChevronLeft size={14} />
+                    <ChevronLeft size={12} />
                   </button>
-                  <span className="text-[10px] font-black text-slate-700 px-1">
+                  <span className="text-[10px] font-oswald font-bold text-slate-700 px-1">
                     {currentEventIndex + 1}/{activeDateEvents.length}
                   </span>
                   <button
                     disabled={currentEventIndex === activeDateEvents.length - 1}
                     onClick={() => setCurrentEventIndex((prev) => prev + 1)}
-                    className="p-1 rounded-lg text-slate-500 hover:bg-white border border-transparent hover:border-slate-100 transition disabled:opacity-20 disabled:hover:bg-transparent"
+                    className="p-1 rounded text-slate-500 hover:bg-white border border-transparent hover:border-slate-200/60 transition disabled:opacity-20 disabled:hover:bg-transparent"
                   >
-                    <ChevronRight size={14} />
+                    <ChevronRight size={12} />
                   </button>
                 </div>
               )}
             </div>
 
-            <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar">
+            <div className="flex-1 flex flex-col overflow-y-auto pr-0.5 custom-scrollbar min-w-0">
               {loadingEvent ? (
-                <div className="h-full flex flex-col items-center justify-center text-slate-400">
+                <div className="h-full flex flex-col items-center justify-center text-slate-400 p-4">
                   <Loader2
-                    size={32}
-                    className="animate-spin text-indigo-600 mb-2"
+                    size={24}
+                    className="animate-spin text-blue-600 mb-2"
                   />
-                  <p className="text-xs font-black uppercase tracking-wider">
-                    Syncing Event Info...
+                  <p className="text-[10px] font-montserrat font-bold uppercase tracking-wider">
+                    Syncing Log Matrix...
                   </p>
                 </div>
               ) : currentActiveEvent ? (
-                <div className="space-y-4 animate-in fade-in duration-300 text-left flex flex-col justify-between h-full">
-                  <div className="space-y-4">
+                <div className="space-y-4 animate-in fade-in duration-200 text-left flex flex-col justify-between h-full min-w-0">
+                  <div className="space-y-3 min-w-0 w-full">
                     {currentActiveEvent.banner_url && (
                       <img
                         src={currentActiveEvent.banner_url}
-                        alt="Flyer"
-                        className="w-full h-40 object-cover rounded-2xl border border-slate-100"
+                        alt="Flyer Asset Context"
+                        className="w-full h-32 object-cover rounded-xl border border-slate-100 shadow-3xs shrink-0"
                       />
                     )}
-                    <div>
-                      <span className="text-[9px] font-black px-2 py-0.5 bg-amber-100 text-amber-800 rounded uppercase tracking-wider">
+                    <div className="min-w-0">
+                      <span className="text-[9px] font-oswald font-bold px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200/50 rounded uppercase tracking-wide">
                         Reserved Slot{" "}
                         {activeDateEvents.length > 1 &&
                           `#${currentEventIndex + 1}`}
                       </span>
-                      <h3 className="font-black text-xl text-slate-900 mt-2 leading-tight">
+                      <h3 className="font-montserrat font-bold text-base text-slate-800 mt-2 leading-snug break-words">
                         {currentActiveEvent.title}
                       </h3>
-                      <p className="text-xs font-black text-slate-400 mt-1">
+                      <p className="text-[10px] font-oswald font-semibold text-slate-400 mt-1 uppercase tracking-wide">
                         REF ID: {currentActiveEvent.ref_code}
                       </p>
                     </div>
-                    <div className="space-y-2 text-xs font-bold text-slate-700">
-                      <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100/50">
-                        <Clock size={16} className="text-indigo-600" />
-                        <span>
+
+                    <div className="space-y-2 text-xs font-semibold text-slate-600 min-w-0">
+                      <div className="flex items-center gap-2.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200/40 min-w-0">
+                        <Clock size={14} className="text-blue-600 shrink-0" />
+                        <span className="truncate font-sans">
                           {currentActiveEvent.start_time} -{" "}
                           {currentActiveEvent.end_time}
                         </span>
                       </div>
-                      <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100/50">
-                        <Users size={16} className="text-indigo-600" />
-                        <span>
+                      <div className="flex items-center gap-2.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200/40 min-w-0">
+                        <Users size={14} className="text-blue-600 shrink-0" />
+                        <span className="font-oswald tracking-wide font-medium text-slate-700">
                           Expected: {currentActiveEvent.expected_guests} Guests
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* FIXED: Native link path route parsing with isolated active instance targets */}
                   <button
                     onClick={() =>
                       (window.location.href = `/home/events?id=${currentActiveEvent.id}`)
                     }
-                    className="w-full mt-4 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs uppercase tracking-widest py-3.5 rounded-xl border border-slate-900 transition text-center block"
+                    className="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-montserrat font-bold text-xs uppercase tracking-wider py-2.5 rounded-xl transition-all shadow-3xs text-center block shrink-0 active:scale-98"
                   >
                     See Event Details
                   </button>
                 </div>
               ) : (
-                <div className="h-full flex flex-col items-center justify-center text-slate-400 border border-dashed rounded-2xl p-6 bg-slate-50/50">
-                  <AlertCircle size={28} className="text-slate-300 mb-2" />
-                  <p className="text-xs font-black uppercase text-slate-500 tracking-wider">
+                <div className="h-full flex flex-col items-center justify-center text-slate-400 border border-dashed border-slate-200 rounded-xl p-4 bg-slate-50/50 min-w-0">
+                  <AlertCircle
+                    size={24}
+                    className="text-slate-300 mb-1.5 shrink-0"
+                  />
+                  <p className="text-[10px] font-montserrat font-bold uppercase text-slate-400 tracking-wider">
                     No scheduled events
                   </p>
-                  <p className="text-[11px] font-bold text-slate-400 mt-1 text-center">
-                    This location asset slot is completely open for system
-                    reservation.
+                  <p className="text-[11px] font-medium font-sans text-slate-400 mt-1 text-center">
+                    This venue slot is completely open for system reservation
+                    layers.
                   </p>
                 </div>
               )}
@@ -585,27 +582,27 @@ export default function LocationsView({
 
   // --- VIEW 2: MASTER LOCATION DIRECTORY ---
   return (
-    <div className="space-y-6 flex flex-col h-full animate-in fade-in duration-500 p-2">
-      <div className="flex justify-between items-center bg-white p-4 rounded-[2.5rem] border border-slate-50 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-indigo-600 rounded-2xl text-white">
-            <MapPin size={24} />
+    <div className="space-y-4 flex flex-col h-full animate-in fade-in duration-300 p-1 min-w-0 font-sans">
+      <div className="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-200/60 shadow-2xs min-w-0 shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="p-2.5 bg-blue-600 rounded-xl text-white shrink-0">
+            <MapPin size={20} />
           </div>
-          <div className="text-left">
-            <h1 className="text-xl font-black text-slate-900 uppercase tracking-tight">
+          <div className="min-w-0 text-left">
+            <h2 className="text-base sm:text-lg font-montserrat font-black text-slate-800 uppercase tracking-tight truncate">
               Estate Venues
-            </h1>
+            </h2>
           </div>
         </div>
         <button
           onClick={openCreateModal}
-          className="flex items-center gap-2 px-5 py-3 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition shadow-md shadow-indigo-100"
+          className="flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-montserrat font-bold text-xs uppercase tracking-wider hover:bg-blue-700 transition-all shadow-3xs shrink-0 active:scale-98"
         >
-          <Plus size={16} /> Add Venue Location
+          <Plus size={14} /> Add Venue Location
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar min-w-0">
         {filteredLocations.length > 0 ? (
           filteredLocations.map((loc) => {
             let bookedData = loc.event_booked_on;
@@ -631,47 +628,47 @@ export default function LocationsView({
               <div
                 key={loc.id}
                 onClick={() => handleSelectLocation(loc)}
-                className="w-full flex flex-col md:flex-row md:items-center justify-between p-6 bg-white border border-slate-100 rounded-[2.5rem] shadow-sm hover:border-indigo-200 hover:shadow-xl transition-all cursor-pointer group"
+                className="w-full flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white border border-slate-200/60 rounded-xl shadow-2xs hover:border-blue-400/50 hover:shadow-xs transition-all duration-200 cursor-pointer group text-left min-w-0 gap-3"
               >
-                <div className="flex items-start gap-5">
-                  <div className="p-4 rounded-2xl bg-slate-50 text-indigo-600 group-hover:bg-indigo-50 transition-colors shrink-0">
-                    <MapPin size={24} />
+                <div className="flex items-start gap-4 min-w-0 flex-1">
+                  <div className="p-3 rounded-xl bg-slate-50 text-blue-600 group-hover:bg-blue-50 border border-slate-100 transition-colors shrink-0">
+                    <MapPin size={20} />
                   </div>
-                  <div className="text-left">
-                    <h3 className="font-black text-slate-900 text-lg group-hover:text-indigo-600 transition-colors">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-montserrat font-bold text-slate-800 text-sm group-hover:text-blue-600 transition-colors truncate block w-full mb-0.5">
                       {loc.name}
                     </h3>
-                    <p className="text-sm font-bold text-slate-500 mt-0.5">
+                    <p className="text-xs text-slate-500 font-medium truncate block w-full">
                       {loc.location_in_estate ||
                         "No detailed layout descriptions given."}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4 mt-4 md:mt-0 justify-end">
-                  <div className="bg-slate-50 p-3 rounded-2xl border text-right min-w-28">
-                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 border-t sm:border-t-0 border-slate-100 pt-2 sm:pt-0">
+                  <div className="bg-slate-50 border border-slate-200/40 p-2 px-3 rounded-xl text-center sm:text-right min-w-[5rem]">
+                    <p className="text-[9px] font-oswald font-bold uppercase text-slate-400 tracking-wider">
                       Reservations
                     </p>
-                    <p className="text-md font-black text-slate-800 mt-0.5">
-                      {totalDays} Days
+                    <p className="text-sm font-oswald font-bold text-slate-700 mt-0.5">
+                      {totalDays} {totalDays === 1 ? "Day" : "Days"}
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1">
                     <button
                       onClick={(e) => openEditModal(e, loc)}
-                      className="p-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition"
+                      className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors shrink-0"
                       title="Edit Venue Details"
                     >
-                      <Edit2 size={16} />
+                      <Edit2 size={14} />
                     </button>
                     <button
                       onClick={(e) => handleDeleteLocation(e, loc.id)}
-                      className="p-3 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition"
+                      className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors shrink-0"
                       title="Purge Venue"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 </div>
@@ -679,33 +676,35 @@ export default function LocationsView({
             );
           })
         ) : (
-          <p className="text-gray-500 p-8 bg-white rounded-3xl border border-dashed text-center font-bold">
-            No active location records discovered.
-          </p>
+          <div className="p-8 bg-white rounded-xl border-2 border-dashed border-slate-200 text-center">
+            <p className="text-slate-400 text-xs font-medium">
+              No active location registry asset items discovered parameters.
+            </p>
+          </div>
         )}
       </div>
 
       {/* OPERATIONAL OVERLAY DIALOGS */}
       {showModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-[2.5rem] p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-3xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-150 font-sans">
+          <div className="bg-white rounded-xl p-5 w-full max-w-sm shadow-xl border border-slate-100 animate-in zoom-in-95 duration-200 text-left">
+            <div className="flex justify-between items-center mb-4 border-b border-slate-50 pb-2">
+              <h3 className="text-sm font-montserrat font-black text-slate-800 uppercase tracking-wide">
                 {showModal === "create"
                   ? "Add New Location"
                   : "Edit Venue Layout Context"}
               </h3>
               <button
                 onClick={() => setShowModal(null)}
-                className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition"
+                className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors"
               >
-                <XCircle size={20} />
+                <XCircle size={18} />
               </button>
             </div>
 
-            <div className="space-y-4 text-left">
+            <div className="space-y-4">
               <div>
-                <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2">
+                <label className="block text-[9px] font-oswald font-bold uppercase text-slate-400 tracking-wider mb-1.5">
                   Location Name *
                 </label>
                 <input
@@ -713,24 +712,24 @@ export default function LocationsView({
                   placeholder="e.g. Main Complex Tennis Court"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  className="w-full p-3.5 border border-slate-200 rounded-2xl text-sm font-bold bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-medium bg-slate-50 outline-none focus:border-blue-500 transition-colors text-slate-700"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2">
+                <label className="block text-[9px] font-oswald font-bold uppercase text-slate-400 tracking-wider mb-1.5">
                   Placement Context Description
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Phase 2 layout right behind multi-sports arena"
+                  placeholder="e.g. Phase 2 layout behind arena"
                   value={formInEstate}
                   onChange={(e) => setFormInEstate(e.target.value)}
-                  className="w-full p-3.5 border border-slate-200 rounded-2xl text-sm font-bold bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-medium bg-slate-50 outline-none focus:border-blue-500 transition-colors text-slate-700"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2">
-                  Capacity / Estimated Capacity
+                <label className="block text-[9px] font-oswald font-bold uppercase text-slate-400 tracking-wider mb-1.5">
+                  Capacity / Estimated Limit
                 </label>
                 <input
                   type="number"
@@ -740,16 +739,19 @@ export default function LocationsView({
                     const val = e.target.value;
                     setFormCapacity(val === "" ? "" : parseInt(val, 10));
                   }}
-                  className="w-full p-3.5 border border-slate-200 rounded-2xl text-sm font-bold bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-medium bg-slate-50 outline-none focus:border-blue-500 transition-colors text-slate-700 font-sans"
                 />
               </div>
+
               <button
                 disabled={isSubmitting}
                 onClick={handleSaveLocation}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-widest py-4 rounded-2xl shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 transition"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-montserrat font-bold text-xs uppercase tracking-wider py-3 rounded-xl shadow-3xs flex items-center justify-center gap-1.5 disabled:opacity-50 transition-all mt-2 active:scale-98"
               >
-                {isSubmitting && <Loader2 size={16} className="animate-spin" />}
-                {showModal === "create" ? "Save Asset" : "Commit Changes"}
+                {isSubmitting && <Loader2 size={13} className="animate-spin" />}
+                <span>
+                  {showModal === "create" ? "Save Asset" : "Commit Changes"}
+                </span>
               </button>
             </div>
           </div>

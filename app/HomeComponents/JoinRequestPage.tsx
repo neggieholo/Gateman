@@ -103,29 +103,35 @@ export default function JoinRequestsPage() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6 font-sans">
       {/* --- Tab Navigation --- */}
       {!hideTabs && (
-        <div className="flex space-x-2 mb-8 bg-slate-100 p-1 rounded-xl w-fit">
+        <div className="flex flex-wrap gap-1 mb-8 bg-slate-100 p-1 rounded-xl w-full sm:w-fit">
           <button
             onClick={() => setActiveTab("pending")}
-            className={`px-6 py-2.5 rounded-lg font-bold text-sm transition-all ${
+            className={`flex-1 sm:flex-initial text-center px-4 sm:px-6 py-2.5 rounded-lg font-montserrat font-black text-xs sm:text-sm uppercase tracking-wider transition-all whitespace-nowrap ${
               activeTab === "pending"
                 ? "bg-white text-indigo-600 shadow-sm"
                 : "text-slate-500 hover:text-slate-800"
             }`}
           >
-            Pending Requests ({pendingRequests.length})
+            Pending Requests{" "}
+            <span className="font-oswald text-xs ml-0.5">
+              ({pendingRequests.length})
+            </span>
           </button>
           <button
             onClick={() => setActiveTab("blocked")}
-            className={`px-6 py-2.5 rounded-lg font-bold text-sm transition-all ${
+            className={`flex-1 sm:flex-initial text-center px-4 sm:px-6 py-2.5 rounded-lg font-montserrat font-black text-xs sm:text-sm uppercase tracking-wider transition-all whitespace-nowrap ${
               activeTab === "blocked"
                 ? "bg-white text-red-600 shadow-sm"
                 : "text-slate-500 hover:text-slate-800"
             }`}
           >
-            Blocked Users ({blockedUsers.length})
+            Blocked Users{" "}
+            <span className="font-oswald text-xs ml-0.5">
+              ({blockedUsers.length})
+            </span>
           </button>
         </div>
       )}
@@ -134,7 +140,7 @@ export default function JoinRequestsPage() {
       {activeTab === "pending" ? (
         <JoinRequestsList
           requests={pendingRequests}
-          onApprove={handleApprove} // Logic from your previous snippet
+          onApprove={handleApprove}
           onDecline={handleDecline}
           onBlock={handleBlock}
           hideTabs={(hide: boolean) => setHideTabs(hide)}

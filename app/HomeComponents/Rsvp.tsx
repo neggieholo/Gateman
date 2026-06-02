@@ -82,16 +82,20 @@ export default function EventDisplayClient({ eventRef }: { eventRef: string }) {
   };
 
   if (fetching)
-    return <div className="p-10 text-center font-black">LOADING EVENT...</div>;
+    return (
+      <div className="p-10 text-center font-sans font-black">
+        LOADING EVENT...
+      </div>
+    );
   if (!event)
     return (
-      <div className="p-10 text-center font-black text-rose-500">
+      <div className="p-10 text-center font-sans font-black text-rose-500">
         EVENT NOT FOUND
       </div>
     );
 
   return (
-    <div className="min-h-screen bg-white relative">
+    <div className="min-h-screen bg-white relative font-sans">
       <div className="fixed inset-0 w-full h-screen z-0">
         <img
           src={
@@ -106,21 +110,21 @@ export default function EventDisplayClient({ eventRef }: { eventRef: string }) {
       </div>
 
       {/* SCROLLABLE CONTENT AREA */}
-      <div className="relative z-10 p-4">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white/30 backdrop-blur-md rounded-[3rem] shadow-2xl p-8 md:p-12 border border-white/20">
+      <div className="relative z-10 p-4 md:p-6 min-h-screen flex items-center">
+        <div className="w-full max-w-2xl mx-auto my-auto">
+          <div className="bg-white/30 backdrop-blur-md rounded-[2rem] md:rounded-[3rem] shadow-2xl p-6 md:p-12 border border-white/20">
             {/* Header Section */}
-            <div className="flex flex-col mb-8">
-              <span className="w-fit px-4 py-1.5 bg-indigo-600 text-white rounded-full text-[10px] font-black uppercase tracking-[0.2em] mb-4">
+            <div className="flex flex-col mb-6 md:mb-8">
+              <span className="w-fit px-4 py-1.5 bg-indigo-600 text-white rounded-full text-[10px] font-oswald font-black uppercase tracking-[0.2em] mb-4">
                 {event.is_paid ? "Paid Entry" : "Free Event"}
               </span>
-              <h1 className="text-4xl font-black text-slate-900 leading-tight">
+              <h1 className="text-2xl md:text-4xl font-montserrat font-black text-slate-900 leading-tight break-words">
                 {event.title}
               </h1>
             </div>
 
             {/* Quick Info Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 mb-8 md:mb-10">
               <InfoTile
                 icon={<Calendar size={20} />}
                 label="Date"
@@ -150,20 +154,20 @@ export default function EventDisplayClient({ eventRef }: { eventRef: string }) {
             </div>
 
             {/* Description */}
-            <div className="mb-12">
-              <h4 className="text-slate-400 text-[11px] uppercase font-black tracking-widest mb-4">
+            <div className="mb-8 md:mb-12">
+              <h4 className="text-slate-400 text-[11px] uppercase font-oswald font-black tracking-widest mb-3 md:mb-4">
                 About the Event
               </h4>
-              <p className="text-slate-600 font-medium leading-relaxed text-lg">
+              <p className="text-slate-600 font-sans font-medium leading-relaxed text-base md:text-lg">
                 {event.description || "No description provided for this event."}
               </p>
             </div>
 
             {/* Registration Form */}
-            <div className="bg-slate-50/80 p-6 md:p-8 rounded-[2.5rem] border border-slate-100 mb-10 space-y-4">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="bg-slate-50/80 p-5 md:p-8 rounded-[1.75rem] md:rounded-[2.5rem] border border-slate-100 mb-8 md:mb-10 space-y-4">
+              <div className="flex items-center gap-2 mb-1">
                 <ShieldCheck size={18} className="text-indigo-600" />
-                <h4 className="text-slate-900 text-xs uppercase font-black tracking-widest">
+                <h4 className="text-slate-900 text-xs uppercase font-oswald font-black tracking-widest">
                   Secure RSVP
                 </h4>
               </div>
@@ -176,7 +180,7 @@ export default function EventDisplayClient({ eventRef }: { eventRef: string }) {
                   onChange={(e) =>
                     setForm({ ...form, guest_name: e.target.value })
                   }
-                  className="w-full px-6 py-5 bg-white border-2 border-transparent focus:border-indigo-600 rounded-2xl text-base font-bold outline-none transition-all shadow-sm placeholder:text-slate-300"
+                  className="w-full px-5 md:px-6 py-4 md:py-5 bg-white border-2 border-transparent focus:border-indigo-600 rounded-xl md:rounded-2xl text-sm md:text-base font-sans font-bold outline-none transition-all shadow-sm placeholder:text-slate-300"
                 />
                 <input
                   type="email"
@@ -185,7 +189,7 @@ export default function EventDisplayClient({ eventRef }: { eventRef: string }) {
                   onChange={(e) =>
                     setForm({ ...form, guest_email: e.target.value })
                   }
-                  className="w-full px-6 py-5 bg-white border-2 border-transparent focus:border-indigo-600 rounded-2xl text-base font-bold outline-none transition-all shadow-sm placeholder:text-slate-300"
+                  className="w-full px-5 md:px-6 py-4 md:py-5 bg-white border-2 border-transparent focus:border-indigo-600 rounded-xl md:rounded-2xl text-sm md:text-base font-sans font-bold outline-none transition-all shadow-sm placeholder:text-slate-300"
                 />
               </div>
             </div>
@@ -194,12 +198,12 @@ export default function EventDisplayClient({ eventRef }: { eventRef: string }) {
             <button
               onClick={handleRegister}
               disabled={loading}
-              className="w-full py-2 bg-indigo-600 text-white rounded-4xl font-black text-base uppercase tracking-[0.25em] shadow-2xl shadow-indigo-200 hover:bg-indigo-700 hover:scale-[1.01] active:scale-[0.98] transition-all flex items-center justify-center gap-4 disabled:opacity-70"
+              className="w-full py-4 bg-indigo-600 text-white rounded-2xl md:rounded-4xl font-sans font-black text-sm md:text-base uppercase tracking-[0.2em] md:tracking-[0.25em] shadow-2xl shadow-indigo-200 hover:bg-indigo-700 hover:scale-[1.01] active:scale-[0.98] transition-all flex items-center justify-center gap-3 md:gap-4 disabled:opacity-70"
             >
               {loading ? (
-                <Loader2 size={24} className="animate-spin" />
+                <Loader2 size={22} className="animate-spin" />
               ) : (
-                <CheckCircle size={24} />
+                <CheckCircle size={22} />
               )}
               {loading
                 ? "Securing Spot..."
@@ -209,10 +213,10 @@ export default function EventDisplayClient({ eventRef }: { eventRef: string }) {
             </button>
 
             <div className="mt-8 flex flex-col items-center gap-2 opacity-40">
-              <p className="text-[14px] bg-white p-2 font-black uppercase tracking-widest text-black">
+              <p className="text-[12px] md:text-[14px] bg-white p-2 font-oswald font-black uppercase tracking-widest text-black">
                 GateMan Secure Verification
               </p>
-              <div className="px-3 py-1 border bg-white border-slate-300 rounded text-[12px] font-mono font-bold">
+              <div className="px-3 py-1 border bg-white border-slate-300 rounded text-[11px] md:text-[12px] font-mono font-bold">
                 REF: {event.ref_code}
               </div>
             </div>
@@ -232,13 +236,15 @@ const InfoTile = ({
   label: string;
   value: string;
 }) => (
-  <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-    <div className="text-indigo-600">{icon}</div>
+  <div className="flex items-center gap-3 p-3 md:p-4 bg-slate-50 rounded-xl md:rounded-2xl border border-slate-100">
+    <div className="text-indigo-600 shrink-0">{icon}</div>
     <div className="overflow-hidden">
-      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+      <p className="text-[9px] font-oswald font-black text-slate-400 uppercase tracking-widest">
         {label}
       </p>
-      <p className="text-xs font-bold text-slate-800 truncate">{value}</p>
+      <p className="text-xs font-sans font-bold text-slate-800 truncate">
+        {value}
+      </p>
     </div>
   </div>
 );

@@ -87,7 +87,6 @@ const AdminAlertManager = () => {
     }
   }, [activeTab, user?.estate_id]);
 
-  // Frontend Filter: Handles text matching and is_archived toggle status
   const filteredPosts = posts.filter((post) => {
     const matchesSearch =
       post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -396,77 +395,77 @@ const AdminAlertManager = () => {
   };
 
   return (
-    <div className="max-w-8xl mx-auto p-6 overflow-hidden">
-      {/* Header & Tabs */}
-      <div className="flex justify-between items-end mb-8 border-b pb-4">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
+    <div className="max-w-8xl mx-auto p-4 sm:p-6 overflow-hidden font-sans">
+      {/* Dynamic Master Board Header */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-8 border-b border-slate-200/60 pb-5 min-w-0">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-montserrat font-black text-slate-800 tracking-tight uppercase">
             Community Alert Center
           </h1>
-          <p className="text-slate-500 text-sm">
-            Broadcast urgent information to the estate
+          <p className="text-slate-400 text-xs sm:text-sm font-medium mt-0.5">
+            Broadcast urgent information and dispatch notices across the estate
           </p>
         </div>
 
         {!selectedPost && (
-          <div className="flex bg-slate-100 p-1 rounded-xl">
+          <div className="flex bg-slate-200/60 p-1 rounded-xl w-full sm:w-fit shrink-0 border border-slate-200/20">
             <button
               onClick={() => setActiveTab("communication")}
-              className={`flex items-center gap-2 px-6 py-2 rounded-lg font-bold transition ${activeTab === "communication" ? "bg-white shadow text-indigo-600" : "text-slate-500"}`}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-2 rounded-lg font-montserrat font-bold text-xs uppercase tracking-wider transition-all duration-200 ${activeTab === "communication" ? "bg-white shadow-2xs text-blue-600" : "text-slate-500 hover:text-slate-700"}`}
             >
-              <Users size={18} /> COMMUNICATION BOARD
+              <Users size={14} /> Communication Board
             </button>
             <button
               onClick={() => setActiveTab("notifications")}
-              className={`flex items-center gap-2 px-6 py-2 rounded-lg font-bold transition ${activeTab === "notifications" ? "bg-white shadow text-indigo-600" : "text-slate-500"}`}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-2 rounded-lg font-montserrat font-bold text-xs uppercase tracking-wider transition-all duration-200 ${activeTab === "notifications" ? "bg-white shadow-2xs text-blue-600" : "text-slate-500 hover:text-slate-700"}`}
             >
-              <Bell size={18} /> NOTIFICATIONS
+              <Bell size={14} /> Notifications
             </button>
           </div>
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* LEFT COLUMN: COMPOSER */}
-        <div className="lg:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 h-fit">
-          <h2 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+        {/* LEFT COMPOSER WINDOW BAR PANEL */}
+        <div className="lg:col-span-1 bg-white p-5 sm:p-6 rounded-2xl shadow-2xs border border-slate-200/70 h-fit">
+          <h2 className="font-montserrat font-bold text-slate-800 mb-4 flex items-center gap-2 text-sm uppercase tracking-wide">
             {activeTab === "communication" ? (
-              <Megaphone className="text-indigo-600" />
+              <Megaphone size={16} className="text-blue-600" />
             ) : (
-              <Bell className="text-indigo-600" />
+              <Bell size={16} className="text-blue-600" />
             )}
             Compose{" "}
             {activeTab === "communication" ? "Public Alert" : "Direct Message"}
           </h2>
 
-          <div className="space-y-4">
+          <div className="space-y-4 font-sans">
             <input
               placeholder="Subject / Title"
-              className="w-full p-3 border-2 border-slate-50 rounded-xl bg-slate-50 focus:border-indigo-500 outline-none transition"
+              className="w-full p-3 text-sm border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:border-blue-500/80 outline-none transition-all placeholder:text-slate-400 font-medium text-slate-700"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
             <textarea
-              placeholder="Detailed message..."
+              placeholder="Detailed message description..."
               rows={5}
-              className="w-full p-3 border-2 border-slate-50 rounded-xl bg-slate-50 focus:border-indigo-500 outline-none transition"
+              className="w-full p-3 text-sm border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:border-blue-500/80 outline-none transition-all placeholder:text-slate-400 font-medium text-slate-700 resize-none"
               value={content}
               onChange={(e) => setContent(e.target.value)}
             />
 
-            {/* Image Upload UI */}
+            {/* Media Attachment Node Component Context */}
             {activeTab === "communication" ? (
-              <div className="space-y-2">
-                <p className="text-xs font-black text-slate-400 uppercase">
-                  Attachment
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-wider">
+                  Media Attachment
                 </p>
 
                 {!selectedImage ? (
-                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50 cursor-pointer hover:bg-slate-100 hover:border-indigo-300 transition group">
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <ImageIcon className="w-8 h-8 text-slate-400 group-hover:text-indigo-500 mb-2" />
-                      <p className="text-sm text-slate-500">
-                        Click to upload photo
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50 cursor-pointer hover:bg-slate-100/50 hover:border-blue-400/50 transition-all group">
+                    <div className="flex flex-col items-center justify-center pt-4 pb-4 px-4 text-center">
+                      <ImageIcon className="w-7 h-7 text-slate-400 group-hover:text-blue-500 mb-2 transition-colors" />
+                      <p className="text-xs text-slate-500 font-medium">
+                        Click to append layout graphic
                       </p>
                     </div>
                     <input
@@ -477,18 +476,18 @@ const AdminAlertManager = () => {
                     />
                   </label>
                 ) : (
-                  <div className="relative rounded-xl overflow-hidden border-2 border-indigo-100">
+                  <div className="relative rounded-xl overflow-hidden border border-blue-100 bg-slate-50">
                     <img
                       src={URL.createObjectURL(selectedImage)}
                       alt="Preview"
-                      className="w-full h-40 object-cover"
+                      className="w-full h-36 object-cover"
                     />
                     <button
                       type="button"
                       onClick={() => setSelectedImage(null)}
-                      className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 shadow-md"
+                      className="absolute top-2 right-2 bg-rose-600 hover:bg-rose-700 text-white p-1.5 rounded-full shadow-md transition-colors"
                     >
-                      <X size={16} />
+                      <X size={14} />
                     </button>
                   </div>
                 )}
@@ -496,40 +495,42 @@ const AdminAlertManager = () => {
             ) : null}
 
             {activeTab === "communication" ? (
-              <label className="flex items-center gap-3 p-3 bg-indigo-50 rounded-xl cursor-pointer group">
+              <label className="flex items-center gap-3 p-3 bg-blue-50/40 border border-blue-100/20 rounded-xl cursor-pointer group transition-colors hover:bg-blue-50/70">
                 <input
                   type="checkbox"
                   checked={alsoNotify}
                   onChange={(e) => setAlsoNotify(e.target.checked)}
-                  className="w-5 h-5 accent-indigo-600"
+                  className="w-4 h-4 accent-blue-600 rounded-md"
                 />
-                <span className="text-sm font-bold text-indigo-900">
-                  Push to Resident&apos;s Phones
+                <span className="text-xs font-montserrat font-bold text-blue-900 uppercase tracking-wide">
+                  Push to Resident&apos;s Devices
                 </span>
               </label>
             ) : (
-              <div className="space-y-4 p-3 bg-slate-50 rounded-xl">
-                <p className="text-xs font-black text-slate-400 uppercase mb-2">
-                  Target Audience
+              <div className="space-y-3 p-3 bg-slate-50/80 border border-slate-100 rounded-xl">
+                <p className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-wider">
+                  Target Destination Scope
                 </p>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={targetResidents}
-                    onChange={(e) => setTargetResidents(e.target.checked)}
-                    className="accent-indigo-600"
-                  />
-                  <span className="text-sm font-medium">Residents</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={targetSecurity}
-                    onChange={(e) => setTargetSecurity(e.target.checked)}
-                    className="accent-indigo-600"
-                  />
-                  <span className="text-sm font-medium">Security Guards</span>
-                </label>
+                <div className="flex flex-col gap-2">
+                  <label className="flex items-center gap-2.5 cursor-pointer text-xs font-semibold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={targetResidents}
+                      onChange={(e) => setTargetResidents(e.target.checked)}
+                      className="accent-blue-600 w-4 h-4 rounded"
+                    />
+                    <span>Community Residents</span>
+                  </label>
+                  <label className="flex items-center gap-2.5 cursor-pointer text-xs font-semibold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={targetSecurity}
+                      onChange={(e) => setTargetSecurity(e.target.checked)}
+                      className="accent-blue-600 w-4 h-4 rounded"
+                    />
+                    <span>On-Duty Security guards</span>
+                  </label>
+                </div>
               </div>
             )}
 
@@ -540,173 +541,182 @@ const AdminAlertManager = () => {
                   : handleSendNotification
               }
               disabled={loading}
-              className="w-full bg-indigo-600 text-white p-4 rounded-xl font-black shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 hover:bg-indigo-700 transition"
+              className="w-full bg-blue-600 text-white p-3.5 rounded-xl font-montserrat font-bold text-xs uppercase tracking-wider shadow-md shadow-blue-100 flex items-center justify-center gap-2 hover:bg-blue-700 transition-all active:scale-98"
             >
               {publishing ? (
-                "Processing..."
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  <span>Processing Board Write...</span>
+                </>
               ) : (
                 <>
-                  <Send size={18} />
-                  {activeTab === "communication" ? "PUBLISH" : "DISPATCH"}
+                  <Send size={13} />
+                  <span>
+                    {activeTab === "communication"
+                      ? "Publish Entry"
+                      : "Dispatch Notification"}
+                  </span>
                 </>
               )}
             </button>
           </div>
         </div>
 
-        {/* RIGHT COLUMN: HISTORY/LOGS */}
-        <div className="lg:col-span-2 h-[calc(100vh-250px)] p-2 flex flex-col">
+        {/* RIGHT HISTORICAL LOG STREAM VIEWS */}
+        <div className="lg:col-span-2 h-[calc(100vh-250px)] p-1 flex flex-col min-w-0">
           {selectedPost ? (
-            /* --- DETAIL VIEW --- */
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden animate-in fade-in slide-in-from-right-4 duration-300 flex flex-col h-full">
-              <div className="p-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/50 shrink-0">
+            /* --- EXPANDED DETAIL COMPONENT VIEW --- */
+            <div className="bg-white rounded-2xl border border-slate-200/70 shadow-2xs overflow-hidden flex flex-col h-full min-w-0 animate-fade-in">
+              <div className="p-4 border-b border-slate-200/60 flex items-center justify-between bg-slate-50/50 shrink-0 min-w-0">
                 <button
                   onClick={() => {
                     setSelectedPost(null);
                     setActiveSelectedPostTab("comments");
                   }}
-                  className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 font-bold transition"
+                  className="flex items-center gap-1.5 text-slate-500 hover:text-blue-600 font-montserrat font-bold text-xs uppercase tracking-wider transition-colors min-w-0"
                 >
-                  <ArrowLeft size={20} /> BACK TO LIST
+                  <ArrowLeft size={16} /> Back to dashboard feed
                 </button>
-                <span className="bg-red-100 text-red-600 text-[10px] font-black px-3 py-1 rounded-full uppercase">
-                  Alert Detail
+                <span className="bg-blue-50 border border-blue-100/50 text-blue-600 text-[10px] font-oswald font-bold px-2.5 py-0.5 rounded-md uppercase tracking-wider shrink-0">
+                  Alert Detail View
                 </span>
               </div>
 
-              <div className="flex flex-col p-3">
-                <h1 className="text-3xl font-black text-slate-900 mb-4">
+              {/* Detail Content Metadata Track */}
+              <div className="flex flex-col p-5 border-b border-slate-100 shrink-0 min-w-0">
+                <h3 className="text-xl sm:text-2xl font-montserrat font-black text-slate-800 tracking-tight leading-snug truncate block w-full mb-2">
                   {selectedPost.title}
-                </h1>
-                <p className="text-slate-600 text-lg leading-relaxed mb-6">
+                </h3>
+                <p className="text-slate-600 text-sm leading-relaxed mb-4 max-h-24 overflow-y-auto font-medium">
                   {selectedPost.content}
                 </p>
 
-                <div className="flex items-center gap-4 text-xs text-slate-400 border-t border-b p-2">
+                <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium text-slate-400 bg-slate-50/80 p-2.5 rounded-xl border border-slate-100">
                   <div className="flex items-center gap-1">
-                    <span>By </span>
+                    <span>Author:</span>
                     <button
                       onClick={() => {
                         router.push(
                           `/home/tenantmanagement?author_id=${selectedPost.author_id}`,
                         );
                       }}
-                      className="font-bold text-indigo-600 hover:text-indigo-800 hover:underline transition decoration-2"
+                      className="font-montserrat font-bold text-blue-600 hover:text-blue-800 hover:underline transition-all"
                     >
                       {selectedPost.author_name}
                     </button>
                   </div>
-                  <span>•</span>
-                  <span>
+                  <span className="text-slate-300">•</span>
+                  <span className="font-oswald tracking-wide font-semibold text-slate-500">
                     {new Date(selectedPost.created_at).toLocaleString()}
                   </span>
                 </div>
-                <div className="flex bg-white border-b border-gray-100">
+
+                {/* Internal Comment/Like Component Navigation Header Track */}
+                <div className="flex bg-slate-50 border border-slate-200/60 p-0.5 rounded-xl mt-4 shrink-0">
                   <button
                     onClick={() => setActiveSelectedPostTab("comments")}
-                    className={`flex-1 py-3 items-center ${activeSelectedPostTab === "comments" ? "bg-indigo-600" : ""}`}
+                    className={`flex-1 py-2 rounded-lg font-montserrat font-bold text-xs uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2 ${activeSelectedPostTab === "comments" ? "bg-white text-blue-600 shadow-3xs" : "text-slate-400 hover:text-slate-600"}`}
                   >
-                    <p
-                      className={`text-xs font-bold uppercase tracking-widest ${activeSelectedPostTab === "comments" ? "text-white" : "text-gray-400"}`}
-                    >
-                      Comments ({comments?.length ?? 0})
-                    </p>
+                    <span>Comments</span>
+                    <span className="font-oswald text-[10px] px-1.5 py-0.5 rounded bg-slate-200/60 text-slate-600 font-bold">
+                      {comments?.length ?? 0}
+                    </span>
                   </button>
                   <button
                     onClick={() => setActiveSelectedPostTab("likes")}
-                    className={`flex-1 py-3 items-center ${activeSelectedPostTab === "likes" ? "bg-indigo-600" : ""}`}
+                    className={`flex-1 py-2 rounded-lg font-montserrat font-bold text-xs uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2 ${activeSelectedPostTab === "likes" ? "bg-white text-blue-600 shadow-3xs" : "text-slate-400 hover:text-slate-600"}`}
                   >
-                    <p
-                      className={`text-xs font-bold uppercase tracking-widest ${activeSelectedPostTab === "likes" ? "text-white" : "text-gray-400"}`}
-                    >
-                      Likes ({likes.length ?? 0})
-                    </p>
+                    <span>Likes</span>
+                    <span className="font-oswald text-[10px] px-1.5 py-0.5 rounded bg-slate-200/60 text-slate-600 font-bold">
+                      {likes?.length ?? 0}
+                    </span>
                   </button>
                 </div>
               </div>
 
-              <div className="p-2 overflow-y-auto flex-1">
+              {/* Parameter Metadata Dynamic Render Sheet Scroll Track */}
+              <div className="p-4 overflow-y-auto flex-1 bg-slate-50/30 custom-scrollbar">
                 {loadingComments ? (
-                  <div className="flex flex-col items-center justify-center py-20">
-                    <Loader2
-                      size={24}
-                      className="text-indigo-600 animate-spin"
-                    />
+                  <div className="flex flex-col items-center justify-center py-16">
+                    <Loader2 size={20} className="text-blue-600 animate-spin" />
                     <p className="text-slate-400 text-xs mt-2 font-medium">
-                      Loading details...
+                      Compiling register activity logs...
                     </p>
                   </div>
                 ) : activeSelectedPostTab === "likes" ? (
-                  <div className="flex-1 p-4">
+                  <div className="space-y-2.5">
                     {likes.length > 0 ? (
                       likes.map((like: any, index: number) => (
                         <div
                           key={index}
-                          className="flex items-center justify-between mb-3 bg-white p-3 rounded-2xl border border-gray-100 shadow-sm"
+                          className="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200/60 shadow-3xs min-w-0"
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center border border-indigo-100">
-                              <p className="text-indigo-600 font-bold text-sm">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center border border-blue-100/50 shrink-0">
+                              <p className="text-blue-600 font-montserrat font-black text-sm uppercase">
                                 {like.author_name?.charAt(0).toUpperCase() ||
                                   "U"}
                               </p>
                             </div>
-                            <div>
-                              <p className="text-sm font-bold text-gray-900">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-montserrat font-bold text-slate-800 truncate block w-full">
                                 {like.author_name}
                               </p>
-                              <p className="text-[10px] text-gray-400">
-                                Liked {getRelativeTime(like.created_at)}
+                              <p className="text-[10px] text-slate-400 font-oswald font-medium tracking-wide">
+                                LIKED{" "}
+                                {getRelativeTime(like.created_at).toUpperCase()}
                               </p>
                             </div>
                           </div>
                           <Heart
                             size={14}
-                            className="text-red-500 fill-red-500"
+                            className="text-rose-500 fill-rose-500 shrink-0 mr-1"
                           />
                         </div>
                       ))
                     ) : (
-                      <div className="text-center py-10">
-                        <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">
-                          No likes yet
+                      <div className="text-center py-12 border border-dashed border-slate-200 rounded-xl bg-white">
+                        <p className="text-slate-400 text-xs font-montserrat font-bold uppercase tracking-wider">
+                          No likes registered
                         </p>
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="flex-1 p-4">
+                  <div className="space-y-2.5">
                     {comments.length > 0 ? (
                       comments.map((comment: any) => (
                         <div
                           key={comment.id}
-                          className="mb-3 bg-white p-3 rounded-2xl shadow-sm border border-gray-100"
+                          className="bg-white p-3.5 rounded-xl border border-slate-200/60 shadow-3xs min-w-0"
                         >
-                          <p className="font-bold text-xs text-indigo-600">
-                            {comment.author_name}
-                          </p>
-                          <p className="text-gray-800 py-1 text-sm">
-                            {comment.content}
-                          </p>
-                          <div className="flex justify-between items-center w-full">
-                            <p className="text-[9px] text-gray-400">
-                              {getRelativeTime(comment.created_at)}
+                          <div className="flex justify-between items-start gap-4 mb-1 min-w-0">
+                            <p className="font-montserrat font-bold text-xs text-blue-600 truncate flex-1">
+                              {comment.author_name}
                             </p>
                             {comment.user_id === user?.id && (
                               <button
                                 onClick={() => handleDeleteComment(comment.id)}
-                                className="p-1 hover:bg-red-50 rounded-lg transition"
+                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-all shrink-0"
                               >
-                                <Trash size={14} className="text-red-500" />
+                                <Trash2 size={13} />
                               </button>
                             )}
+                          </div>
+                          <p className="text-slate-700 text-sm leading-relaxed font-medium break-words">
+                            {comment.content}
+                          </p>
+                          <div className="mt-2 pt-1.5 border-t border-slate-50 flex items-center">
+                            <p className="text-[10px] font-oswald font-semibold text-slate-400 uppercase tracking-wide">
+                              {getRelativeTime(comment.created_at)}
+                            </p>
                           </div>
                         </div>
                       ))
                     ) : (
-                      <div className="text-center py-10">
-                        <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">
-                          No comments yet
+                      <div className="text-center py-12 border border-dashed border-slate-200 rounded-xl bg-white">
+                        <p className="text-slate-400 text-xs font-montserrat font-bold uppercase tracking-wider">
+                          No comment lines found
                         </p>
                       </div>
                     )}
@@ -714,39 +724,40 @@ const AdminAlertManager = () => {
                 )}
               </div>
 
-              <div className="pl-3 bg-slate-50 flex gap-6 border-t shrink-0">
-                <div className="flex gap-3 h-12 items-center">
-                  <button
-                    className="flex justify-center items-center"
-                    onClick={() => handleLike(selectedPost.id)}
-                  >
-                    <ThumbsUp
-                      size={18}
-                      color={selectedPost.has_liked ? "#2563eb" : "#9ca3af"}
-                    />
-                  </button>
-                </div>
+              {/* Expandable Parameter Lower Input Actions Interaction Foot Track */}
+              <div className="p-3 bg-slate-50 border-t border-slate-200/60 flex items-center gap-4 shrink-0">
+                <button
+                  className="flex justify-center items-center p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shrink-0 shadow-3xs"
+                  onClick={() => handleLike(selectedPost.id)}
+                >
+                  <ThumbsUp
+                    size={16}
+                    className="transition-colors"
+                    fill={selectedPost.has_liked ? "#2563eb" : "none"}
+                    color={selectedPost.has_liked ? "#2563eb" : "#94a3b8"}
+                  />
+                </button>
                 {activeSelectedPostTab === "comments" && (
-                  <div className="border-t border-gray-100 bg-white flex-1">
-                    <div className="flex items-center px-4 h-12">
+                  <div className="bg-transparent flex-1">
+                    <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-2 py-1 shadow-3xs focus-within:border-blue-500 transition-all">
                       <input
-                        className="flex-1 text-sm text-gray-900 bg-gray-100 rounded-2xl p-2"
-                        placeholder="Write a comment..."
+                        className="flex-1 text-sm text-slate-700 bg-transparent px-2 py-1.5 outline-none placeholder:text-slate-400 font-medium"
+                        placeholder="Write community response statement..."
                         value={newComment}
                         onChange={(e) => setNewComment(e.target.value)}
+                        onKeyDown={(e) =>
+                          e.key === "Enter" && handleCommentSubmit()
+                        }
                       />
                       <button
                         onClick={handleCommentSubmit}
-                        disabled={uploadingComment}
-                        className="ml-2 bg-indigo-600 rounded-full w-10 h-10 flex items-center justify-center transition-all disabled:opacity-70"
+                        disabled={uploadingComment || !newComment.trim()}
+                        className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-3 py-1.5 flex items-center justify-center transition-all disabled:opacity-40 disabled:bg-slate-300 disabled:cursor-not-allowed shrink-0 font-montserrat font-bold text-[10px] uppercase tracking-wider"
                       >
                         {uploadingComment ? (
-                          <Loader
-                            size={18}
-                            className="text-white animate-spin"
-                          />
+                          <Loader size={12} className="animate-spin" />
                         ) : (
-                          <Send size={16} className="text-white" />
+                          <Send size={11} />
                         )}
                       </button>
                     </div>
@@ -755,158 +766,150 @@ const AdminAlertManager = () => {
               </div>
             </div>
           ) : (
-            /* --- LIST VIEW --- */
-            <div className="flex flex-col h-full">
-              <div className="flex justify-between items-center mb-4 shrink-0">
-                <h3 className="font-bold text-slate-400 uppercase text-xs tracking-widest">
+            /* --- PRIMARY INTERACTIVE DISPATCH LIST WINDOW --- */
+            <div className="flex flex-col h-full min-w-0">
+              <div className="flex justify-between items-center mb-3 shrink-0 min-w-0">
+                <h3 className="font-oswald font-bold text-slate-400 uppercase text-xs tracking-wider">
                   {showArchived
-                    ? "Archived Logs"
-                    : `Recent ${activeTab} Activity`}
+                    ? "Archived Communications Log Index"
+                    : `Recent ${activeTab} Activity Log`}
                 </h3>
               </div>
 
               {activeTab === "communication" && (
-                <div className="flex flex-col sm:flex-row gap-3 bg-slate-50 p-3 pr-9 rounded-2xl border border-slate-100 shrink-0">
-                  {/* Search Input Bar */}
-                  <div className="flex-1 relative flex items-center">
+                <div className="flex flex-col sm:flex-row gap-3 bg-slate-100/80 p-3 rounded-xl border border-slate-200/50 shrink-0 min-w-0 mb-4">
+                  <div className="flex-1 relative flex items-center min-w-0">
                     <Search
-                      size={16}
-                      className="absolute left-3 text-slate-400"
+                      size={15}
+                      className="absolute left-3 text-slate-400 pointer-events-none"
                     />
                     <input
                       type="text"
-                      placeholder="Search board entries..."
+                      placeholder="Filter board entries by text parameter..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full text-xs pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-500 transition"
+                      className="w-full text-xs pl-9 pr-8 py-2 bg-white border border-slate-200/80 rounded-lg outline-none focus:border-blue-500 transition-all font-medium text-slate-700 placeholder:text-slate-400"
                     />
                     {searchQuery && (
                       <button
                         onClick={() => setSearchQuery("")}
-                        className="absolute right-3 text-slate-400 hover:text-slate-600"
+                        className="absolute right-3 text-slate-400 hover:text-slate-600 transition-colors"
                       >
-                        <X size={14} />
+                        <X size={13} />
                       </button>
                     )}
                   </div>
 
                   <button
                     onClick={() => setShowArchived(!showArchived)}
-                    className={`flex items-center gap-2 px-4 py-2 border rounded-xl text-xs font-bold transition whitespace-nowrap bg-white ${
+                    className={`flex items-center justify-center gap-1.5 px-4 py-2 border rounded-lg text-xs font-montserrat font-bold uppercase tracking-wider transition-all whitespace-nowrap bg-white shrink-0 shadow-3xs active:scale-98 ${
                       showArchived
-                        ? "border-indigo-200 text-indigo-600 hover:bg-indigo-50/50"
-                        : "border-slate-200 text-slate-600 hover:bg-slate-100"
+                        ? "border-blue-200 text-blue-600 hover:bg-blue-50/50"
+                        : "border-slate-200 text-slate-600 hover:bg-slate-50"
                     }`}
                   >
                     <Archive
-                      size={14}
+                      size={13}
                       className={
-                        showArchived ? "text-indigo-600" : "text-slate-400"
+                        showArchived ? "text-blue-600" : "text-slate-400"
                       }
                     />
-                    <span>{showArchived ? "Feed" : "View Archives"}</span>
+                    <span>{showArchived ? "Active Feed" : "Archives"}</span>
                   </button>
                 </div>
               )}
 
-              {/* SCROLLABLE FEED LIST AREA */}
-              <div className="space-y-4 overflow-y-auto pr-2 custom-scrollbar flex-1 mt-2">
+              {/* SYSTEM DISPATCH SCROLL SECTOR TRACK */}
+              <div className="space-y-3 overflow-y-auto p-0.5 flex-1 custom-scrollbar">
                 {activeTab === "communication" ? (
                   filteredPosts.length > 0 ? (
                     filteredPosts.map((post) => (
                       <div
                         key={post.id}
-                        className="bg-white p-5 rounded-2xl border border-slate-100 flex justify-between items-start cursor-pointer hover:border-indigo-200 transition animate-in fade-in duration-200"
+                        className="bg-white p-4 rounded-2xl border border-slate-200/70 flex justify-between items-start gap-4 cursor-pointer hover:border-blue-400/50 shadow-2xs hover:shadow-xs transition-all duration-200 group min-w-0 animate-fade-in"
                       >
                         <div
-                          className="flex-1"
+                          className="flex-1 min-w-0"
                           onClick={() => handleOpenPost(post)}
                         >
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-bold text-slate-900">
+                          <div className="flex items-center gap-2 mb-1.5 min-w-0">
+                            <h4 className="font-montserrat font-bold text-slate-800 tracking-tight group-hover:text-blue-600 transition-colors truncate block flex-1">
                               {post.title}
                             </h4>
                             {!post.admin_seen && !showArchived && (
-                              <div className="bg-red-600 text-white text-[9px] font-black px-2 py-0.5 rounded shadow-sm animate-pulse">
+                              <div className="bg-rose-600 text-white text-[9px] font-oswald font-bold px-1.5 py-0.5 rounded tracking-wider shadow-3xs shrink-0 animate-pulse">
                                 NEW
                               </div>
                             )}
                           </div>
-                          <p className="text-slate-600 text-sm mb-3 line-clamp-2">
+                          <p className="text-slate-500 text-xs font-medium line-clamp-2 mb-3.5 pr-2 leading-relaxed">
                             {post.content}
                           </p>
-                          <p className="text-[10px] text-slate-400 font-medium">
-                            Published on{" "}
-                            {new Date(post.created_at).toLocaleString()}
-                          </p>
-                          <div className="flex items-center gap-6 my-3 text-slate-500">
-                            <span className="flex items-center gap-1">
-                              <ThumbsUp
-                                size={16}
-                                className={
-                                  post.has_liked
-                                    ? "text-indigo-600 fill-indigo-100"
-                                    : "text-slate-400"
-                                }
-                              />
-                              <p className="font-bold text-xs">
-                                {post.likes_count}
-                              </p>
+
+                          <div className="flex items-center gap-4 text-[10px] text-slate-400 font-medium font-oswald tracking-wide">
+                            <span className="uppercase text-slate-400">
+                              PUBLISHED:{" "}
+                              {new Date(post.created_at).toLocaleDateString()}
                             </span>
-                            <span className="flex items-center gap-1">
-                              <MessageSquare
-                                size={16}
-                                className="text-slate-400"
-                              />
-                              <p className="font-bold text-xs">
-                                {post.comments_count}
-                              </p>
+                            <span className="text-slate-300">•</span>
+                            <span className="flex items-center gap-1 text-slate-400 uppercase">
+                              <ThumbsUp
+                                size={11}
+                                fill={post.has_liked ? "#94a3b8" : "none"}
+                              />{" "}
+                              {post.likes_count} Likes
+                            </span>
+                            <span className="text-slate-300">•</span>
+                            <span className="flex items-center gap-1 text-slate-400 uppercase">
+                              <MessageSquare size={11} /> {post.comments_count}{" "}
+                              Comments
                             </span>
                           </div>
                         </div>
 
-                        <div className="flex flex-col gap-2 ml-4 self-start">
+                        {/* Administrative Post Lifecycle Control Triggers */}
+                        <div className="flex items-center gap-1 shrink-0 self-center">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleArchivePost(post.id);
                             }}
-                            className={`p-1.5 rounded-lg transition ${
-                              showArchived
-                                ? "text-indigo-600 hover:bg-indigo-50"
-                                : "text-slate-400 hover:text-amber-600 hover:bg-amber-50"
-                            }`}
                             title={
                               showArchived
-                                ? "Restore to public feed"
-                                : "Archive notice"
+                                ? "Restore to public timeline"
+                                : "Archive communication entry"
                             }
+                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
                           >
-                            <Archive size={16} />
+                            <Archive size={14} />
                           </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDelete(post.id);
                             }}
-                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                            title="Delete Post"
+                            title="Hard delete entry record"
+                            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
                           >
-                            <Trash2 size={16} />
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-20 text-slate-400 text-sm font-medium bg-white rounded-2xl border border-slate-100">
-                      {showArchived
-                        ? "Archive board history is empty."
-                        : "No active announcements published here yet."}
+                    <div className="p-8 bg-white rounded-2xl border-2 border-dashed border-slate-200/70 text-center">
+                      <p className="text-slate-400 font-medium text-sm">
+                        No board entries map to the current configuration scope.
+                      </p>
                     </div>
                   )
                 ) : (
-                  <div className="text-center py-20 text-slate-400 text-sm font-medium bg-white rounded-2xl border border-slate-100">
-                    No system dispatch logs tracked under this category.
+                  /* DIRECT DISPATCH ALTERNATE TRACK PLACEMENT */
+                  <div className="p-8 bg-white rounded-2xl border-2 border-dashed border-slate-200/70 text-center">
+                    <p className="text-slate-400 font-medium text-sm">
+                      Direct notification archives are routed through the
+                      analytical logging telemetry panel view.
+                    </p>
                   </div>
                 )}
               </div>

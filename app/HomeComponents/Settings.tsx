@@ -400,22 +400,22 @@ export default function Settings() {
   }, []);
 
   return (
-    <div className="relative flex-1 overflow-y-auto p-6 space-y-8 h-[calc(100vh-120px)] bg-slate-50/50">
+    <div className="relative flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 sm:space-y-8 h-[calc(100vh-120px)] bg-slate-50/50 font-sans">
       {/* Header */}
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 sm:gap-0">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-montserrat font-black text-slate-900 tracking-tight">
             Estate Configuration
           </h1>
-          <p className="text-slate-500 text-sm font-medium">
+          <p className="text-slate-500 text-sm font-sans font-medium">
             Configure how residents interact with the estate
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 w-full sm:w-auto">
           {isEditing && (
             <button
               onClick={handleCancel}
-              className="px-6 py-2 rounded-xl text-sm font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all"
+              className="flex-1 sm:flex-none px-6 py-2 rounded-xl text-sm font-sans font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all"
             >
               Cancel
             </button>
@@ -425,7 +425,7 @@ export default function Settings() {
               isEditing ? handleSaveConfig() : setIsEditing(true)
             }
             disabled={isEditing && (saving || !hasChanges)}
-            className={`px-6 py-2 rounded-xl text-sm font-bold shadow-sm transition-all ${
+            className={`flex-1 sm:flex-none px-6 py-2 rounded-xl text-sm font-sans font-bold shadow-sm transition-all ${
               isEditing
                 ? !hasChanges || saving
                   ? "bg-slate-200 text-slate-400 cursor-not-allowed"
@@ -442,36 +442,38 @@ export default function Settings() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
         <div className="lg:col-span-2 space-y-6">
           {/* Identity Section */}
-          <div className="bg-white p-8 rounded-4xl border border-slate-100 shadow-sm space-y-6">
+          <div className="bg-white p-5 sm:p-8 rounded-4xl sm:rounded-4xl border border-slate-100 shadow-sm space-y-6">
             <div className="flex items-center gap-2 mb-2">
               <Building2 className="text-indigo-600" size={20} />
-              <h2 className="font-bold text-slate-900">Core Identity</h2>
+              <h2 className="font-montserrat font-bold text-slate-900">
+                Core Identity
+              </h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                <label className="text-[10px] font-oswald font-black text-slate-400 uppercase tracking-widest">
                   Estate Name
                 </label>
-                <div className="p-4 bg-slate-100 rounded-2xl font-bold text-slate-500 flex items-center gap-2">
-                  <Lock size={14} /> {profile.estateName}
+                <div className="p-4 bg-slate-100 rounded-2xl font-sans font-bold text-slate-500 flex items-center gap-2 text-sm sm:text-base break-all">
+                  <Lock size={14} className="shrink-0" /> {profile.estateName}
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                <label className="text-[10px] font-oswald font-black text-slate-400 uppercase tracking-widest">
                   Public Estate ID
                 </label>
-                <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl font-black text-indigo-600">
+                <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl font-sans font-black text-indigo-600 text-sm sm:text-base">
                   <code>{profile.estateCode}</code>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                <label className="text-[10px] font-oswald font-black text-slate-400 uppercase tracking-widest">
                   Primary Admin Name
                 </label>
                 <input
@@ -481,28 +483,32 @@ export default function Settings() {
                   onChange={(e) =>
                     handleFieldChange("adminName", e.target.value)
                   }
-                  className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-slate-900"
+                  className="w-full p-4 bg-slate-50 border-none rounded-2xl font-sans font-bold text-slate-900 text-sm sm:text-base focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
               </div>
 
               {/* Email with Verification */}
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                <label className="text-[10px] font-oswald font-black text-slate-400 uppercase tracking-widest">
                   Email
                 </label>
-                <div className="relative">
+                <div className="relative flex items-center">
                   <input
                     type="email"
                     disabled={!isEditing}
                     value={profile.email}
                     onChange={(e) => handleFieldChange("email", e.target.value)}
-                    className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-slate-900 pr-32"
+                    className="w-full p-4 bg-slate-50 border-none rounded-2xl font-sans font-bold text-slate-900 pr-28 sm:pr-32 text-sm sm:text-base focus:ring-2 focus:ring-indigo-500 outline-none"
                   />
-                  <div className="absolute right-2 top-2 bottom-2 flex items-center">
+                  <div className="absolute right-2 top-2 bottom-2 flex items-center z-10">
                     {profile.email_verified ? (
-                      <div className="flex items-center gap-1 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100 animate-in zoom-in">
-                        <CheckCircle2 size={16} strokeWidth={3} />
-                        <span className="text-[10px] font-black uppercase tracking-tighter">
+                      <div className="flex items-center gap-1 px-2.5 sm:px-3 py-1 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100 animate-in zoom-in">
+                        <CheckCircle2
+                          size={14}
+                          strokeWidth={3}
+                          className="shrink-0"
+                        />
+                        <span className="text-[9px] sm:text-[10px] font-oswald font-black uppercase tracking-tighter">
                           Verified
                         </span>
                       </div>
@@ -512,9 +518,9 @@ export default function Settings() {
                           onClick={() =>
                             handleRequestOtp(profile.email, "email")
                           }
-                          className="bg-amber-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase active:scale-95 transition-transform"
+                          className="bg-amber-500 text-white px-3 sm:px-4 py-2 rounded-xl text-[9px] sm:text-[10px] font-oswald font-black uppercase active:scale-95 transition-transform whitespace-nowrap"
                         >
-                          {otpLoading ? "Sending OTP" : "Verify"}
+                          {otpLoading ? "Sending..." : "Verify"}
                         </button>
                       )
                     )}
@@ -524,38 +530,38 @@ export default function Settings() {
 
               {/* Phone with Verification */}
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                <label className="text-[10px] font-oswald font-black text-slate-400 uppercase tracking-widest">
                   Phone Number
                 </label>
                 <div
-                  className={`flex items-center justify-center w-full p-4 bg-slate-50 rounded-2xl border-2 transition-all ${isEditing ? "border-transparent focus-within:border-indigo-500 bg-white shadow-sm" : "border-transparent"}`}
+                  className={`flex flex-col sm:flex-row items-stretch sm:items-center justify-between w-full p-2.5 sm:p-4 bg-slate-50 rounded-2xl border-2 transition-all gap-2 sm:gap-0 ${isEditing ? "border-transparent focus-within:border-indigo-500 bg-white shadow-sm" : "border-transparent"}`}
                 >
                   {!isEditing && !profile.phone ? (
-                    /* Show the "Not set" placeholder only when NOT editing */
-                    <div className="flex-1 p-3 font-bold text-slate-400">
+                    <div className="flex-1 p-2 font-sans font-bold text-slate-400 text-sm sm:text-base">
                       Not set
                     </div>
                   ) : (
-                    /* Only render the actual Input if we are editing OR if there is a number to show */
                     <PhoneInput
                       international
                       defaultCountry="NG"
                       disabled={!isEditing}
-                      /* Ensure we never pass "Not set" to the value prop */
                       value={
                         profile.phone === "Not set" ? undefined : profile.phone
                       }
                       onChange={handlePhoneChange}
-                      className="flex-1 font-bold text-slate-900 ml-2"
+                      className="flex-1 font-sans font-bold text-slate-900 ml-2 text-sm sm:text-base"
                     />
                   )}
 
-                  {/* Verification UI remains the same */}
-                  <div className="flex items-center">
+                  <div className="flex items-center justify-end px-2 sm:px-0">
                     {profile.phone_verified ? (
                       <div className="flex items-center gap-1 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100">
-                        <CheckCircle2 size={16} strokeWidth={3} />
-                        <span className="text-[10px] font-black uppercase tracking-tighter">
+                        <CheckCircle2
+                          size={14}
+                          strokeWidth={3}
+                          className="shrink-0"
+                        />
+                        <span className="text-[9px] sm:text-[10px] font-oswald font-black uppercase tracking-tighter">
                           Verified
                         </span>
                       </div>
@@ -566,7 +572,7 @@ export default function Settings() {
                           onClick={() =>
                             handleRequestOtp(profile.phone!, "phone")
                           }
-                          className="bg-amber-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase active:scale-95 transition-transform whitespace-nowrap ml-2"
+                          className="w-full sm:w-auto bg-amber-500 text-white px-4 py-2 rounded-xl text-[9px] sm:text-[10px] font-oswald font-black uppercase active:scale-95 transition-transform whitespace-nowrap sm:ml-2"
                         >
                           {otpLoading ? "Sending..." : "Verify"}
                         </button>
@@ -579,20 +585,21 @@ export default function Settings() {
           </div>
 
           {/* Payment Section */}
-          <div className="bg-white p-8 rounded-4xl border border-slate-100 shadow-sm space-y-6">
-            <div className="flex items-center justify-between">
+          <div className="bg-white p-5 sm:p-8 rounded-4xl sm:rounded-4xl border border-slate-100 shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
               <div className="flex items-center gap-2">
                 <CreditCard className="text-emerald-600" size={20} />
-                <h2 className="font-bold text-slate-900">Payment Routing</h2>
+                <h2 className="font-montserrat font-bold text-slate-900">
+                  Payment Routing
+                </h2>
               </div>
-              <div className="flex bg-slate-100 p-1 rounded-xl">
+              <div className="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
                 {["manual", "api"].map((type) => (
                   <button
                     key={type}
                     disabled={!isEditing}
-                    value={paymentMethod}
                     onClick={() => setPaymentMethod(type)}
-                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-sans font-bold transition-all ${
                       paymentMethod === type
                         ? "bg-white shadow-sm text-slate-900"
                         : "text-slate-400"
@@ -605,12 +612,12 @@ export default function Settings() {
             </div>
 
             {paymentMethod === "manual" ? (
-              <div className="p-6 bg-emerald-50 rounded-3xl border border-emerald-100 space-y-4">
+              <div className="p-4 sm:p-6 bg-emerald-50 rounded-3xl border border-emerald-100 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {isEditing ? (
                     <select
                       disabled={!isEditing}
-                      className="p-4 bg-white border-none rounded-2xl font-bold text-slate-900 shadow-sm"
+                      className="p-4 bg-white border-none rounded-2xl font-sans font-bold text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-emerald-500 text-sm sm:text-base"
                       value={selectedBank.code}
                       onChange={(e) => {
                         const b = banks.find((b) => b.code === e.target.value);
@@ -628,7 +635,7 @@ export default function Settings() {
                       ))}
                     </select>
                   ) : (
-                    <p className="p-4 bg-white border-none rounded-2xl font-bold text-slate-900 shadow-sm">
+                    <p className="p-4 bg-white border-none rounded-2xl font-sans font-bold text-slate-900 shadow-sm text-sm sm:text-base">
                       {bankName}
                     </p>
                   )}
@@ -641,30 +648,30 @@ export default function Settings() {
                         placeholder="Account Number"
                         value={accountNumber}
                         onChange={(e) => setAccountNumber(e.target.value)}
-                        className="flex-1 p-4 bg-white border-none rounded-2xl font-bold text-slate-900 shadow-sm"
+                        className="flex-1 p-4 bg-white border-none rounded-2xl font-sans font-bold text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-emerald-500 text-sm sm:text-base"
                       />
                       <button
                         onClick={resolveAccount}
-                        className="bg-emerald-600 text-white px-4 rounded-2xl hover:bg-emerald-700 transition-colors"
+                        className="bg-emerald-600 text-white px-4 rounded-2xl hover:bg-emerald-700 transition-colors shrink-0"
                       >
                         <Search size={18} />
                       </button>
                     </div>
                   ) : (
-                    <p className="flex-1 p-4 bg-white border-none rounded-2xl font-bold text-slate-900 shadow-sm">
+                    <p className="flex-1 p-4 bg-white border-none rounded-2xl font-sans font-bold text-slate-900 shadow-sm text-sm sm:text-base">
                       {accountNumber}
                     </p>
                   )}
                 </div>
-                <div className="px-4 py-2 bg-emerald-100/50 rounded-xl text-[10px] font-black text-emerald-800 uppercase tracking-widest">
+                <div className="px-4 py-2 bg-emerald-100/50 rounded-xl text-[10px] font-oswald font-black text-emerald-800 uppercase tracking-widest">
                   {isEditing && isResolving
                     ? "Verifying..."
                     : accountName || "No account Name"}
                 </div>
               </div>
             ) : (
-              <div className="p-6 bg-indigo-50 rounded-3xl border border-indigo-100 space-y-4">
-                <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">
+              <div className="p-4 sm:p-6 bg-indigo-50 rounded-3xl border border-indigo-100 space-y-4">
+                <label className="text-[10px] font-oswald font-black text-indigo-400 uppercase tracking-widest">
                   External Payment URL
                 </label>
                 <input
@@ -673,7 +680,7 @@ export default function Settings() {
                   value={externalUrl}
                   onChange={(e) => setExternalUrl(e.target.value)}
                   placeholder="https://your-legacy-portal.com"
-                  className="w-full p-4 bg-white border-none rounded-2xl font-bold text-slate-900 shadow-sm"
+                  className="w-full p-4 bg-white border-none rounded-2xl font-sans font-bold text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
                 />
               </div>
             )}
@@ -682,10 +689,10 @@ export default function Settings() {
 
         {/* Sidebar: Emergency Contacts */}
         <div className="space-y-6">
-          <div className="bg-slate-900 p-6 rounded-4xl text-white flex flex-col h-[400px] shadow-xl">
+          <div className="bg-slate-900 p-5 sm:p-6 rounded-4xl sm:rounded-4xl text-white flex flex-col h-110 sm:h-100 shadow-xl">
             <div className="flex items-center gap-2 mb-4 shrink-0">
               <ShieldAlert className="text-red-400" size={20} />
-              <h2 className="font-bold">Emergency Contacts</h2>
+              <h2 className="font-montserrat font-bold">Emergency Contacts</h2>
             </div>
 
             {/* Scrollable Area */}
@@ -696,8 +703,8 @@ export default function Settings() {
                     key={contact.id}
                     className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/10"
                   >
-                    <div className="flex-1">
-                      <p className="text-[10px] font-black uppercase text-slate-500 mb-1 leading-none">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-oswald font-black uppercase text-slate-500 mb-1 leading-none truncate">
                         {contact.name}
                       </p>
                       <div className="flex items-center">
@@ -707,14 +714,14 @@ export default function Settings() {
                           disabled={!isEditing}
                           value={contact.phone}
                           onChange={() => {}}
-                          className="flex items-center text-sm font-bold text-white [&_input]:bg-transparent [&_input]:border-none [&_input]:p-0"
+                          className="flex items-center text-sm font-sans font-bold text-white [&_input]:bg-transparent [&_input]:border-none [&_input]:p-0"
                         />
                       </div>
                     </div>
                     {isEditing && (
                       <button
                         onClick={() => removeContact(contact.id)}
-                        className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
+                        className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors shrink-0"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -722,13 +729,13 @@ export default function Settings() {
                   </div>
                 ))
               ) : (
-                <div className="text-center py-4 text-slate-500 text-xs italic">
+                <div className="text-center py-4 text-slate-500 font-sans text-xs italic">
                   No emergency numbers added.
                 </div>
               )}
             </div>
 
-            {/* Fixed Bottom Section (Outside the scroll) */}
+            {/* Fixed Bottom Section */}
             {isEditing && (
               <div className="pt-4 mt-4 border-t border-white/10 space-y-2 shrink-0">
                 <input
@@ -737,11 +744,10 @@ export default function Settings() {
                     setNewContact({ ...newContact, name: e.target.value })
                   }
                   placeholder="Service Name (e.g. Security)"
-                  className="w-full p-3 bg-white/10 rounded-xl text-sm font-bold text-white outline-none border border-transparent focus:border-indigo-500 transition-all placeholder:text-slate-500"
+                  className="w-full p-3 bg-white/10 rounded-xl text-sm font-sans font-bold text-white outline-none border border-transparent focus:border-indigo-500 transition-all placeholder:text-slate-500"
                 />
 
-                <div className="flex gap-2">
-                  {/* The Phone Input Container */}
+                <div className="flex flex-col sm:flex-row gap-2">
                   <div className="flex-1 flex items-center bg-white/10 rounded-xl px-3 border border-transparent focus-within:border-indigo-500 transition-all">
                     <PhoneInput
                       international
@@ -750,14 +756,14 @@ export default function Settings() {
                       onChange={(val) =>
                         setNewContact({ ...newContact, phone: val || "" })
                       }
-                      className="flex-1 flex items-center text-sm font-bold text-white [&_input]:bg-transparent [&_input]:border-none [&_input]:outline-none [&_input]:p-3 [&_input]:w-full [&_select]:bg-transparent [&_select]:text-white"
+                      className="flex-1 flex items-center text-sm font-sans font-bold text-white [&_input]:bg-transparent [&_input]:border-none [&_input]:outline-none [&_input]:p-2.5 [&_input]:w-full [&_select]:bg-transparent [&_select]:text-white"
                     />
                   </div>
 
                   <button
                     onClick={addEmergencyContact}
                     disabled={!newContact.name || !newContact.phone}
-                    className={`px-4 rounded-xl font-black text-[10px] uppercase flex items-center gap-1 transition-all ${
+                    className={`w-full sm:w-auto px-4 py-2.5 sm:py-0 rounded-xl font-oswald font-black text-[10px] uppercase flex items-center justify-center gap-1 transition-all ${
                       newContact.name && newContact.phone
                         ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 active:scale-95"
                         : "bg-slate-800 text-slate-500 cursor-not-allowed"
@@ -771,7 +777,7 @@ export default function Settings() {
           </div>
 
           {/* Security Actions */}
-          <div className="bg-white p-6 rounded-4xl border border-slate-100 shadow-sm space-y-2">
+          <div className="bg-white p-5 sm:p-6 rounded-4xl sm:rounded-4xl border border-slate-100 shadow-sm space-y-2">
             <button
               onClick={() =>
                 (window.location.href = "/home/settings/change-password")
@@ -782,7 +788,7 @@ export default function Settings() {
                 <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg group-hover:scale-110 transition-transform">
                   <Lock size={18} />
                 </div>
-                <span className="font-bold text-slate-700 text-sm">
+                <span className="font-sans font-bold text-slate-700 text-sm">
                   Password Change
                 </span>
               </div>
@@ -796,7 +802,7 @@ export default function Settings() {
                 <div className="p-2 bg-red-50 text-red-600 rounded-lg group-hover:scale-110 transition-transform">
                   <Trash2 size={18} />
                 </div>
-                <span className="font-bold text-red-600 text-sm">
+                <span className="font-sans font-bold text-red-600 text-sm">
                   Terminate Account
                 </span>
               </div>
@@ -808,7 +814,7 @@ export default function Settings() {
       {/* OTP MODAL */}
       {showOtpInput && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-md rounded-[2.5rem] p-8 md:p-10 shadow-2xl scale-in-center border border-slate-100">
+          <div className="bg-white w-full max-w-md rounded-[2.5rem] p-6 sm:p-8 md:p-10 shadow-2xl scale-in-center border border-slate-100">
             <div className="text-center space-y-4 mb-8">
               <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 {verifyingField === "email" ? (
@@ -817,18 +823,18 @@ export default function Settings() {
                   <Phone size={32} />
                 )}
               </div>
-              <h3 className="text-2xl font-bold text-slate-900">
+              <h3 className="text-xl sm:text-2xl font-montserrat font-bold text-slate-900">
                 Verify your {verifyingField}
               </h3>
-              <p className="text-slate-500 text-sm">
+              <p className="text-slate-500 font-sans text-sm">
                 Enter the code sent to <br />
-                <span className="font-semibold text-slate-900">
+                <span className="font-semibold text-slate-900 break-all">
                   {verifyingField === "email" ? profile.email : profile.phone}
                 </span>
               </p>
             </div>
 
-            <div className="flex justify-between gap-2 mb-8">
+            <div className="flex justify-center gap-2 mb-8 overflow-x-auto py-1">
               {otp.map((digit, index) => (
                 <input
                   key={index}
@@ -841,7 +847,7 @@ export default function Settings() {
                   value={digit}
                   onKeyDown={(e) => handleKeyDown(e, index)}
                   onChange={(e) => handleOtpChange(e.target.value, index)}
-                  className="w-12 h-14 text-center text-2xl font-bold bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-indigo-500 transition-all outline-none"
+                  className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-sans font-bold bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-indigo-500 transition-all outline-none text-slate-900"
                 />
               ))}
             </div>
@@ -849,7 +855,7 @@ export default function Settings() {
             <div className="space-y-4">
               <button
                 disabled={otpLoading || otp.some((d) => !d)}
-                className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg shadow-lg shadow-indigo-200 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center"
+                className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-sans font-bold text-base sm:text-lg shadow-lg shadow-indigo-200 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center"
               >
                 {otpLoading ? (
                   <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -859,31 +865,34 @@ export default function Settings() {
               </button>
               <button
                 onClick={handleCancelOtp}
-                className="w-full py-2 text-slate-400 font-bold uppercase text-[10px] tracking-widest hover:text-slate-600"
+                className="w-full py-2 text-slate-400 font-oswald font-bold uppercase text-[10px] tracking-widest hover:text-slate-600 transition-colors"
               >
                 Cancel
               </button>
             </div>
 
             {error && (
-              <div className="mt-4 bg-rose-50 text-rose-600 p-3 rounded-xl flex items-center gap-3 text-sm font-bold animate-in slide-in-from-bottom-2">
-                <AlertCircle size={18} /> <span>{error}</span>
+              <div className="mt-4 bg-rose-50 text-rose-600 p-3 rounded-xl flex items-center gap-3 text-sm font-sans font-bold animate-in slide-in-from-bottom-2">
+                <AlertCircle size={18} className="shrink-0" />{" "}
+                <span>{error}</span>
               </div>
             )}
           </div>
         </div>
       )}
+
+      {/* TERMINATION MODAL */}
       {showDeletePrompt && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-in fade-in duration-200">
-          <div className="bg-white rounded-4xl p-8 w-full max-w-md shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-60 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[2rem] sm:rounded-4xl p-6 sm:p-8 w-full max-w-md shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-200">
             <div className="w-16 h-16 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mb-6">
               <ShieldAlert size={32} />
             </div>
 
-            <h3 className="text-2xl font-black text-slate-900 mb-2">
+            <h3 className="text-xl sm:text-2xl font-montserrat font-black text-slate-900 mb-2">
               Terminate Estate?
             </h3>
-            <p className="text-slate-500 text-sm leading-relaxed mb-8">
+            <p className="text-slate-500 font-sans text-sm leading-relaxed mb-8">
               This action is{" "}
               <span className="font-bold text-slate-900 underline">
                 irreversible
@@ -897,7 +906,7 @@ export default function Settings() {
               <button
                 onClick={confirmAction}
                 disabled={loadingAction}
-                className="w-full py-4 bg-red-600 text-white rounded-2xl font-bold text-lg shadow-lg shadow-red-200 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                className="w-full py-4 bg-red-600 text-white rounded-2xl font-sans font-bold text-base sm:text-lg shadow-lg shadow-red-200 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
               >
                 {loadingAction ? (
                   <Loader2 className="animate-spin" size={20} />
@@ -907,7 +916,7 @@ export default function Settings() {
               </button>
               <button
                 onClick={() => setShowDeletePrompt(false)}
-                className="w-full py-3 text-slate-400 font-bold uppercase text-[10px] tracking-widest hover:text-slate-600 transition-colors"
+                className="w-full py-3 text-slate-400 font-oswald font-bold uppercase text-[10px] tracking-widest hover:text-slate-600 transition-colors"
               >
                 Cancel and Go Back
               </button>

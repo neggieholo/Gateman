@@ -23,14 +23,12 @@ import { EstateEvent, EstateLocation } from "../services/types";
 import { useSearchParams } from "next/navigation";
 import { approveEvent, getAllEvents, getAllLocations } from "../services/apis";
 import LocationsView from "./LocationsView";
-// Import your freshly decoupled external view here:
 
 const formatToLocalDateString = (dateInput: string) => {
   if (!dateInput) return "";
   const d = new Date(dateInput);
   if (isNaN(d.getTime())) return dateInput.split("T")[0];
 
-  // Shift out the UTC offset so extraction reflects local calendar metrics
   const offset = d.getTimezoneOffset();
   const adjusted = new Date(d.getTime() - offset * 60 * 1000);
   return adjusted.toISOString().split("T")[0];
@@ -62,13 +60,8 @@ export default function EventReviewPage() {
         getAllLocations(),
       ]);
 
-      if (events) {
-        setAllEvents(events);
-      }
-
-      if (locationsData) {
-        setLocations(locationsData);
-      }
+      if (events) setAllEvents(events);
+      if (locationsData) setLocations(locationsData);
     } catch (error) {
       console.error("Error Fetching Data:", error);
     } finally {
@@ -154,25 +147,25 @@ export default function EventReviewPage() {
 
   // --- SUB-COMPONENT: EVENT LIST ---
   const EventList = () => (
-    <div className="space-y-6 flex flex-col h-full animate-in fade-in duration-500 p-2">
-      <div className="flex flex-col lg:flex-row justify-between items-center gap-6 bg-white p-3 rounded-[2.5rem] border border-slate-50 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-indigo-600 rounded-2xl text-white">
-            <LayoutGrid size={24} />
+    <div className="space-y-6 flex flex-col h-full animate-in fade-in duration-300 p-1 min-w-0">
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-3 rounded-2xl border border-slate-200/60 shadow-2xs min-w-0">
+        <div className="flex items-center gap-3 min-w-0 w-full md:w-auto">
+          <div className="p-2.5 bg-blue-600 rounded-xl text-white shrink-0">
+            <LayoutGrid size={20} />
           </div>
-          <h1 className="text-xl font-black text-slate-900 uppercase tracking-tight">
+          <h2 className="text-lg font-montserrat font-black text-slate-800 uppercase tracking-tight truncate">
             Event Approvals
-          </h1>
+          </h2>
         </div>
 
-        <div className="flex gap-1 p-1 bg-slate-100 rounded-2xl">
+        <div className="flex bg-slate-100 p-0.5 rounded-xl border border-slate-200/30 w-full md:w-auto shrink-0">
           {["ALL", "PENDING", "APPROVED", "REJECTED"].map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s as any)}
-              className={`px-5 py-2 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all ${
+              className={`flex-1 md:flex-initial px-4 py-2 rounded-lg text-[10px] font-montserrat font-bold tracking-wider uppercase transition-all ${
                 statusFilter === s
-                  ? "bg-white text-slate-900 shadow-sm"
+                  ? "bg-white text-blue-600 shadow-3xs"
                   : "text-slate-400 hover:text-slate-600"
               }`}
             >
@@ -182,55 +175,59 @@ export default function EventReviewPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar min-w-0">
         {filteredEvents.length > 0 ? (
           filteredEvents.map((event) => (
             <button
               key={event.id}
               onClick={() => setSelectedEvent(event)}
-              className="w-full flex items-center justify-between p-6 bg-white border border-slate-100 rounded-[2.5rem] hover:border-indigo-200 hover:shadow-xl transition-all group"
+              className="w-full flex items-center justify-between p-4 bg-white border border-slate-200/60 rounded-2xl hover:border-blue-400/50 shadow-2xs hover:shadow-xs transition-all duration-200 group text-left min-w-0"
             >
-              <div className="flex items-center gap-6 flex-1">
+              <div className="flex items-center gap-4 flex-1 min-w-0">
                 <div
-                  className={`p-4 rounded-2xl ${
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border overflow-hidden ${
                     event.is_approved
-                      ? "bg-emerald-50 text-emerald-600"
+                      ? "bg-emerald-50 border-emerald-100 text-emerald-600"
                       : event.is_rejected
-                        ? "bg-rose-50 text-rose-600"
-                        : "bg-amber-50 text-amber-600"
+                        ? "bg-rose-50 border-rose-100 text-rose-600"
+                        : "bg-amber-50 border-amber-100 text-amber-600"
                   }`}
                 >
                   {event.banner_url ? (
                     <img
                       src={event.banner_url}
-                      className="w-12 h-12 rounded-xl object-cover"
+                      className="w-full h-full object-cover"
                       alt="flyer"
                     />
                   ) : (
-                    <Calendar size={24} />
+                    <Calendar size={18} />
                   )}
                 </div>
-                <div className="flex justify-between flex-1 mr-6">
-                  <div className="flex flex-col items-start">
-                    <h3 className="font-black text-slate-900 text-lg group-hover:text-indigo-600 transition-colors">
+
+                <div className="flex justify-between items-center flex-1 min-w-0 pr-2">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-montserrat font-bold text-slate-800 text-sm group-hover:text-blue-600 transition-colors truncate block w-full mb-0.5">
                       {event.title}
                     </h3>
-                    <p className="text-sm font-black text-slate-400 uppercase tracking-widest">
-                      REF: {event.ref_code} • {event.expected_guests} Guests
+                    <p className="text-[10px] font-oswald font-semibold text-slate-400 uppercase tracking-wide truncate block w-full">
+                      REF: {event.ref_code}{" "}
+                      <span className="text-slate-300 mx-1">•</span>{" "}
+                      {event.expected_guests} Guests
                     </p>
                   </div>
-                  <div className="text-right hidden md:block">
-                    <p className="text-sm font-black text-slate-400 uppercase tracking-tighter">
-                      Starts : {formatToLocalDateString(event.start_date)}
+
+                  <div className="text-right hidden sm:block shrink-0 pl-4">
+                    <p className="text-[10px] font-oswald font-semibold text-slate-500 uppercase tracking-wide">
+                      DATE: {formatToLocalDateString(event.start_date)}
                     </p>
-                    <div className="flex items-center justify-end gap-2 mt-1">
+                    <div className="flex items-center justify-end mt-1">
                       <span
-                        className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${
+                        className={`text-[9px] font-oswald font-bold uppercase px-1.5 py-0.5 rounded ${
                           event.is_approved
-                            ? "bg-emerald-100 text-emerald-700"
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200/50"
                             : event.is_rejected
-                              ? "bg-rose-100 text-rose-700"
-                              : "bg-amber-100 text-amber-700"
+                              ? "bg-rose-50 text-rose-700 border border-rose-200/50"
+                              : "bg-amber-50 text-amber-700 border border-amber-200/50"
                         }`}
                       >
                         {event.is_approved
@@ -243,15 +240,19 @@ export default function EventReviewPage() {
                   </div>
                 </div>
               </div>
-              <div className="p-3 rounded-xl bg-slate-50 text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-all">
-                <ChevronRight size={20} />
+              <div className="p-2 rounded-lg bg-slate-50 text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors shrink-0">
+                <ChevronRight size={16} />
               </div>
             </button>
           ))
         ) : (
-          <p className="text-gray-500 p-5 bg-white rounded-lg border border-dashed text-center">
-            {loading ? "Loading..." : "No events"}
-          </p>
+          <div className="p-8 bg-white rounded-2xl border-2 border-dashed border-slate-200/70 text-center">
+            <p className="text-slate-400 text-xs font-medium">
+              {loading
+                ? "Compiling dashboard registry logs..."
+                : "No items matched the parameters scope."}
+            </p>
+          </div>
         )}
       </div>
     </div>
@@ -259,27 +260,21 @@ export default function EventReviewPage() {
 
   // --- SUB-COMPONENT: DETAIL VIEW ---
   const DetailView = ({ event }: { event: EstateEvent }) => {
-    // Line ~230 (Multi-day flag check)
     const isMultiDay =
       event.end_date &&
       formatToLocalDateString(event.end_date) !==
         formatToLocalDateString(event.start_date);
 
-    // Line ~245 & ~246 (Excluded range setup metrics)
     const start = new Date(formatToLocalDateString(event.start_date));
     const end = new Date(formatToLocalDateString(event.end_date));
 
-    // Line ~248 (Booked dates item mapper loop)
-    const bookedSet = new Set(
-      event.booked_dates.map((d) => formatToLocalDateString(d)),
-    );
     const resolvedVenueName = useMemo(() => {
-      // Cast location_id safely depending on whether your schema handles it as a string or number
       const match = locations.find(
         (loc) => loc.id.toString() === (event as any).venue_detail?.toString(),
       );
       return match ? match.name : event.venue_detail || "Not Specified";
     }, [event]);
+
     const excludedDatesList = useMemo(() => {
       if (
         !event.booked_dates ||
@@ -289,8 +284,6 @@ export default function EventReviewPage() {
         return [];
       }
 
-      // const start = new Date(event.start_date.split("T")[0]);
-      // const end = new Date(event.end_date.split("T")[0]);
       const excluded: string[] = [];
       const bookedSet = new Set(event.booked_dates.map((d) => d.split("T")[0]));
 
@@ -304,144 +297,138 @@ export default function EventReviewPage() {
     }, [event.start_date, event.end_date, event.booked_dates]);
 
     return (
-      <div className="bg-white rounded-[3rem] border border-slate-100 p-8 animate-in slide-in-from-right duration-300 flex flex-col h-full overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200/70 p-5 sm:p-6 shadow-2xs animate-in slide-in-from-right duration-300 flex flex-col h-full overflow-hidden min-w-0">
         <button
           onClick={() => setSelectedEvent(null)}
-          className="flex items-center gap-2 text-slate-400 hover:text-slate-900 transition-colors mb-8 font-black text-xs uppercase tracking-widest"
+          className="w-fit flex items-center gap-1.5 text-slate-500 hover:text-blue-600 transition-colors mb-6 font-montserrat font-bold text-xs uppercase tracking-wider shrink-0"
         >
-          <ArrowLeft size={18} /> Back to Approvals
+          <ArrowLeft size={16} /> Back to Approvals
         </button>
 
-        <div className="flex flex-col lg:flex-row gap-12 flex-1 overflow-y-auto pr-2 pb-10">
-          <div className="w-full lg:w-1/2">
-            <h4 className="text-slate-400 text-[12px] uppercase tracking-[0.2em] font-black mb-4">
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 flex-1 overflow-y-auto pr-1 pb-4 min-w-0 custom-scrollbar">
+          {/* Left Block: Graphic Asset preview display frame */}
+          <div className="w-full lg:w-5/12 shrink-0">
+            <p className="text-slate-400 text-[10px] uppercase font-oswald font-bold tracking-wider mb-2">
               Event Flyer
-            </h4>
-            <div className="relative group rounded-[2.5rem] overflow-hidden border-4 border-slate-50 shadow-2xl">
+            </p>
+            <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 shadow-3xs max-w-md mx-auto lg:max-w-none">
               {event.banner_url ? (
                 <img
                   src={event.banner_url}
-                  className="w-full object-contain bg-slate-100 max-h-[60vh]"
-                  alt="Event"
+                  className="w-full object-contain bg-slate-50 max-h-[45vh] lg:max-h-[55vh]"
+                  alt="Event Banner Asset"
                 />
               ) : (
-                <div className="w-full h-80 bg-slate-100 flex items-center justify-center text-slate-300 font-bold uppercase">
-                  No Flyer Uploaded
+                <div className="w-full h-56 bg-slate-100 flex items-center justify-center text-slate-400 font-oswald font-bold text-xs uppercase tracking-widest">
+                  No layout graphic uploaded
                 </div>
               )}
               {event.banner_url && (
                 <a
                   href={event.banner_url}
                   target="_blank"
-                  className="absolute top-4 right-4 p-3 bg-white/90 backdrop-blur rounded-2xl text-indigo-600 shadow-sm"
+                  rel="noreferrer"
+                  className="absolute top-3 right-3 p-2.5 bg-white/90 backdrop-blur hover:bg-white rounded-xl text-blue-600 shadow-sm border border-slate-100 transition-all"
                 >
-                  <ExternalLink size={20} />
+                  <ExternalLink size={16} />
                 </a>
               )}
             </div>
           </div>
 
-          <div className="flex-1 space-y-8">
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
+          {/* Right Block: Telemetry register description attributes node */}
+          <div className="flex-1 min-w-0 space-y-5">
+            <div className="flex flex-col sm:flex-row justify-between items-start gap-4 border-b border-slate-100 pb-4 min-w-0">
+              <div className="min-w-0 flex-1">
                 <span
-                  className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border ${event.is_paid ? "bg-indigo-50 text-indigo-600 border-indigo-100" : "bg-emerald-50 text-emerald-600 border-emerald-100"}`}
+                  className={`px-2 py-0.5 rounded text-[10px] font-oswald font-bold uppercase tracking-wide border ${event.is_paid ? "bg-blue-50 text-blue-600 border-blue-200/50" : "bg-emerald-50 text-emerald-600 border-emerald-200/50"}`}
                 >
-                  {event.is_paid ? "Paid Event" : "Free Event"}
+                  {event.is_paid ? "Paid Entry Gate" : "Free Access Scope"}
                 </span>
-                <h2 className="text-4xl font-black text-slate-900 mt-4 leading-tight">
+                <h3 className="text-xl sm:text-2xl font-montserrat font-black text-slate-800 mt-2 leading-tight break-words">
                   {event.title}
-                </h2>
+                </h3>
               </div>
 
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-3">
-                  {event.is_rejected && (
-                    <span className="text-[10px] font-black uppercase tracking-widest text-rose-500 animate-pulse">
-                      Rejected
-                    </span>
-                  )}
-                  {(!event.is_approved || event.is_rejected) && (
-                    <button
-                      disabled={!!loadingAction}
-                      onClick={() => handleUpdateStatus(event.id, "approve")}
-                      className="flex items-center gap-3 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:shadow-xl hover:shadow-indigo-200 transition-all disabled:opacity-50"
-                    >
-                      {loadingAction === "approving" ? (
-                        <Loader2 size={20} className="animate-spin" />
-                      ) : (
-                        <CheckCircle size={20} />
-                      )}
-                      Approve
-                    </button>
-                  )}
-                </div>
+              {/* Status workflow mutation actions triggers combo stack */}
+              <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto">
+                {(!event.is_approved || event.is_rejected) && (
+                  <button
+                    disabled={!!loadingAction}
+                    onClick={() => handleUpdateStatus(event.id, "approve")}
+                    className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-montserrat font-bold text-xs uppercase tracking-wider hover:bg-blue-700 transition-all disabled:opacity-40 shadow-3xs active:scale-98"
+                  >
+                    {loadingAction === "approving" ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <CheckCircle size={14} />
+                    )}
+                    <span>Approve</span>
+                  </button>
+                )}
 
-                <div className="flex items-center gap-3">
-                  {(!event.is_rejected || event.is_approved) && (
-                    <button
-                      disabled={!!loadingAction}
-                      onClick={() => handleUpdateStatus(event.id, "reject")}
-                      className="flex items-center gap-3 px-8 py-4 bg-rose-50 text-rose-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:shadow-xl hover:shadow-rose-100 transition-all disabled:opacity-50"
-                    >
-                      {loadingAction === "rejecting" ? (
-                        <Loader2 size={20} className="animate-spin" />
-                      ) : (
-                        <XCircle size={20} />
-                      )}
-                      Reject
-                    </button>
-                  )}
-                  {event.is_approved && (
-                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500 animate-pulse">
-                      Approved
-                    </span>
-                  )}
-                </div>
+                {(!event.is_rejected || event.is_approved) && (
+                  <button
+                    disabled={!!loadingAction}
+                    onClick={() => handleUpdateStatus(event.id, "reject")}
+                    className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 bg-rose-50 text-rose-600 border border-rose-100/60 rounded-xl font-montserrat font-bold text-xs uppercase tracking-wider hover:bg-rose-100 transition-all disabled:opacity-40 shadow-3xs active:scale-98"
+                  >
+                    {loadingAction === "rejecting" ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <XCircle size={14} />
+                    )}
+                    <span>Reject</span>
+                  </button>
+                )}
               </div>
             </div>
 
             {(event.is_approved || event.is_rejected) && (
               <div
-                className={`p-4 rounded-2xl flex items-center gap-3 border ${event.is_approved ? "bg-emerald-50 border-emerald-100 text-emerald-700" : "bg-rose-50 border-rose-100 text-rose-700"}`}
+                className={`p-3 rounded-xl flex items-center gap-2.5 border text-xs font-semibold ${event.is_approved ? "bg-emerald-50/60 border-emerald-100 text-emerald-700" : "bg-rose-50/60 border-rose-100 text-rose-700"}`}
               >
                 {event.is_approved ? (
-                  <CheckCircle size={20} />
+                  <CheckCircle size={15} />
                 ) : (
-                  <AlertCircle size={20} />
+                  <AlertCircle size={15} />
                 )}
-                <p className="font-black text-xs uppercase tracking-widest">
-                  Current Status: {event.is_approved ? "Approved" : "Rejected"}
+                <p className="font-montserrat font-bold text-[10px] uppercase tracking-wider">
+                  Current Pipeline Status:{" "}
+                  {event.is_approved
+                    ? "Approved Line entry"
+                    : "Rejected from schedule"}
                 </p>
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
               <DetailBox
-                icon={<Calendar size={18} />}
-                label="Date"
+                icon={<Calendar size={16} />}
+                label="Date Metric Parameter"
                 value={
                   isMultiDay
-                    ? `${formatToLocalDateString(event.start_date)} - ${formatToLocalDateString(event.end_date)}`
+                    ? `${formatToLocalDateString(event.start_date)} to ${formatToLocalDateString(event.end_date)}`
                     : formatToLocalDateString(event.start_date)
                 }
               />
               <DetailBox
-                icon={<Clock size={18} />}
-                label="Time"
+                icon={<Clock size={16} />}
+                label="Assigned Timeline Block"
                 value={`${event.start_time} - ${event.end_time}`}
               />
             </div>
+
             {excludedDatesList.length > 0 && (
-              <div className="pt-2 border-t border-dashed border-rose-100 ml-2">
-                <span className="text-[10px] font-black uppercase text-rose-500 tracking-wider block mb-0.5">
-                  Excluded Dates:
+              <div className="p-3 bg-rose-50/30 border border-rose-100/60 rounded-xl min-w-0">
+                <span className="text-[10px] font-oswald font-bold text-rose-600 uppercase tracking-wider block mb-1.5">
+                  Excluded Date Sequences:
                 </span>
-                <div className="flex flex-wrap gap-1">
+                <div className="flex flex-wrap gap-1.5">
                   {excludedDatesList.map((d) => (
                     <span
                       key={d}
-                      className="text-[12px] font-bold bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded"
+                      className="text-xs font-oswald font-bold bg-white border border-rose-200/50 text-rose-600 px-2 py-0.5 rounded-md shadow-3xs"
                     >
                       {d}
                     </span>
@@ -449,121 +436,124 @@ export default function EventReviewPage() {
                 </div>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-4">
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
               <DetailBox
-                icon={<MapPin size={18} />}
-                label="Venue"
+                icon={<MapPin size={16} />}
+                label="Venue Designation"
                 value={resolvedVenueName}
               />
               <DetailBox
-                icon={<Ticket size={18} />}
-                label="Ref Code"
+                icon={<Ticket size={16} />}
+                label="Reference Hash Token"
                 value={event.ref_code}
+                isOswaldValue
               />
               <DetailBox
-                icon={<Users size={18} />}
-                label="Expected Guests"
+                icon={<Users size={16} />}
+                label="Expected Guest Threshold"
                 value={event.expected_guests.toString()}
+                isOswaldValue
               />
               <DetailBox
-                icon={<LayoutGrid size={18} />}
-                label="Ticket Price"
-                value={event.is_paid ? `₦${event.ticket_price}` : "Free"}
+                icon={<LayoutGrid size={16} />}
+                label="Ticket Evaluation Matrix"
+                value={event.is_paid ? `₦${event.ticket_price}` : "Free Pass"}
+                isOswaldValue
               />
             </div>
 
-            <div className="p-8 bg-slate-50 rounded-4xl border border-slate-100">
-              <h4 className="text-slate-400 text-[10px] uppercase tracking-[0.2em] font-black mb-3">
-                Event Description
+            <div className="p-4 bg-slate-50 border border-slate-200/60 rounded-xl min-w-0">
+              <h4 className="text-slate-400 text-[10px] uppercase font-oswald font-bold tracking-wider mb-1.5">
+                Event Description Context
               </h4>
-              <p className="text-slate-700 font-bold leading-relaxed">
-                {event.description || "No description provided."}
+              <p className="text-slate-600 text-sm leading-relaxed font-medium font-sans whitespace-pre-line">
+                {event.description ||
+                  "No specific brief metadata statement declared by coordinator."}
               </p>
             </div>
           </div>
         </div>
       </div>
     );
-  };;
+  };
 
   return (
-    <div className="h-[calc(100vh-100px)] flex flex-col overflow-hidden p-4 bg-slate-50/50 relative">
+    <div className="h-[calc(100vh-100px)] flex flex-col overflow-hidden p-4 bg-slate-50/50 relative font-sans">
       {/* ABOVE SEARCH BAR TAB SELECTION PANEL */}
       {!selectedEvent && !isDetailedLocation && (
-        <div className="flex justify-start mb-4 px-2">
-          <div className="flex bg-slate-100 p-1 rounded-2xl shadow-inner">
+        <div className="flex justify-start mb-4 shrink-0 min-w-0">
+          <div className="flex bg-slate-200/60 p-1 rounded-xl border border-slate-200/20 shadow-inner">
             <button
               onClick={() => {
                 setActiveViewTab("events");
                 setSearchQuery("");
               }}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all ${
+              className={`flex items-center gap-1.5 px-5 py-2 rounded-lg font-montserrat font-bold text-xs uppercase tracking-wider transition-all ${
                 activeViewTab === "events"
-                  ? "bg-white shadow text-indigo-600"
-                  : "text-slate-500 hover:text-slate-800"
+                  ? "bg-white shadow-3xs text-blue-600"
+                  : "text-slate-500 hover:text-slate-700"
               }`}
             >
-              <LayoutGrid size={14} /> Events
+              <LayoutGrid size={13} /> Events Board
             </button>
             <button
               onClick={() => {
                 setActiveViewTab("locations");
                 setSearchQuery("");
               }}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all ${
+              className={`flex items-center gap-1.5 px-5 py-2 rounded-lg font-montserrat font-bold text-xs uppercase tracking-wider transition-all ${
                 activeViewTab === "locations"
-                  ? "bg-white shadow text-indigo-600"
-                  : "text-slate-500 hover:text-slate-800"
+                  ? "bg-white shadow-3xs text-blue-600"
+                  : "text-slate-500 hover:text-slate-700"
               }`}
             >
-              <MapPin size={14} /> Venues
+              <MapPin size={13} /> Venues Catalog
             </button>
           </div>
         </div>
       )}
 
-      {/* FILTER SEARCH AREA */}
-      <div className="flex items-center justify-between mb-8 px-2 gap-4">
-        {!selectedEvent && !isDetailedLocation && (
-          <>
-            <div className="relative group flex-1 w-full">
-              <Search
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                size={18}
+      {/* FILTER SEARCH METADATA BLOCK ARTIFACT */}
+      {!selectedEvent && !isDetailedLocation && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4 shrink-0 min-w-0">
+          <div className="relative flex items-center flex-1 w-full min-w-0">
+            <Search
+              className="absolute left-3.5 text-slate-400 pointer-events-none"
+              size={16}
+            />
+            <input
+              type="text"
+              placeholder={
+                activeViewTab === "events"
+                  ? "Search by event title parameters or reference tokens..."
+                  : "Search by venue registration label or quadrant area..."
+              }
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:border-blue-500 outline-none transition-all shadow-3xs text-slate-700 placeholder:text-slate-400"
+            />
+          </div>
+
+          {activeViewTab === "events" && (
+            <div className="relative flex items-center w-full sm:w-56 shrink-0 min-w-0">
+              <Calendar
+                className="absolute left-3.5 text-slate-400 pointer-events-none"
+                size={16}
               />
               <input
-                type="text"
-                placeholder={
-                  activeViewTab === "events"
-                    ? "Search by event title or ref..."
-                    : "Search by venue name or area..."
-                }
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 bg-white border border-slate-100 rounded-3xl text-sm font-bold focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all shadow-sm"
+                type="date"
+                value={startDateFilter}
+                onChange={(e) => setStartDateFilter(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:border-blue-500 outline-none transition-all shadow-3xs uppercase font-sans text-slate-600"
               />
             </div>
+          )}
+        </div>
+      )}
 
-            {activeViewTab === "events" && (
-              <div className="relative group w-full md:w-64">
-                <Calendar
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-                  size={18}
-                />
-                <input
-                  type="date"
-                  value={startDateFilter}
-                  onChange={(e) => setStartDateFilter(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 bg-white border border-slate-100 rounded-3xl text-sm font-bold focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all shadow-sm uppercase"
-                />
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* RENDER BODY SWITCHER */}
-      <div className="flex-1 overflow-hidden">
+      {/* DYNAMIC REGISTRY BLOCK VIEWPORT HOIST SWITCHER */}
+      <div className="flex-1 overflow-hidden min-w-0">
         {activeViewTab === "events" ? (
           selectedEvent ? (
             <DetailView event={selectedEvent} />
@@ -589,20 +579,28 @@ const DetailBox = ({
   label,
   value,
   extraElement,
+  isOswaldValue = false,
 }: {
   icon: any;
   label: string;
   value: string;
   extraElement?: React.ReactNode;
+  isOswaldValue?: boolean;
 }) => (
-  <div className="p-5 bg-white border border-slate-100 rounded-3xl flex items-center gap-4 hover:border-indigo-100 transition-colors">
-    <div className="p-3 bg-slate-50 rounded-xl text-indigo-600">{icon}</div>
-    <div>
-      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">
+  <div className="p-3 bg-white border border-slate-200/60 rounded-xl flex items-center gap-3 hover:border-blue-200/50 transition-colors min-w-0 shadow-3xs">
+    <div className="p-2 bg-slate-50 rounded-lg text-blue-600 shrink-0">
+      {icon}
+    </div>
+    <div className="min-w-0 flex-1">
+      <p className="text-[9px] font-oswald font-bold text-slate-400 uppercase tracking-wide mb-0.5 truncate">
         {label}
       </p>
-      <p className="text-sm font-bold text-slate-800 line-clamp-1">{value}</p>
+      <p
+        className={`text-xs text-slate-800 truncate block w-full ${isOswaldValue ? "font-oswald tracking-wide font-semibold" : "font-semibold font-sans"}`}
+      >
+        {value}
+      </p>
     </div>
-    {extraElement && extraElement}
+    {extraElement && <div className="shrink-0">{extraElement}</div>}
   </div>
 );
