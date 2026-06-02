@@ -106,7 +106,7 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
     }, [req.locations]);
 
     return (
-      <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-y-auto h-[calc(100vh-200px)]">
+      <div className="bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col h-[calc(100vh-100px)] p-4">
         <div className="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
           <div>
             <h3 className="text-xl font-bold text-slate-900">
@@ -123,7 +123,7 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
           </button>
         </div>
 
-        <div className="p-6 space-y-8">
+        <div className="p-6 space-y-8 flex-1 overflow-y-auto ">
           {/* Summary Header Line */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-blue-50/70 p-4 rounded-xl border border-blue-100/50">
             {kycConfig.ids && req.id_type && (
@@ -219,35 +219,34 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
               )}
             </div>
           </div>
-
-          {/* Action Row Buttons */}
-          <div className="flex flex-row flex-wrap gap-3 mt-10 pt-6 border-t border-slate-100">
-            <button
-              onClick={() => handleApprove(req.id)}
-              disabled={loadingApproveAction}
-              className="w-32 flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition-shadow shadow-md disabled:opacity-50"
-            >
-              {loadingApproveAction ? (
-                <Loader2 className="animate-spin" size={16} />
-              ) : (
-                <>
-                  <Check size={18} /> <span>Accept</span>
-                </>
-              )}
-            </button>
-            <button
-              onClick={() => setShowPrompt({ id: req.id, type: "decline" })}
-              className="w-32 flex items-center justify-center gap-2 bg-amber-500 text-white py-3 rounded-lg font-bold hover:bg-amber-600 transition-shadow shadow-md"
-            >
-              <X size={18} /> Decline
-            </button>
-            <button
-              onClick={() => setShowPrompt({ id: req.id, type: "block" })}
-              className="w-32 flex items-center justify-center gap-2 bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition-shadow shadow-md"
-            >
-              <Ban size={18} /> Block
-            </button>
-          </div>
+        </div>
+        {/* Action Row Buttons */}
+        <div className="flex flex-row flex-wrap gap-3 mt-10 pt-6 border-t border-slate-100 m-2">
+          <button
+            onClick={() => handleApprove(req.id)}
+            disabled={loadingApproveAction}
+            className="w-32 flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition-shadow shadow-md disabled:opacity-50"
+          >
+            {loadingApproveAction ? (
+              <Loader2 className="animate-spin" size={16} />
+            ) : (
+              <>
+                <Check size={18} /> <span>Accept</span>
+              </>
+            )}
+          </button>
+          <button
+            onClick={() => setShowPrompt({ id: req.id, type: "decline" })}
+            className="w-32 flex items-center justify-center gap-2 bg-amber-500 text-white py-3 rounded-lg font-bold hover:bg-amber-600 transition-shadow shadow-md"
+          >
+            <X size={18} /> Decline
+          </button>
+          <button
+            onClick={() => setShowPrompt({ id: req.id, type: "block" })}
+            className="w-32 flex items-center justify-center gap-2 bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition-shadow shadow-md"
+          >
+            <Ban size={18} /> Block
+          </button>
         </div>
       </div>
     );

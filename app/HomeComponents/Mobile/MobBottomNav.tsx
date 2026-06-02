@@ -13,6 +13,7 @@ import {
   Inbox,
   FileText,
   User2,
+  Briefcase,
 } from "lucide-react";
 import { ViewState } from "@/app/services/types";
 import { useUser } from "@/app/UserContext";
@@ -36,28 +37,22 @@ export default function MobBottomNav() {
       url: "/home/dashboard",
     },
     {
-      id: ViewState.UTILITIES,
-      label: "Bills",
-      icon: Zap,
-      url: "/home/utilities",
-    },
-    {
-      id: ViewState.INVOICES,
-      label: "Invoices",
+      id: ViewState.PAYMENT_APPROVALS,
+      label: "Payments",
       icon: FileText,
-      url: "/home/invoices",
+      url: "/home/payments",
     },
     {
       id: ViewState.ACCESS,
       label: "Security",
       icon: ShieldCheck,
-      url: "/home/accesscontrol",
+      url: "/home/security",
     },
     {
       id: ViewState.FORUM,
       label: "Community",
       icon: MessageSquare,
-      url: "/home/forum",
+      url: "/home/community",
     },
     {
       id: ViewState.EVENTS,
@@ -76,6 +71,12 @@ export default function MobBottomNav() {
       label: "Requests",
       icon: Inbox,
       url: "/home/joinrequestpage",
+    },
+    {
+      id: ViewState.SERVICES,
+      label: "Services",
+      icon: Briefcase,
+      url: "/home/services",
     },
   ];
 

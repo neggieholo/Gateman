@@ -1,24 +1,38 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Search,
   ArrowLeft,
   ShieldAlert,
   Users,
   ExternalLink,
+  MapPin,
+  GitMerge,
+  FileText,
+  Home,
 } from "lucide-react";
 import { db } from "../services/database";
-import { Tenant } from "../services/types";
+import { Tenant, LocationPair } from "../services/types";
 import ResidentsSuggestionsView from "./ResidentSuggestionsView";
+import { useUser } from "../UserContext";
+import { useSearchParams } from "next/navigation";
 
 export default function UnifiedResidentPortal() {
   const [activeTab, setActiveTab] = useState<"TENANTS" | "REPORTS">("TENANTS");
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
+
+  // 🌟 Navigation Stack tracking previous sub-account profiles
+  const [historyStack, setHistoryStack] = useState<Tenant[]>([]);
+  const searchParams = useSearchParams();
+  const authorId = searchParams.get("author_id");
+
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const { user } = useUser();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -26,6 +40,16 @@ export default function UnifiedResidentPortal() {
       try {
         const tenantData = await db.getAllTenants();
         setTenants(tenantData);
+        if (authorId) {
+          const targetTenant = tenantData.find((t) => t.id === authorId);
+          if (targetTenant) {
+            setSelectedTenant(targetTenant);
+            setActiveTab("TENANTS");
+          }
+
+          const newUrl = window.location.pathname;
+          window.history.replaceState({ ...window.history.state }, "", newUrl);
+        }
       } catch (err) {
         console.error("Fetch error:", err);
       } finally {
@@ -35,11 +59,30 @@ export default function UnifiedResidentPortal() {
     fetchData();
   }, []);
 
-  const filteredTenants = tenants.filter((t) =>
-    [t.name, t.block, t.unit].some((field) =>
-      field?.toLowerCase().includes(searchQuery.toLowerCase()),
-    ),
-  );
+  const getResidentLocationsString = (tenant: Tenant): string => {
+    if (!tenant?.locations || !user?.estate_id) return "No Location Bound";
+    const estateLocations: LocationPair[] = tenant.locations[user.estate_id];
+    if (!estateLocations || estateLocations.length === 0)
+      return "No Location Bound";
+
+    return estateLocations
+      .map((loc) => {
+        const unitsString = loc.unit?.join(", ") || "No Unit";
+        return `Block ${loc.block || "N/A"}, Unit(s) ${unitsString}`;
+      })
+      .join(" | ");
+  };
+
+  const filteredTenants = tenants.filter((t) => {
+    const searchLower = searchQuery.toLowerCase();
+    const locationString = getResidentLocationsString(t).toLowerCase();
+
+    return (
+      t.name?.toLowerCase().includes(searchLower) ||
+      t.email?.toLowerCase().includes(searchLower) ||
+      locationString.includes(searchLower)
+    );
+  });
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this tenant?")) return;
@@ -47,9 +90,55 @@ export default function UnifiedResidentPortal() {
     try {
       await db.deleteTenant(id);
       setTenants((prev) => prev.filter((t) => t.id !== id));
-      setSelectedTenant(null); // go back to list after delete
+      setSelectedTenant(null);
+      setHistoryStack([]); // Clear navigation trail upon deletion
     } catch (err) {
       console.error("Failed to delete tenant:", err);
+    }
+  };
+
+  // 🌟 Fixed: Secure, functional useMemo implementation with safe JSON parsing fallback
+  const locations = useMemo(() => {
+    if (!selectedTenant?.contract_urls || !user?.estate_id) return [];
+
+    const rawData = selectedTenant.contract_urls;
+    if (typeof rawData === "string") {
+      try {
+        const parsed = JSON.parse(rawData);
+        return parsed[user.estate_id] || [];
+      } catch {
+        return [];
+      }
+    }
+    return rawData[user.estate_id] || [];
+  }, [selectedTenant, user?.estate_id]);
+
+  // 🌟 Handles diving deeper into a Parent Account
+  const handleNavigateToParent = (parentId: string) => {
+    const parentTenant = tenants.find((t) => t.id === parentId);
+    if (parentTenant) {
+      if (selectedTenant) {
+        // Save sub-account into trace state before jumping profiles
+        setHistoryStack((prev) => [...prev, selectedTenant]);
+      }
+      setSelectedTenant(parentTenant);
+    } else {
+      alert(
+        "Parent account record data entry could not be found in active rosters.",
+      );
+    }
+  };
+
+  // 🌟 Handles calculating the logical step backwards
+  const handleGoBack = () => {
+    if (historyStack.length > 0) {
+      // Pop the last sub-account from the array
+      const previousTenant = historyStack[historyStack.length - 1];
+      setHistoryStack((prev) => prev.slice(0, -1));
+      setSelectedTenant(previousTenant);
+    } else {
+      // Nothing remains in history trace; safe to exit back to directory view
+      setSelectedTenant(null);
     }
   };
 
@@ -62,6 +151,7 @@ export default function UnifiedResidentPortal() {
             onClick={() => {
               setActiveTab("TENANTS");
               setSelectedTenant(null);
+              setHistoryStack([]); // Clear history on explicit root tab switch
             }}
             className={`flex items-center gap-3 px-8 py-3 rounded-3xl text-sm font-black transition-all ${
               activeTab === "TENANTS"
@@ -108,11 +198,15 @@ export default function UnifiedResidentPortal() {
           selectedTenant ? (
             /* --- TENANT DETAIL VIEW --- */
             <div className="bg-white rounded-[3rem] border border-slate-100 p-8 animate-in slide-in-from-right duration-300">
+              {/* 🌟 Adaptive Back Button Execution Element */}
               <button
-                onClick={() => setSelectedTenant(null)}
-                className="flex items-center gap-2 text-slate-500 hover:text-slate-800 mb-8 font-bold"
+                onClick={handleGoBack}
+                className="flex items-center gap-2 text-slate-500 hover:text-slate-800 mb-8 font-bold transition-colors"
               >
-                <ArrowLeft size={20} /> Back to Directory
+                <ArrowLeft size={20} />{" "}
+                {historyStack.length > 0
+                  ? "Back to Sub-Account"
+                  : "Back to Directory"}
               </button>
 
               <div className="flex flex-col lg:flex-row gap-12">
@@ -123,90 +217,133 @@ export default function UnifiedResidentPortal() {
                       selectedTenant.avatar ||
                       `https://ui-avatars.com/api/?name=${selectedTenant.name}`
                     }
-                    className="w-40 h-40 rounded-[2.5rem] object-cover shadow-2xl border-4 border-white mb-6"
+                    className="w-80 h-80 rounded-[2.5rem] object-cover shadow-2xl border-4 border-white mb-6"
                     alt=""
                   />
                   <h2 className="text-3xl font-black text-slate-900 mb-1">
                     {selectedTenant.name}
                   </h2>
-                  <p className="text-slate-500 font-bold mb-6 italic">
-                    {selectedTenant.email}
-                  </p>
+
+                  {/* Dynamic Sub-Account Flag & Parent Redirection Engine Link */}
+                  {selectedTenant.parent_account_id && (
+                    <div className="w-full mt-2 flex flex-col items-center p-4 bg-amber-50/70 border border-amber-200/60 rounded-2xl text-center">
+                      <span className="text-[10px] bg-amber-500 text-white font-black tracking-widest px-2 py-0.5 rounded-md uppercase mb-2">
+                        Sub-Account
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleNavigateToParent(
+                            selectedTenant.parent_account_id,
+                          )
+                        }
+                        className="flex items-center gap-1 text-xs text-amber-800 font-black hover:text-indigo-600 transition-colors"
+                      >
+                        <GitMerge size={12} /> View Parent Account
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Info Grid */}
                 <div className="flex-1 space-y-8">
                   <div className="grid grid-cols-2 gap-6">
-                    <div className="p-6 bg-white border border-slate-100 rounded-3xl">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                        Location
+                    <div className="p-6 bg-white border border-slate-100 rounded-3xl flex flex-col justify-center">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                        Email
                       </p>
-                      <p className="text-xl font-black text-slate-800">
-                        Block {selectedTenant.block} • Unit{" "}
-                        {selectedTenant.unit}
+                      <p className="text-xl font-black text-slate-800 mt-1">
+                        {selectedTenant.email}
                       </p>
                     </div>
-                    <div className="p-6 bg-white border border-slate-100 rounded-3xl">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                        Contact
+                    <div className="p-6 bg-white border border-slate-100 rounded-3xl flex flex-col justify-center">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                        Phone
                       </p>
-                      <p className="text-xl font-black text-slate-800">
+                      <p className="text-xl font-black text-slate-800 mt-1">
                         {selectedTenant.phone || "No Phone"}
                       </p>
                     </div>
                   </div>
+                  <div className="p-6 bg-white border border-slate-100 rounded-3xl flex flex-col justify-center">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                      Assigned Locations
+                    </p>
+                    <div className="flex items-start gap-2 mt-1">
+                      <MapPin
+                        size={16}
+                        className="text-indigo-500 shrink-0 mt-1"
+                      />
+                      <p className="text-base font-black text-slate-800 leading-tight">
+                        {getResidentLocationsString(selectedTenant)}
+                      </p>
+                    </div>
+                  </div>
+
                   <section>
                     <h4 className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-6 px-1">
-                      Verification Documents
+                      Rent Contracts
                     </h4>
 
-                    <div className="space-y-10">
-                      {/* Identity Section */}
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2 px-1">
-                          <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded uppercase tracking-widest">
-                            {selectedTenant.id_type || "Government ID"}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <DocPreview
-                            url={selectedTenant.id_front_url}
-                            label="ID Front View"
-                          />
-                          <DocPreview
-                            url={selectedTenant.id_back_url}
-                            label="ID Back View"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Address Section */}
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2 px-1">
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                            Address Verification
-                          </span>
-                        </div>
-                        <div className="max-w-md">
-                          <DocPreview
-                            url={selectedTenant.utility_bill_url}
-                            label="Utility Bill"
-                          />
-                        </div>
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                        <Home size={14} /> Assigned Locations & Contracts
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {locations && locations.length > 0 ? (
+                          locations.map((blockGroup: any, idx: number) => (
+                            <div
+                              key={idx}
+                              className="border border-slate-100 rounded-xl p-4 bg-slate-50/50 space-y-3"
+                            >
+                              <div className="text-sm font-bold text-slate-900 bg-slate-200/60 px-3 py-1 rounded-lg w-fit">
+                                Block: {blockGroup.block}
+                              </div>
+                              <div className="space-y-2">
+                                {blockGroup.units?.map(
+                                  (unitItem: any, uIdx: number) => (
+                                    <div
+                                      key={uIdx}
+                                      className="flex justify-between items-center bg-white p-3 border border-slate-100 rounded-lg shadow-sm"
+                                    >
+                                      <span className="text-sm font-medium text-slate-700">
+                                        Unit {unitItem.unit}
+                                      </span>
+                                      {unitItem.contract_url ? (
+                                        <a
+                                          href={unitItem.contract_url}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="flex items-center gap-1.5 text-xs text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg font-bold transition-all"
+                                        >
+                                          <FileText size={14} /> View Contract{" "}
+                                          <ExternalLink size={12} />
+                                        </a>
+                                      ) : (
+                                        <span className="text-xs text-amber-500 italic font-medium">
+                                          No Contract Doc
+                                        </span>
+                                      )}
+                                    </div>
+                                  ),
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="col-span-2 p-4 border border-dashed border-slate-200 rounded-xl text-center text-sm text-slate-400 italic bg-slate-50/50">
+                            No active contract assets found for this estate
+                            context.
+                          </div>
+                        )}
                       </div>
                     </div>
                   </section>
 
                   <div className="flex gap-4 pt-8">
-                    <button className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-lg">
-                      Suggestion History
-                    </button>
-                    <button className="flex-1 py-4 bg-white border-2 border-slate-900 text-slate-900 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all">
-                      Billing History
-                    </button>
                     <button
-                      className="flex-1 py-4 bg-red-500 border-2 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all"
-                      onClick={()=> {handleDelete(selectedTenant.id)}}
+                      className="flex-1 py-4 bg-red-500 border-2 border-transparent text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-600 transition-all"
+                      onClick={() => handleDelete(selectedTenant.id)}
                     >
                       Remove Resident
                     </button>
@@ -219,14 +356,25 @@ export default function UnifiedResidentPortal() {
               {loading ? "Loading..." : "No pending join requests"}
             </p>
           ) : (
+            /* --- RESIDENT DIRECTORY GRID CARDS LAYOUT --- */
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredTenants.map((t) => (
                 <button
                   key={t.id}
-                  onClick={() => setSelectedTenant(t)}
-                  className="group flex flex-col items-center bg-white p-8 rounded-[2.5rem] border border-slate-100 hover:border-indigo-200 hover:shadow-2xl hover:shadow-indigo-500/5 transition-all relative overflow-hidden"
+                  onClick={() => {
+                    setSelectedTenant(t);
+                    setHistoryStack([]); // Clear history stack when opening profile directly from grid
+                  }}
+                  className="group flex flex-col items-center bg-white p-8 rounded-[2.5rem] border border-slate-100 hover:border-indigo-200 hover:shadow-2xl hover:shadow-indigo-500/5 transition-all relative overflow-hidden text-center"
                 >
                   <div className="absolute top-0 right-0 w-20 h-20 bg-slate-50 rounded-bl-[2.5rem] group-hover:bg-indigo-50" />
+
+                  {t.parent_account_id && (
+                    <div className="absolute top-3 left-3 bg-amber-500 text-[8px] font-black tracking-widest text-white px-2 py-0.5 rounded-md uppercase z-20">
+                      Sub
+                    </div>
+                  )}
+
                   <img
                     src={
                       t.avatar || `https://ui-avatars.com/api/?name=${t.name}`
@@ -234,12 +382,9 @@ export default function UnifiedResidentPortal() {
                     className="w-24 h-24 rounded-4xl object-cover mb-4 relative z-10 border-4 border-white shadow-lg group-hover:scale-105 transition-transform"
                     alt=""
                   />
-                  <h3 className="font-black text-slate-900 group-hover:text-indigo-600 transition-colors">
+                  <h3 className="font-black text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1 w-full">
                     {t.name}
                   </h3>
-                  <p className="text-[10px] font-black text-slate-400 uppercase mt-2">
-                    Block {t.block || "--"} • Unit {t.unit || "--"}
-                  </p>
                 </button>
               ))}
             </div>
@@ -254,35 +399,3 @@ export default function UnifiedResidentPortal() {
     </div>
   );
 }
-
-const DocPreview = ({ url, label }: { url?: string; label: string }) => (
-  <div className="space-y-2">
-    <div className="flex justify-between items-center">
-      <span className="text-xs font-bold text-slate-400 uppercase tracking-tighter">
-        {label}
-      </span>
-      {url && (
-        <a
-          href={url}
-          target="_blank"
-          className="text-blue-500 hover:text-blue-700"
-        >
-          <ExternalLink size={14} />
-        </a>
-      )}
-    </div>
-    {url ? (
-      <img
-        src={url}
-        className="w-full h-40 object-cover rounded-lg border border-slate-200 bg-slate-100"
-        alt={label}
-      />
-    ) : (
-      <div className="w-full h-40 bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center">
-        <span className="text-slate-300 text-sm italic font-medium">
-          Not Provided
-        </span>
-      </div>
-    )}
-  </div>
-);

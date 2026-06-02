@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 120" width="100%" height="100%">
+  <!-- Background matching the GM Navy style -->
+  <rect width="100%" height="100%" fill="#0A1F44"/>
+  
+  <g transform="translate(20, 10)">
+    <!-- Main Branding Title: GATE MAN -->
+    <!-- Heavy, bold sans-serif font stack representing the Montserrat/Oswald styling -->
+    <text x="10" y="60" 
+          fill="#FFFFFF" 
+          font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" 
+          font-size="44" 
+          font-weight="900" 
+          letter-spacing="1.5">GATE MAN</text>
+    
+    <!-- Subtitle: PROFESSIONAL SECURITY SERVICES -->
+    <!-- Clean, tracked-out styling centered below the main anchor text -->
+    <text x="12" y="85" 
+          fill="#FFFFFF" 
+          font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" 
+          font-size="11" 
+          font-weight="700" 
+          letter-spacing="2.8" 
+          opacity="0.95">PROFESSIONAL SECURITY SERVICES</text>
+  </g>
+</svg>

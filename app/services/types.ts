@@ -142,7 +142,7 @@ export interface CommunityEvent {
 export enum ViewState {
   DASHBOARD = "dashboard",
   UTILITIES = "utilities",
-  // INVOICES = "invoices",
+  SERVICES = "services",
   PAYMENT_APPROVALS = "payments",
   ACCESS = "access",
   FORUM = "forum",
@@ -176,6 +176,7 @@ export interface Tenant {
   name: string;
   email: string;
   phone: string;
+  avatar: string;
   created_at: string | null;
   estate_ids: string[];
   locations: {
@@ -188,6 +189,7 @@ export interface Tenant {
   id_back_url?: string;
   utility_bill_url?: string;
   estate_name?: string;
+  contract_urls:any;
   push_token?: string;
 }
 
@@ -201,7 +203,7 @@ export interface JoinRequest {
   temp_tenant_id: string;
   estate_id: string;
   locations:LocationPair;
-  status: "PENDING" | "APPROVED" | "DECLINED" | "BLOCKED"; // Added BLOCKED for the new action
+  status: "PENDING" | "APPROVED" | "DECLINED" | "BLOCKED"; 
   requested_at: string;
 
   // Fields added via SQL JOIN
@@ -300,21 +302,31 @@ export interface BlockedUser {
 export interface Invitation {
   id: string;
   guest_name: string;
-  guest_image_url: string | null;
+  guest_phone: string;
+  guest_image_url?: string;
   access_code: string;
-  invite_type: "one_time" | "multi_entry";
-  start_date: any;
-  end_date: any;
-  start_time: any;
-  end_time: any;
-  excluded_dates: string[];
-  status: string;
-  actual_checkin: any;
-  actual_checkout: any;
-  actual_checkin_date: any;
-  actual_checkout_date: any;
-  created_at: string;
+  status: "pending" | "checked_in" | "checked_out" | "overstayed";
+  invite_type: "one_time" | "multi_entry" | "staff_entry";
+  start_date: string;
+  end_date: string;
+  start_time: string;
+  end_time: string;
+  actual_checkin_date?: string;
+  actual_checkout_date?: string;
   is_cancelled: boolean;
+  excluded_dates?: string[];
+  // Joined Fields
+  resident_name?: string;
+  locations: {
+    [estateId: string]: LocationPair[];
+  };
+  estate_name?: string;
+  estate_address?: string;
+  lga?: string;
+  town?: string;
+  staff_position?: string;
+  permitted_days: number[];
+  is_activated?: boolean;
 }
 
 // -------------------- Core Security Types --------------------
@@ -478,7 +490,7 @@ export interface Payment {
   date: string;
 }
 
-export type ReportType = "GENERAL" | "SECURITY" | "PAYMENT";
+export type ReportType = "GENERAL" | "SECURITY" | "PAYMENT" | "SERVICES";
 export type ReportCategory = "COMPLAINT" | "INFORMATION" | "EMERGENCY";
 export type ReportStatus = "PENDING" | "REVIEWED" | "RESOLVED";
 

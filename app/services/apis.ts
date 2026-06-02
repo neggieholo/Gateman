@@ -505,6 +505,7 @@ export const updateReportStatus = async (
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status, admin_response: adminFeedback }),
+    credentials:'include'
   });
   return await res.json();
 };
@@ -783,3 +784,24 @@ export const requestGuardLocation = async (guardId: string) => {
     throw error;
   }
 };
+
+
+  // Helper to format 24h to AM/PM
+  export const formatTime = (timeStr: string) => {
+    if (!timeStr) return "N/A";
+    const [hours, minutes] = timeStr.split(":");
+    const h = parseInt(hours);
+    const ampm = h >= 12 ? "PM" : "AM";
+    const formattedHours = h % 12 || 12;
+    return `${formattedHours}:${minutes} ${ampm}`;
+  };
+
+ export const formatDate = (dateStr: string) => {
+    if (!dateStr) return "N/A";
+    const date = new Date(dateStr);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${day}-${month}-${year}`;
+  };

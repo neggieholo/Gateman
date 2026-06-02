@@ -28,9 +28,11 @@ import {
 } from "../services/apis";
 import { useUser } from "../UserContext";
 import { Like, Post, Comment } from "../services/types";
+import { useRouter } from "next/navigation";
 
 const AdminAlertManager = () => {
   const { user } = useUser();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"communication" | "notifications">(
     "communication",
   );
@@ -581,7 +583,19 @@ const AdminAlertManager = () => {
                 </p>
 
                 <div className="flex items-center gap-4 text-xs text-slate-400 border-t border-b p-2">
-                  <span>By {selectedPost.author_name}</span>
+                  <div className="flex items-center gap-1">
+                    <span>By </span>
+                    <button
+                      onClick={() => {
+                        router.push(
+                          `/home/tenantmanagement?author_id=${selectedPost.author_id}`,
+                        );
+                      }}
+                      className="font-bold text-indigo-600 hover:text-indigo-800 hover:underline transition decoration-2"
+                    >
+                      {selectedPost.author_name}
+                    </button>
+                  </div>
                   <span>•</span>
                   <span>
                     {new Date(selectedPost.created_at).toLocaleString()}
@@ -790,9 +804,7 @@ const AdminAlertManager = () => {
                         showArchived ? "text-indigo-600" : "text-slate-400"
                       }
                     />
-                    <span>
-                      {showArchived ? "Feed" : "View Archives"}
-                    </span>
+                    <span>{showArchived ? "Feed" : "View Archives"}</span>
                   </button>
                 </div>
               )}

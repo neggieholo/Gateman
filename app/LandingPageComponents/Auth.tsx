@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { db } from "../services/database";
 import {
   Mail,
@@ -17,7 +17,7 @@ import {
 import { useUser } from "../UserContext";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { sendOtpApi } from "../services/apis";
+import { checkSession, sendOtpApi } from "../services/apis";
 import { states_lgas } from "../utils/states_lgas";
 
 export default function Auth() {
@@ -39,13 +39,47 @@ export default function Auth() {
   const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]);
   const [metadata, setMetadata] = useState("");
   const [showOtpInput, setShowOtpInput] = useState(false);
+  const [sessionLoading, setSessionLoading] = useState(true);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [show, setShow] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("rememberMe") === "true";
+    }
+    return false;
+  });
 
   const availableLgas = useMemo(() => {
     const stateData = states_lgas.find((s) => s.state === state);
     return stateData ? stateData.lgas : [];
   }, [state]);
+
+  useEffect(() => {
+    async function cSessionCheck() {
+      const hasAttemptedLogout = sessionStorage.getItem("loggedOut") === "true";
+
+      if (hasAttemptedLogout) {
+        sessionStorage.removeItem("loggedOut");
+        setSessionLoading(false);
+        return;
+      }
+
+      try {
+        const res = await checkSession();
+        if (res.success) {
+          setUser(res.user);
+          window.location.replace("/home/dashboard");
+        } else {
+          setSessionLoading(false);
+        }
+      } catch (err) {
+        console.error("Session check failed:", err);
+        setSessionLoading(false);
+      }
+    }
+
+    cSessionCheck();
+  }, []);
 
   const validateEmail = (text: string) => {
     const cleanedEmail = text.trim();
@@ -126,7 +160,6 @@ export default function Auth() {
     setError("");
 
     try {
-      // Matches your db.register(name, email, password, city, town, newOtp, metadata)
       await db.register(
         name,
         trimmedEmail,
@@ -137,12 +170,9 @@ export default function Auth() {
         metadata,
       );
 
-      // If db.register finishes without throwing an error,
-      // it means the popup/redirect was triggered.
       setShowOtpInput(false);
       setOtp(["", "", "", "", "", ""]);
     } catch (err: any) {
-      // This catches the "throw new Error" from your db.register
       setError(err.message || "Registration failed. Please try again.");
     } finally {
       setLoading(false);
@@ -166,7 +196,7 @@ export default function Auth() {
           throw new Error(res.message || "Failed to send reset link");
         }
       } else if (isLogin) {
-        const data = await db.authenticate(email, password);
+        const data = await db.authenticate(email, password, rememberMe);
         if (
           !data ||
           (typeof data === "string" && data.includes("<!DOCTYPE html>"))
@@ -200,33 +230,63 @@ export default function Auth() {
     }
   };
 
+  if (sessionLoading)
+    return (
+      <div className="fixed inset-0 z-100 flex flex-col items-center justify-center bg-white">
+        <div className="relative w-32 h-32 flex items-center justify-center">
+          {/* Your Logo */}
+          <Image
+            src="/gmlogo.jpg"
+            alt="GateMan Logo"
+            width={80}
+            height={80}
+            priority
+            className="object-contain"
+          />
+
+          {/* Rotating Spinner Ring */}
+          <div className="absolute inset-0 border-4 border-slate-100 border-t-indigo-600 rounded-full animate-spin" />
+        </div>
+      </div>
+    );
+
   return (
-    <div className="min-h-screen flex bg-white">
-      <div className="hidden lg:flex lg:w-1/2 relative bg-slate-900 overflow-hidden">
-        <div className="absolute inset-0 bg-indigo-900/40 mix-blend-multiply z-10" />
-        <img
+    <div className="min-h-screen flex bg-[linear-gradient(to_bottom,#0A1F44_50%,#f1f5f9_50%)]">
+      <div
+        className="hidden lg:flex lg:w-2/3 bg-gm-navy relative overflow-hidden"
+        style={{ borderRadius: "0px 0px 120px 0px" }}
+      >
+        <div className="absolute inset-0 mix-blend-multiply z-10" />
+        {/* <img
           src="https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?q=80&w=2070&auto=format&fit=crop"
           alt="Modern Apartment"
           className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="relative z-20 flex flex-col justify-between h-full p-16 text-white">
-          <div className="relative w-full h-32 rounded-2xl flex items-center overflow-hidden">
+        /> */}
+        <div className="relative z-20 flex flex-col justify-between items-start h-full p-16 text-white">
+          <div className="relative w-full h-50 flex items-center overflow-hidden self-start">
             <Image
-              src="/gateman_w_nobg_cropped.png"
+              src="/gmadminlogo.jpg"
               alt="GateMan Logo"
               fill
               priority
-              className="object-contain"
+              className="object-contain object-left"
             />
           </div>
 
-          <div className="space-y-6 max-w-lg">
-            <h1 className="text-5xl font-bold leading-tight">
-              Modern Living,
-              <br />
-              Simplified.
+          <div className="space-y-6 max-w-xl">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-none">
+              <span className="block font-montserrat text-transparent bg-clip-text bg-linear-to-r py-3 from-white via-slate-200 to-indigo-200">
+                Modern Living,
+              </span>
+              <span className="block text-indigo-400 mt-1 font-montserrat">
+                Simplified.
+              </span>
+              <span className="block text-xl sm:text-2xl font-oswald italic text-indigo-200/70 tracking-wide mt-4">
+                ...While Protecting What Matters Most.
+              </span>
             </h1>
-            <p className="text-lg text-indigo-100/90 leading-relaxed">
+
+            <p className="text-base sm:text-lg text-slate-300/90 leading-relaxed max-w-md font-oswald">
               Experience seamless estate management. Pay bills, manage visitors,
               and connect with your community—all in one place.
             </p>
@@ -243,30 +303,33 @@ export default function Auth() {
                 ))}
               </div>
               <div className="flex flex-col justify-center">
-                <span className="font-bold text-sm">2,000+ Residents</span>
-                <span className="text-xs text-indigo-200">Trust Gateman</span>
+                <span className="font-montserrat text-sm">2,000+ Residents</span>
+                <span className="text-xs text-indigo-200 font-sans">Trust Gateman</span>
               </div>
             </div>
           </div>
 
-          <div className="text-sm text-indigo-200/60 font-medium">
+          <div className="text-sm text-indigo-200/60 font-oswald">
             © 2026 Gateman Inc. All rights reserved.
           </div>
         </div>
       </div>
 
       {/* Right Side - Auth Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-slate-100">
+      <div
+        className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-slate-100"
+        style={{ borderRadius: "120px 0px 0px 0px" }}
+      >
         <div className="w-full max-w-md space-y-8 bg-white p-8 md:p-12 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-white">
           <div className="text-center">
-            <h2 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">
+            <h2 className="text-3xl font-montserrat text-slate-900 tracking-tight mb-2">
               {isLogin
                 ? "Welcome back"
                 : isForgot
                   ? "Forgot Password"
                   : "Create an account"}
             </h2>
-            <p className="text-slate-500">
+            <p className="text-slate-500 font-sans">
               {isLogin
                 ? "Enter your details to access your account"
                 : isForgot
@@ -290,7 +353,7 @@ export default function Auth() {
             {!isLogin && !isForgot && (
               <>
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">
+                  <label className="block text-sm font-oswald text-slate-700 mb-1.5 ml-1">
                     Estate Name
                   </label>
                   <div className="relative">
@@ -312,7 +375,7 @@ export default function Auth() {
             )}
 
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">
+              <label className="block text-sm  font-oswald text-slate-700 mb-1.5 ml-1">
                 Email Address
               </label>
               <div className="relative">
@@ -325,7 +388,7 @@ export default function Auth() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-100 text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-medium"
+                  className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-100 font-sans text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-medium"
                   placeholder="name@company.com"
                 />
               </div>
@@ -333,7 +396,7 @@ export default function Auth() {
 
             {!isForgot && (
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">
+                <label className="block text-sm  font-oswald text-slate-700 mb-1.5 ml-1">
                   Password
                 </label>
                 <div className="relative">
@@ -346,7 +409,7 @@ export default function Auth() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-11 pr-12 py-3.5 bg-slate-50 border border-slate-100 text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-medium"
+                    className="w-full pl-11 pr-12 py-3.5 bg-slate-50 border border-slate-100 font-sans text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-medium"
                     placeholder="••••••••"
                   />
                   {/* Moved to the right and added cursor-pointer */}
@@ -361,11 +424,33 @@ export default function Auth() {
               </div>
             )}
 
+            {isLogin && !isForgot && (
+              <div className="flex items-center mt-4">
+                <input
+                  id="remember_me"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => {
+                    const isChecked = e.target.checked;
+                    setRememberMe(isChecked);
+                    localStorage.setItem("rememberMe", String(isChecked));
+                  }}
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+                />
+                <label
+                  htmlFor="remember_me"
+                  className="ml-2 block text-sm text-gray-700 font-sans"
+                >
+                  Remember me
+                </label>
+              </div>
+            )}
+
             {!isLogin && !isForgot && (
               <div className="grid grid-cols-1 gap-4">
                 {/* State Select */}
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">
+                  <label className="block text-sm  font-oswald text-slate-700 mb-1.5 ml-1">
                     State
                   </label>
                   <div className="relative">
@@ -380,11 +465,14 @@ export default function Auth() {
                         setState(e.target.value);
                         setLga("");
                       }}
-                      className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-100 text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block outline-none font-medium appearance-none"
+                      className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-100 font-sans text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block outline-none font-medium appearance-none"
                     >
                       <option value="">Select State</option>
                       {states_lgas.map((s) => (
-                        <option key={s.alias} value={s.state}>
+                        <option
+                          key={s.alias}
+                          value={s.state}
+                        >
                           {s.state}
                         </option>
                       ))}
@@ -394,7 +482,7 @@ export default function Auth() {
 
                 {/* City (LGA) Select */}
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">
+                  <label className="block text-sm  font-oswald text-slate-700 mb-1.5 ml-1">
                     LGA
                   </label>
                   <div className="relative">
@@ -407,7 +495,7 @@ export default function Auth() {
                       disabled={!state}
                       value={lga}
                       onChange={(e) => setLga(e.target.value)}
-                      className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-100 text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block outline-none font-medium appearance-none disabled:opacity-50"
+                      className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-100 font-sans text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block outline-none font-medium appearance-none disabled:opacity-50"
                     >
                       <option value="">Select LGA</option>
                       {availableLgas.map((lga) => (
@@ -454,7 +542,7 @@ export default function Auth() {
                   }}
                   className="text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors"
                 >
-                  <span className="font-bold text-indigo-600">
+                  <span className="font-oswald text-indigo-600">
                     Forgot password?
                   </span>
                 </button>
@@ -464,7 +552,7 @@ export default function Auth() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center text-white bg-primary/60 hover:bg-primary focus:ring-4 focus:ring-indigo-300 font-bold rounded-2xl text-lg px-5 py-4 transition-all shadow-xl shadow-indigo-200 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center text-white bg-primary/60 hover:bg-primary focus:ring-4 focus:ring-indigo-300 font-montserrat rounded-2xl text-lg px-5 py-4 transition-all shadow-xl shadow-indigo-200 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {loading || requestingOtp ? (
                 <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -498,7 +586,7 @@ export default function Auth() {
                 {isLogin
                   ? "Don't have an account? "
                   : "Already have an account? "}
-                <span className="font-bold text-indigo-600">
+                <span className="font-oswald text-indigo-600">
                   {isLogin ? "Sign up" : "Sign in"}
                 </span>
               </button>

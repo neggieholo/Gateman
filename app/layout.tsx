@@ -1,18 +1,25 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { UserProvider } from "./UserContext";
-import { Montserrat } from "next/font/google";
+import { Montserrat, Oswald, Roboto } from "next/font/google";
 import Script from "next/script";
 
-const inter = Inter({
+const oswald = Oswald({
   subsets: ["latin"],
-  variable: "--font-inter",
+  weight: ["600"],
+  variable: "--font-oswald",
 });
 
 const montserrat = Montserrat({
   subsets: ["latin"],
+  weight: ["700", "800"],
   variable: "--font-montserrat",
+});
+
+const roboto = Roboto({
+  subsets: ["latin"],
+  weight: ["400"],
+  variable: "--font-roboto",
 });
 
 export const metadata: Metadata = {
@@ -22,11 +29,6 @@ export const metadata: Metadata = {
   },
   description:
     "Advanced access control and estate management for modern communities.",
-  // manifest: "/manifest.json",
-  // icons: {
-  //   icon: "/favicon.ico",
-  //   apple: "/apple-icon.png",
-  // },
 };
 
 export default function RootLayout({
@@ -35,8 +37,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.variable} ${montserrat.variable} antialiased`}>
+    // Moved font variables to HTML tag for clean portal inheritance
+    <html
+      lang="en"
+      className={`${oswald.variable} ${montserrat.variable} ${roboto.variable}`}
+    >
+      <body className="antialiased">
         <UserProvider>{children}</UserProvider>
 
         <Script

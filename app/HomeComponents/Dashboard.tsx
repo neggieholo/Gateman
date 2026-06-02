@@ -3,13 +3,11 @@
 
 import { useEffect, useState } from "react";
 import {
-  Users,
   ShieldCheck,
   CreditCard,
   CalendarClock,
   BellRing,
   UserCheck,
-  ArrowUpRight,
   Loader2,
   PlusCircle,
 } from "lucide-react";
@@ -41,7 +39,6 @@ export default function Dashboard() {
       }
     };
 
-    // Only fetch if user is authenticated
     if (user) {
       getDashboardData();
     }

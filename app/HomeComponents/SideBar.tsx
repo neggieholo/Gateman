@@ -13,6 +13,7 @@ import {
   Inbox,
   FileText,
   User2,
+  Briefcase,
 } from "lucide-react";
 import { ViewState } from "../services/types";
 import { useUser } from "../UserContext";
@@ -45,6 +46,8 @@ export default function SideBar({
     }
     await postLogout();
     setUser(null);
+    localStorage.removeItem("rememberMe");
+    sessionStorage.setItem("loggedOut", "true");;
     router.push("/");
   };
 
@@ -55,12 +58,6 @@ export default function SideBar({
       icon: Home,
       url: "/home/dashboard",
     },
-    // {
-    //   id: ViewState.UTILITIES,
-    //   label: "Bills",
-    //   icon: Zap,
-    //   url: "/home/utilities",
-    // },
     {
       id: ViewState.PAYMENT_APPROVALS,
       label: "Payments",
@@ -97,6 +94,12 @@ export default function SideBar({
       icon: Inbox,
       url: "/home/joinrequestpage",
     },
+    {
+      id: ViewState.SERVICES,
+      label: "Services",
+      icon: Briefcase,
+      url: "/home/services",
+    },
   ];
 
   const getRoleBadgeColor = () => {
@@ -106,12 +109,12 @@ export default function SideBar({
   return (
     <>
       <aside
-        className={`${isOpen ? "" : "hidden"} flex flex-col w-60 p-4 bg-primary h-screen border-r border-slate-100 z-50 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]`}
+        className={`${isOpen ? "" : "hidden"} flex flex-col w-60 p-4 bg-gm-navy h-screen border-r border-slate-100 z-50 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]`}
       >
         <div className="p-8 flex items-center space-x-3">
           <div className="relative w-full h-14 backdrop-blur-md rounded-xl flex items-center justify-center overflow-hidden">
             <Image
-              src="/gateman_w_nobg_cropped.png"
+              src="/gmlogo.jpg"
               alt="Gatenan Logo"
               fill
               className="object-contain p-1"

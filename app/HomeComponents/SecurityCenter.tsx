@@ -6,14 +6,9 @@ import {
   ShieldCheck,
   UserPlus,
   Users,
-  ClipboardList,
   Ticket,
-  Search,
-  Filter,
   AlertOctagon,
-  FileText,
 } from "lucide-react";
-import { Visitor } from "../services/types";
 import GatePassesView from "./GatePassView";
 import SecurityJoinRequestsPage from "./SecurityJoinRequestPage";
 import SecurityPersonnelsList from "./SecurityPersonnels";

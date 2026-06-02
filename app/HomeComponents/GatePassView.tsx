@@ -4,7 +4,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Invitation } from "../services/types";
-import { fetchGatePasses, logActivityApi } from "../services/apis";
+import { fetchGatePasses, formatDate, formatTime, logActivityApi } from "../services/apis";
 import {
   Calendar,
   Clock,
@@ -19,6 +19,7 @@ import {
   LogOut,
   Lock,
   Loader2,
+  Briefcase,
 } from "lucide-react";
 import InvitationDetailModal from "./InvitationDetail";
 
@@ -55,6 +56,7 @@ export default function GatePassesView() {
     expiry.setHours(parseInt(hours), parseInt(minutes), 0);
     return new Date() > expiry;
   };
+
 
   const getMultiEntryStatus = (invite: Invitation) => {
     if (invite.is_cancelled) {
@@ -270,7 +272,8 @@ export default function GatePassesView() {
     }
   };
 
-  const canActionExecute = (label: string) => {
+  const canActionExecute = (label: string, invite: Invitation) => {
+    const isStaffEntry = invite.invite_type === "staff_entry";
     const allowed = [
       "NOT ARRIVED",
       "NOT ARRIVED TODAY",
@@ -278,18 +281,24 @@ export default function GatePassesView() {
       "INSIDE",
       "ARRIVED TODAY",
     ];
-    return allowed.includes(label);
+    return allowed.includes(label) || (isStaffEntry && invite.is_activated);
   };
 
   const handleLogActivity = async (inviteId: string, currentLabel: string) => {
     setUpdatingInvite(inviteId);
     const invite = invitations.find((i) => i.id === inviteId);
     if (!invite) return;
+    const isStaffEntry = invite.invite_type === "staff_entry";
 
     const action = currentLabel === "INSIDE" ? "check_out" : "check_in";
 
     if (action === "check_in") {
       const now = new Date();
+
+      if (!isStaffEntry && isPastTime(invite.end_date, invite.end_time)) {
+        alert("This invitation has officially expired.");
+        return;
+      }
 
       // Parse Start and End times for today
       const [startH, startM] = invite.start_time.split(":");
@@ -364,7 +373,7 @@ export default function GatePassesView() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-3">
       {/* Search Header */}
       <div className="flex md:flex-row gap-4 justify-between items-center bg-white p-4 border rounded-2xl border-slate-100 shadow-sm h-15">
         <div className="relative w-full md:w-96">
@@ -397,6 +406,7 @@ export default function GatePassesView() {
               const isExpanded = expandedId === invite.id;
               const isMultiEntry = invite.invite_type === "multi_entry";
               // const isDone = invite.status === "checked_out" || (isPending && isExpired);
+              const isStaffEntry = invite.invite_type === "staff_entry";
               const statusDetails = isMultiEntry
                 ? getMultiEntryStatus(invite)
                 : getStatusDetails(
@@ -426,14 +436,21 @@ export default function GatePassesView() {
                               alt=""
                               className="w-full h-full object-cover"
                             />
+                          ) : isStaffEntry ? (
+                            <Briefcase size={22} color="#4f46e5" />
                           ) : (
-                            <User className="text-slate-400" size={24} />
+                            <User size={24} color="#4f46e5" />
                           )}
                         </div>
                         <div>
                           <h3 className="font-bold text-slate-900 leading-tight truncate max-w-30">
                             {invite.guest_name}
                           </h3>
+                          {isStaffEntry && invite.staff_position && (
+                            <p className="font-bold text-xs mt-0.5 mb-0.5 text-slate-500">
+                              💼 {invite.staff_position}
+                            </p>
+                          )}
                           <div className="flex items-center gap-1">
                             <Fingerprint
                               size={10}
@@ -447,15 +464,41 @@ export default function GatePassesView() {
                       </div>
 
                       {/* Status Badge */}
-                      <div
-                        className={`${statusDetails.container} px-2.5 py-1 rounded-lg`}
-                      >
-                        <span
-                          className={`${statusDetails.text} text-[9px] font-black uppercase`}
+                      {!isStaffEntry && (
+                        <div
+                          className={`${statusDetails.container} px-2.5 py-1 rounded-lg`}
                         >
-                          {statusDetails.label}
-                        </span>
-                      </div>
+                          <span
+                            className={`${statusDetails.text} text-[9px] font-black uppercase`}
+                          >
+                            {statusDetails.label}
+                          </span>
+                        </div>
+                      )}
+
+                      {isStaffEntry && (
+                        <div
+                          className={`px-2 py-2 m-2 rounded-md ${
+                            invite.is_activated
+                              ? "bg-emerald-100"
+                              : "bg-rose-100"
+                          }`}
+                        >
+                          <p
+                            className={`text-[9px] font-extrabold ${invite.is_activated ? "text-emerald-500" : "text-rose-500"}`}
+                          >
+                            {invite.is_activated
+                              ? invite.status === "checked_in"
+                                ? "INSIDE"
+                                : invite.status === "checked_out"
+                                  ? "ACTIVE"
+                                  : invite.status === "overstayed"
+                                    ? "OVERSTAYED"
+                                    : "ACTIVE"
+                              : "DISABLED"}
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     <div className="bg-slate-900 rounded-3xl p-4 text-center mb-4 shadow-lg shadow-slate-200">
@@ -478,16 +521,22 @@ export default function GatePassesView() {
                         </div>
                         <span className="text-slate-700 font-bold">
                           {(() => {
-                            const startStr = new Date(
-                              invite.start_date,
-                            ).toLocaleDateString("en-GB");
-                            const endStr = new Date(
-                              invite.end_date,
-                            ).toLocaleDateString("en-GB");
+                            const isStaffEntry =
+                              invite.invite_type === "staff_entry";
+                            const startStr = formatDate(invite.start_date);
+                            const hasEndDate =
+                              invite.end_date !== null &&
+                              invite.end_date !== undefined &&
+                              invite.end_date !== "null" &&
+                              invite.end_date !== invite.start_date;
 
-                            return startStr === endStr
-                              ? startStr
-                              : `${startStr} - ${endStr}`;
+                            if (hasEndDate) {
+                              return `${startStr} → ${formatDate(invite.end_date)}`;
+                            }
+                            if (isStaffEntry && !hasEndDate) {
+                              return `${startStr} → Present Date`;
+                            }
+                            return startStr;
                           })()}
                         </span>
                       </div>
@@ -497,10 +546,24 @@ export default function GatePassesView() {
                           Hours
                         </div>
                         <span className="text-slate-700 font-bold">
-                          {invite.start_time.slice(0, 5)} —{" "}
-                          {invite.end_time.slice(0, 5)}
+                          {formatTime(invite.start_time)} —{" "}
+                          {formatTime(invite.end_time)}
                         </span>
                       </div>
+                      {isStaffEntry && (
+                        <div className="flex items-center justify-between text-[11px]">
+                          <div className="flex items-center text-slate-400 font-medium italic">
+                            <Clock
+                              size={12}
+                              className="mr-1.5 text-indigo-400"
+                            />{" "}
+                            Activation
+                          </div>
+                          <span className={`${invite.is_activated ? 'text-emerald-400':'text-red-400'} font-bold`}>
+                            {invite.is_activated ? "Enabled" : "Disabled"}
+                          </span>
+                        </div>
+                      )}
                       {statusDetails.label === "OVERSTAYED" && (
                         <p className="text-[10px] text-red-600 font-bold mt-1 animate-pulse">
                           Shift ended at {invite.end_time.slice(0, 5)}
@@ -550,7 +613,7 @@ export default function GatePassesView() {
 
                   <div className="flex justify-between">
                     <div className="mt-auto w-fit">
-                      {canActionExecute(statusDetails.label) ? (
+                      {canActionExecute(statusDetails.label, invite) ? (
                         <button
                           onClick={() =>
                             handleLogActivity(invite.id, statusDetails.label)

@@ -9,12 +9,12 @@ import { JoinRequest } from "./types";
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
 export const db = {
-  authenticate: async (email: string, password: string) => {
+  authenticate: async (email: string, password: string, rememberMe:boolean) => {
     try {
       const res = await fetch(`${baseUrl}/api/auth/login/admin`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password}),
+        body: JSON.stringify({ email, password, rememberMe}),
         credentials: "include",
       });
 
