@@ -79,6 +79,7 @@ export default function PaymentReviewPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
+        credentials: 'include'
       });
 
       const data = await res.json();

@@ -678,7 +678,7 @@ export default function LocationsView({
         ) : (
           <div className="p-8 bg-white rounded-xl border-2 border-dashed border-slate-200 text-center">
             <p className="text-slate-400 text-xs font-medium">
-              No active location registry asset items discovered parameters.
+              No active location records discovered.
             </p>
           </div>
         )}

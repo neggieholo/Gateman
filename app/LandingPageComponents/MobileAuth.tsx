@@ -172,55 +172,97 @@ export default function MobileAuth() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    try {
-      if (isForgot) {
-        const res = await db.forgotPassword(email, "admin");
-
-        if (res.success) {
-          alert("A reset link has been sent to your email!");
-          setIsForgot(false);
-          setIsLogin(true);
-        } else {
-          throw new Error(res.message || "Failed to send reset link");
-        }
-      } else if (isLogin) {
-        const data = await db.authenticate(email, password, rememberMe);
-        if (
-          !data ||
-          (typeof data === "string" && data.includes("<!DOCTYPE html>"))
-        ) {
-          setError("Server error. Please try again later.");
-          return;
-        }
-        if (data.success) {
-          setUser(data.user);
-          router.push("/home/dashboard");
-        } else {
-          const errorMessage =
-            data.error || data.message || "Authentication failed";
-
-          if (
-            errorMessage.includes("Unexpected token") ||
-            errorMessage.includes("fetch")
-          ) {
-            setError("Server is currently restarting. Please wait a moment.");
+      e.preventDefault();
+      setLoading(true);
+      setError(null);
+  
+      try {
+        if (isForgot) {
+          const res = await db.forgotPassword(email, "admin");
+  
+          if (res.success) {
+            alert("A reset link has been sent to your email!");
+            setIsForgot(false); // Send them back to login
+            setIsLogin(true);
           } else {
-            setError(errorMessage);
+            throw new Error(res.message || "Failed to send reset link");
           }
+        } else if (isLogin) {
+          let coordinates = null;
+  
+          if (navigator.geolocation) {
+            try {
+              // 🎯 Explicitly define the Promise return signature as GeolocationPosition
+              const position = await new Promise<GeolocationPosition>(
+                (resolve, reject) => {
+                  navigator.geolocation.getCurrentPosition(resolve, reject, {
+                    enableHighAccuracy: true,
+                    timeout: 7000,
+                  });
+                },
+              );
+  
+              coordinates = {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+              };
+            } catch (geoError: any) {
+              if (geoError.code === geoError.PERMISSION_DENIED) {
+                setError(
+                  "Access Denied: Administrative security policy requires location verification.",
+                );
+                setLoading(false);
+                return;
+              }
+  
+              console.warn(
+                "Hardware position unavailable. Falling back safely to IP anchoring.",
+              );
+            }
+          } else {
+            console.warn(
+              "Browser environment does not support geolocation metrics.",
+            );
+          }
+  
+          const data = await db.authenticate(
+            email,
+            password,
+            rememberMe,
+            coordinates,
+          );
+          if (
+            !data ||
+            (typeof data === "string" && data.includes("<!DOCTYPE html>"))
+          ) {
+            setError("Server error. Please try again later.");
+            return;
+          }
+          if (data.success) {
+            setUser(data.user);
+            router.push("/home/dashboard");
+          } else {
+            const errorMessage =
+              data.error || data.message || "Authentication failed";
+  
+            if (
+              errorMessage.includes("Unexpected token") ||
+              errorMessage.includes("fetch")
+            ) {
+              setError("Server is currently restarting. Please wait a moment.");
+            } else {
+              setError(errorMessage);
+            }
+          }
+        } else {
+          handleRequestOtp();
         }
-      } else {
-        handleRequestOtp();
+      } catch (err: any) {
+        setError(err.message || "An error occurred");
+      } finally {
+        setLoading(false);
       }
-    } catch (err: any) {
-      setError(err.message || "An error occurred");
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
   if (sessionLoading)
     return (

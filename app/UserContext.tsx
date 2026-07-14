@@ -47,6 +47,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [badgeCount, setBadgeCount] = useState<number>(0);
   const [refreshTrigger, setRefreshTrigger] = useState<boolean>(false);
   const triggerRefresh = () => setRefreshTrigger((prev) => !prev);
+  
 
   useEffect(() => {
     const getNotifications = async () => {

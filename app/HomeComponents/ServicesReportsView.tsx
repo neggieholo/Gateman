@@ -272,11 +272,7 @@ export default function ServicesReportsView() {
                 <div
                   className={`p-3 sm:p-4 rounded-2xl shrink-0 ${report.type === "SECURITY" ? "bg-rose-50 text-rose-500" : "bg-blue-50 text-blue-500"}`}
                 >
-                  {report.type === "SECURITY" ? (
-                    <Shield size={24} />
-                  ) : (
-                    <Info size={24} />
-                  )}
+                  <Info size={24} />
                 </div>
                 <div>
                   <div className="flex items-center gap-2 mb-1">

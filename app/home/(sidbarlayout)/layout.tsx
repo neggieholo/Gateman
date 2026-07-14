@@ -2,7 +2,6 @@ import { headers } from "next/headers";
 import { isMobile } from "@/app/utils/ismobile";
 import SideBar from "@/app/HomeComponents/SideBar";
 import HomeNavbar from "@/app/HomeComponents/HomeNavbar";
-import MobBottomNav from "@/app/HomeComponents/Mobile/MobBottomNav";
 import MobHomeNavbar from "@/app/HomeComponents/Mobile/MobHomeNavBar";
 
 export default async function SidebarLayout({

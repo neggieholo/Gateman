@@ -248,9 +248,7 @@ export default function EventReviewPage() {
         ) : (
           <div className="p-8 bg-white rounded-2xl border-2 border-dashed border-slate-200/70 text-center">
             <p className="text-slate-400 text-xs font-medium">
-              {loading
-                ? "Compiling dashboard registry logs..."
-                : "No items matched the parameters scope."}
+              {loading ? "Loading..." : "No events"}
             </p>
           </div>
         )}
@@ -285,7 +283,10 @@ export default function EventReviewPage() {
       }
 
       const excluded: string[] = [];
-      const bookedSet = new Set(event.booked_dates.map((d) => d.split("T")[0]));
+      // const bookedSet = new Set(event.booked_dates.map((d) => d.split("T")[0]));
+      const bookedSet = new Set(
+        event.booked_dates.map((d) => formatToLocalDateString(d)),
+      );
 
       for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
         const currentStr = d.toISOString().split("T")[0];
@@ -343,9 +344,9 @@ export default function EventReviewPage() {
                 <span
                   className={`px-2 py-0.5 rounded text-[10px] font-oswald font-bold uppercase tracking-wide border ${event.is_paid ? "bg-blue-50 text-blue-600 border-blue-200/50" : "bg-emerald-50 text-emerald-600 border-emerald-200/50"}`}
                 >
-                  {event.is_paid ? "Paid Entry Gate" : "Free Access Scope"}
+                  {event.is_paid ? "Paid Event" : "Free Event"}
                 </span>
-                <h3 className="text-xl sm:text-2xl font-montserrat font-black text-slate-800 mt-2 leading-tight break-words">
+                <h3 className="text-xl sm:text-2xl font-montserrat font-black text-slate-800 mt-2 leading-tight wrap-break-word">
                   {event.title}
                 </h3>
               </div>
@@ -394,10 +395,7 @@ export default function EventReviewPage() {
                   <AlertCircle size={15} />
                 )}
                 <p className="font-montserrat font-bold text-[10px] uppercase tracking-wider">
-                  Current Pipeline Status:{" "}
-                  {event.is_approved
-                    ? "Approved Line entry"
-                    : "Rejected from schedule"}
+                  Current Status: {event.is_approved ? "Approved" : "Rejected"}
                 </p>
               </div>
             )}
@@ -405,7 +403,7 @@ export default function EventReviewPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
               <DetailBox
                 icon={<Calendar size={16} />}
-                label="Date Metric Parameter"
+                label="Date"
                 value={
                   isMultiDay
                     ? `${formatToLocalDateString(event.start_date)} to ${formatToLocalDateString(event.end_date)}`
@@ -414,7 +412,7 @@ export default function EventReviewPage() {
               />
               <DetailBox
                 icon={<Clock size={16} />}
-                label="Assigned Timeline Block"
+                label="Time"
                 value={`${event.start_time} - ${event.end_time}`}
               />
             </div>
@@ -422,7 +420,7 @@ export default function EventReviewPage() {
             {excludedDatesList.length > 0 && (
               <div className="p-3 bg-rose-50/30 border border-rose-100/60 rounded-xl min-w-0">
                 <span className="text-[10px] font-oswald font-bold text-rose-600 uppercase tracking-wider block mb-1.5">
-                  Excluded Date Sequences:
+                  Excluded Dates:
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {excludedDatesList.map((d) => (
@@ -440,12 +438,12 @@ export default function EventReviewPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
               <DetailBox
                 icon={<MapPin size={16} />}
-                label="Venue Designation"
+                label="Venue"
                 value={resolvedVenueName}
               />
               <DetailBox
                 icon={<Ticket size={16} />}
-                label="Reference Hash Token"
+                label="Reference Code"
                 value={event.ref_code}
                 isOswaldValue
               />
@@ -457,7 +455,7 @@ export default function EventReviewPage() {
               />
               <DetailBox
                 icon={<LayoutGrid size={16} />}
-                label="Ticket Evaluation Matrix"
+                label="Ticket Price"
                 value={event.is_paid ? `₦${event.ticket_price}` : "Free Pass"}
                 isOswaldValue
               />
@@ -465,7 +463,7 @@ export default function EventReviewPage() {
 
             <div className="p-4 bg-slate-50 border border-slate-200/60 rounded-xl min-w-0">
               <h4 className="text-slate-400 text-[10px] uppercase font-oswald font-bold tracking-wider mb-1.5">
-                Event Description Context
+                Event Description
               </h4>
               <p className="text-slate-600 text-sm leading-relaxed font-medium font-sans whitespace-pre-line">
                 {event.description ||
@@ -495,7 +493,7 @@ export default function EventReviewPage() {
                   : "text-slate-500 hover:text-slate-700"
               }`}
             >
-              <LayoutGrid size={13} /> Events Board
+              <LayoutGrid size={13} /> Events
             </button>
             <button
               onClick={() => {
@@ -508,7 +506,7 @@ export default function EventReviewPage() {
                   : "text-slate-500 hover:text-slate-700"
               }`}
             >
-              <MapPin size={13} /> Venues Catalog
+              <MapPin size={13} /> Venues
             </button>
           </div>
         </div>

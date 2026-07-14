@@ -35,7 +35,7 @@ const HomeNavbar = () => {
     cSessionCheck();
   }, [setUser, setIsLoading]);
 
-  const fullname = mounted && !isLoading ? user?.name || "Admin" : "...";
+  const fullname = mounted && !isLoading ? user?.estate_name : "...";
 
   return (
     <header

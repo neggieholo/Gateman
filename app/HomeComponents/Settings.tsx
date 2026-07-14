@@ -201,6 +201,7 @@ export default function Settings() {
           otp: finalOtp,
           metadata: metadata,
           target: verifyingField === "email" ? profile.email : profile.phone,
+          type: verifyingField === "email" ? "email" : "phone",
         }),
       });
 

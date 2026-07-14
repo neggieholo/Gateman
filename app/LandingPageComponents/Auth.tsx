@@ -196,7 +196,49 @@ export default function Auth() {
           throw new Error(res.message || "Failed to send reset link");
         }
       } else if (isLogin) {
-        const data = await db.authenticate(email, password, rememberMe);
+        let coordinates = null;
+
+        if (navigator.geolocation) {
+          try {
+            // 🎯 Explicitly define the Promise return signature as GeolocationPosition
+            const position = await new Promise<GeolocationPosition>(
+              (resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject, {
+                  enableHighAccuracy: true,
+                  timeout: 7000,
+                });
+              },
+            );
+
+            coordinates = {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            };
+          } catch (geoError: any) {
+            if (geoError.code === geoError.PERMISSION_DENIED) {
+              setError(
+                "Access Denied: Administrative security policy requires location verification.",
+              );
+              setLoading(false);
+              return;
+            }
+
+            console.warn(
+              "Hardware position unavailable. Falling back safely to IP anchoring.",
+            );
+          }
+        } else {
+          console.warn(
+            "Browser environment does not support geolocation metrics.",
+          );
+        }
+
+        const data = await db.authenticate(
+          email,
+          password,
+          rememberMe,
+          coordinates,
+        );
         if (
           !data ||
           (typeof data === "string" && data.includes("<!DOCTYPE html>"))
@@ -245,7 +287,7 @@ export default function Auth() {
           />
 
           {/* Rotating Spinner Ring */}
-          <div className="absolute inset-0 border-4 border-slate-100 border-t-indigo-600 rounded-full animate-spin" />
+          <div className="absolute inset-0 border-4 border-slate-100 border-t-gm-navy rounded-full animate-spin" />
         </div>
       </div>
     );
@@ -647,7 +689,7 @@ export default function Auth() {
 
             <div className="space-y-4">
               <button
-                onClick={() => handleRegister(otp.join(""))}
+                // onClick={() => handleRegister(otp.join(""))}
                 disabled={loading || otp.some((d) => !d)}
                 className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg shadow-lg shadow-indigo-200 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center"
               >

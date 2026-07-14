@@ -1,8 +1,8 @@
-import AdminKYC from "@/app/HomeComponents/KYCPage"
+import React from 'react'
 
 const page = () => {
   return (
-    <AdminKYC />
+    <div>page</div>
   )
 }
 

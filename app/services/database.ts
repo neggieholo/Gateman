@@ -9,12 +9,17 @@ import { JoinRequest } from "./types";
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
 export const db = {
-  authenticate: async (email: string, password: string, rememberMe:boolean) => {
+  authenticate: async (
+    email: string,
+    password: string,
+    rememberMe: boolean,
+    coordinates: { latitude: number; longitude: number } | null,
+  ) => {
     try {
       const res = await fetch(`${baseUrl}/api/auth/login/admin`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, rememberMe}),
+        body: JSON.stringify({ email, password, rememberMe, coordinates }),
         credentials: "include",
       });
 
@@ -26,7 +31,7 @@ export const db = {
         };
       }
 
-      const data = await res.json(); 
+      const data = await res.json();
       return data;
     } catch {
       return {
@@ -64,7 +69,7 @@ export const db = {
     window.location.href = paymentLink;
   },
 
-   topUpWallet: async (
+  topUpWallet: async (
     userId: string,
     amount: number,
     type: "tenant" | "admin" = "tenant",
