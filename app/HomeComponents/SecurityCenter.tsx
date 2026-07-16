@@ -8,16 +8,18 @@ import {
   Users,
   Ticket,
   AlertOctagon,
+  FileText,
 } from "lucide-react";
 import GatePassesView from "./GatePassView";
 import SecurityJoinRequestsPage from "./SecurityJoinRequestPage";
 import SecurityPersonnelsList from "./SecurityPersonnels";
 import OnDutyPersonnel from "./SecurityOnDuty";
 import SecurityReportsView from "./SecurityReportsView";
+import UserLogsPage from "./UsersLogsPage";
 
 export default function SecurityManagement() {
   const [activeTab, setActiveTab] = useState<
-    "requests" | "personnel" | "onduty" | "reports" | "gatepasses"
+    "requests" | "personnel" | "onduty" | "reports" | "gatepasses" | "logs"
   >("requests");
 
   const tabs = [
@@ -55,6 +57,13 @@ export default function SecurityManagement() {
       icon: Ticket,
       color: "text-amber-600",
       bg: "bg-amber-50",
+    },
+    {
+      id: "logs",
+      label: "Logs",
+      icon: FileText,
+      color: "text-slate-600",
+      bg: "bg-purple-50",
     },
   ];
 
@@ -96,6 +105,8 @@ export default function SecurityManagement() {
         {activeTab === "reports" && <SecurityReportsView />}
 
         {activeTab === "gatepasses" && <GatePassesView />}
+
+        {activeTab === "logs" && <UserLogsPage role="SECURITY" />}
       </div>
     </div>
   );

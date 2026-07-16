@@ -709,6 +709,7 @@ export interface UserLogEntry {
   user_id: string;
   user_name: string;
   user_email: string;
+  user_role: string;
   action_type: string;
   target_resource: string;
   description: string;

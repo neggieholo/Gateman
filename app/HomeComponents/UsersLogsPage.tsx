@@ -17,13 +17,13 @@ import { useUser } from "../UserContext";
 interface UserLogsPageProps {
   isolatedAdminId?: string | null;
   isolatedAdminName?: string | null;
-  type: string;
+  role: string;
 }
 
 export default function UserLogsPage({
   isolatedAdminId = null,
   isolatedAdminName = null,
-  type = "user",
+  role
 }: UserLogsPageProps) {
   const { user } = useUser();
   const [logs, setLogs] = useState<UserLogEntry[]>([]);
@@ -38,9 +38,13 @@ export default function UserLogsPage({
     const loadLogsData = async () => {
       setLoading(true);
       try {
-        const response = await fetchUserLogsApi(type);
+        const response = await fetchUserLogsApi();
         if (response.success) {
-          setLogs(response.logs || []);
+          const specifiedLogs =
+            response.logs?.filter(
+              (log: UserLogEntry) => log.user_role === role?.toUpperCase(),
+            ) ?? [];
+          setLogs(specifiedLogs || []);
         } else {
           toast.error(response.message || "Failed to sync system user logs.");
         }
@@ -53,7 +57,7 @@ export default function UserLogsPage({
     };
 
     loadLogsData();
-  }, [type]);
+  }, [role]);
 
   // 🧠 2. High-Performance Memoized Local Filtering Matrix
   const filteredLogs = useMemo(() => {
@@ -156,7 +160,7 @@ export default function UserLogsPage({
       {/* Header and Title Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white rounded-2xl border border-slate-200/70 p-5 shadow-2xs">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-slate-900 rounded-xl text-white">
+          <div className="p-2.5 bg-gm-navy rounded-xl text-white">
             <FileText size={18} />
           </div>
           <div>
@@ -178,7 +182,7 @@ export default function UserLogsPage({
           className={`flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-[10px] font-oswald font-bold uppercase tracking-wider transition-all shadow-3xs active:scale-98 ${
             filteredLogs.length === 0 || loading
               ? "bg-slate-100 text-slate-300 cursor-not-allowed border border-slate-200/60"
-              : "bg-slate-900 hover:bg-slate-850 text-white"
+              : "bg-gm-navy hover:bg-slate-850 text-white"
           }`}
         >
           <Download size={14} /> Export CSV Ledger ({filteredLogs.length})
@@ -189,7 +193,7 @@ export default function UserLogsPage({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white p-5 rounded-2xl border border-slate-200/70 shadow-2xs">
         {/* Name / Email Search */}
         <div className="space-y-1.5">
-          <label className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-wider block">
+          <label className="text-[12px] font-oswald font-bold text-slate-400 uppercase tracking-wider block">
             Search Operator
           </label>
           <div className="relative flex items-center">
@@ -214,7 +218,7 @@ export default function UserLogsPage({
 
         {/* Date Picker */}
         <div className="space-y-1.5">
-          <label className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-wider block">
+          <label className="text-[12px] font-oswald font-bold text-slate-400 uppercase tracking-wider block">
             Filter by Date
           </label>
           <div className="relative flex items-center">
@@ -235,22 +239,22 @@ export default function UserLogsPage({
       {/* DATA TABLE GRAPH CONTAINER */}
       <div className="bg-white rounded-2xl border border-slate-200/70 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-left border-collapse min-w-[700px]">
+          <table className="w-full text-left border-collapse min-w-175">
             <thead>
               <tr className="bg-slate-50/85 border-b border-slate-150">
-                <th className="p-4 text-[10px] font-oswald font-bold text-slate-500 uppercase tracking-widest w-40">
+                <th className="p-4 text-[12px] font-oswald font-bold text-slate-500 uppercase tracking-widest w-40">
                   Timestamp
                 </th>
-                <th className="p-4 text-[10px] font-oswald font-bold text-slate-500 uppercase tracking-widest w-56">
+                <th className="p-4 text-[12px] font-oswald font-bold text-slate-500 uppercase tracking-widest w-56">
                   Administrator
                 </th>
-                <th className="p-4 text-[10px] font-oswald font-bold text-slate-500 uppercase tracking-widest">
+                <th className="p-4 text-[12px] font-oswald font-bold text-slate-500 uppercase tracking-widest">
                   User Activity Trace Log
                 </th>
-                <th className="p-4 text-[10px] font-oswald font-bold text-slate-500 uppercase tracking-widest w-36">
+                <th className="p-4 text-[12px] font-oswald font-bold text-slate-500 uppercase tracking-widest w-36">
                   IP Metadata
                 </th>
-                <th className="p-4 text-[10px] font-oswald font-bold text-slate-500 uppercase tracking-widest w-44">
+                <th className="p-4 text-[12px] font-oswald font-bold text-slate-500 uppercase tracking-widest w-44">
                   User Agent
                 </th>
               </tr>
@@ -301,7 +305,7 @@ export default function UserLogsPage({
                           <span className="text-xs font-bold">
                             {formattedDate}
                           </span>
-                          <span className="text-[10px] text-slate-400 font-medium">
+                          <span className="text-[12px] text-slate-600 font-medium">
                             {formattedTime}
                           </span>
                         </div>
@@ -311,20 +315,20 @@ export default function UserLogsPage({
                           <span className="font-bold text-slate-850">
                             {log.user_name || "System Action"}
                           </span>
-                          <span className="text-[10px] text-slate-400 font-medium">
+                          <span className="text-[12px] text-slate-600 font-medium">
                             {log.user_email || "root@gateman"}
                           </span>
                         </div>
                       </td>
-                      <td className="p-4 text-slate-500 font-medium max-w-sm leading-relaxed whitespace-normal break-words">
+                      <td className="p-4 text-slate-600 font-medium max-w-sm leading-relaxed whitespace-normal break-words">
                         {log.description}
                       </td>
-                      <td className="p-4 font-mono text-slate-400 font-semibold whitespace-nowrap">
+                      <td className="p-4 font-mono text-slate-600 font-semibold whitespace-nowrap">
                         {log.ip_address || "0.0.0.0"}
                       </td>
-                      <td className="p-4 font-mono text-slate-400 font-semibold whitespace-nowrap">
+                      <td className="p-4 font-mono text-slate-600 font-semibold whitespace-nowrap">
                         <span
-                          className="inline-block max-w-[150px] truncate"
+                          className="inline-block max-w-37.5 truncate"
                           title={log.user_agent || "unknown"}
                         >
                           {log.user_agent || "unknown"}

@@ -1,12 +1,21 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
 import React, { useEffect, useState } from "react";
 import { securityDb } from "../services/database";
 import { SecurityUser } from "../services/types";
-import { Trash2, Mail, Phone, Search, Clock, Loader2 } from "lucide-react";
+import {
+  Trash2,
+  Mail,
+  Phone,
+  Search,
+  Clock,
+  Loader2,
+  History,
+  ArrowLeft,
+} from "lucide-react";
 import { formatLastSeen } from "../services/apis";
+import UserLogsPage from "./UsersLogsPage";
 
 export default function SecurityPersonnelsList() {
   const [guards, setGuards] = useState<SecurityUser[]>([]);
@@ -14,6 +23,7 @@ export default function SecurityPersonnelsList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState(false);
+  const [selectedGuard, setSelectedGuard] = useState<SecurityUser | null>(null);
 
   const fetchGuards = async () => {
     setError(false);
@@ -50,6 +60,26 @@ export default function SecurityPersonnelsList() {
       setDeletingId(null);
     }
   };
+
+  if (selectedGuard) {
+    return (
+      <div className="bg-white p-2 sm:p-8 rounded-4xl border border-slate-100 shadow-sm space-y-4 animate-in fade-in zoom-in-95 duration-200">
+        <button
+          onClick={() => {
+            setSelectedGuard(null);
+          }}
+          className="flex items-center gap-2 text-xs font-sans font-bold text-slate-500 hover:text-slate-800 transition-colors mb-2"
+        >
+          <ArrowLeft size={16} /> Back
+        </button>
+        <UserLogsPage
+          isolatedAdminId={selectedGuard.id}
+          isolatedAdminName={selectedGuard.name}
+          role="SECURITY"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="h-[calc(100vh-250px)] flex flex-col font-sans">
@@ -117,35 +147,49 @@ export default function SecurityPersonnelsList() {
                       </p>
                     </div>
 
-                    <div className="flex flex-col gap-2 mt-1">
+                    <div className="flex justify-between gap-2 mt-1">
                       {/* Last Check-in Section */}
-                      <div className="space-y-0.5">
-                        <p className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-widest">
-                          Last Check-in
-                        </p>
-                        <div className="flex items-center gap-1.5 text-blue-600 bg-blue-50/70 px-2 py-0.5 rounded-lg w-fit border border-blue-100/50">
-                          <Clock size={12} />
-                          <span className="text-[10px] font-oswald font-bold uppercase tracking-wider">
-                            {guard.last_checkin
-                              ? formatLastSeen(guard.last_checkin)
-                              : "No record"}
-                          </span>
+                      <div className="flex flex-col">
+                        <div className="space-y-0.5">
+                          <p className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-widest">
+                            Last Check-in
+                          </p>
+                          <div className="flex items-center gap-1.5 text-blue-600 bg-blue-50/70 px-2 py-0.5 rounded-lg w-fit border border-blue-100/50">
+                            <Clock size={12} />
+                            <span className="text-[10px] font-oswald font-bold uppercase tracking-wider">
+                              {guard.last_checkin
+                                ? formatLastSeen(guard.last_checkin)
+                                : "No record"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Last Check-out Section */}
+                        <div className="space-y-0.5">
+                          <p className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-widest">
+                            Last Check-out
+                          </p>
+                          <div className="flex items-center gap-1.5 text-slate-600 bg-slate-50 px-2 py-0.5 rounded-lg w-fit border border-slate-100">
+                            <Clock size={12} />
+                            <span className="text-[10px] font-oswald font-bold uppercase tracking-wider">
+                              {guard.last_checkout
+                                ? formatLastSeen(guard.last_checkout)
+                                : "No record"}
+                            </span>
+                          </div>
                         </div>
                       </div>
 
-                      {/* Last Check-out Section */}
-                      <div className="space-y-0.5">
-                        <p className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-widest">
-                          Last Check-out
-                        </p>
-                        <div className="flex items-center gap-1.5 text-slate-600 bg-slate-50 px-2 py-0.5 rounded-lg w-fit border border-slate-100">
-                          <Clock size={12} />
-                          <span className="text-[10px] font-oswald font-bold uppercase tracking-wider">
-                            {guard.last_checkout
-                              ? formatLastSeen(guard.last_checkout)
-                              : "No record"}
+                      <div className="w-fit h-fit p-3 flex justify-center">
+                        <button
+                          onClick={() => setSelectedGuard(guard)}
+                          className="p-1.5 hover:bg-slate-100 rounded-lg border text-slate-500 hover:text-slate-800 transition-all inline-flex items-center gap-1 font-bold text-[14px]"
+                        >
+                          <History size={14} />
+                          <span className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-widest">
+                            View Logs
                           </span>
-                        </div>
+                        </button>
                       </div>
                     </div>
                   </div>

@@ -321,7 +321,7 @@ export default function ManageUsersPage() {
         <UserLogsPage
           isolatedAdminId={logsId}
           isolatedAdminName={logsName}
-          type="user"
+          role="ADMIN"
         />
       </div>
     );
@@ -349,7 +349,7 @@ export default function ManageUsersPage() {
       >
         {/* Search Filter Strip */}
         <div className="flex flex-col gap-1.5 max-w-sm ml-2">
-          <label className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-wider block">
+          <label className="text-[12px] font-oswald font-bold text-slate-400 uppercase tracking-wider block">
             Search Operators
           </label>
           <div className="relative flex items-center">
@@ -372,7 +372,7 @@ export default function ManageUsersPage() {
           <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full text-left border-collapse min-w-200">
               <thead>
-                <tr className="bg-slate-50/85 border-b border-slate-150 text-[10px] font-oswald font-bold uppercase tracking-widest text-slate-500">
+                <tr className="bg-slate-50/85 border-b border-slate-150 text-[12px] font-oswald font-bold uppercase tracking-widest text-slate-500">
                   <th className="p-4 w-1/3">Identity Profile</th>
                   <th className="p-4 w-1/5">MFA Guard Status</th>
                   <th className="p-4 w-1/6">Status</th>
@@ -409,14 +409,14 @@ export default function ManageUsersPage() {
                       {/* Name / Email Column */}
                       <td className="p-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-lg bg-slate-900 text-white flex items-center justify-center font-montserrat font-black text-xs shadow-inner shrink-0">
+                          <div className="w-9 h-9 rounded-lg bg-slate-900 text-white flex items-center justify-center font-montserrat font-black text-sm shadow-inner shrink-0">
                             {u.name.slice(0, 2).toUpperCase()}
                           </div>
                           <div className="min-w-0">
-                            <h4 className="text-slate-850 font-bold text-xs leading-tight truncate">
+                            <h4 className="text-slate-850 font-bold text-sm leading-tight truncate">
                               {u.name}
                             </h4>
-                            <span className="text-[10px] text-slate-400 font-medium font-mono block truncate mt-0.5">
+                            <span className="text-[12px] text-slate-400 font-medium font-mono block truncate mt-0.5">
                               {u.email}
                             </span>
                           </div>
@@ -429,14 +429,14 @@ export default function ManageUsersPage() {
                           {u.mfa_enabled ? (
                             <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-lg border border-emerald-100/80">
                               <ShieldCheck size={12} />
-                              <span className="text-[9px] font-oswald font-bold uppercase tracking-wider">
+                              <span className="text-xs font-oswald font-bold uppercase tracking-wider">
                                 {u.mfa_type} Active
                               </span>
                             </div>
                           ) : (
                             <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-rose-50/75 text-rose-500 rounded-lg border border-rose-100/80">
                               <ShieldAlert size={12} />
-                              <span className="text-[9px] font-oswald font-bold uppercase tracking-wider">
+                              <span className="text-xs font-oswald font-bold uppercase tracking-wider">
                                 Unprotected
                               </span>
                             </div>
@@ -447,7 +447,7 @@ export default function ManageUsersPage() {
                       {/* Account Status Column */}
                       <td className="p-4 whitespace-nowrap">
                         <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[9px] font-oswald font-bold uppercase tracking-wider border ${
+                          className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-oswald font-bold uppercase tracking-wider border ${
                             u.is_active
                               ? "bg-emerald-50/50 border-emerald-100 text-emerald-600"
                               : "bg-rose-50/50 border-rose-100 text-rose-600"

@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -15,12 +16,17 @@ import {
   CheckCircle2,
   Phone,
   Loader2,
+  User,
+  Camera,
+  ShieldCheck,
 } from "lucide-react";
 import "react-phone-number-input/style.css";
 import PhoneInput, { isValidPhoneNumber } from "react-phone-number-input";
 import { useUser } from "../UserContext";
 import { EmergencyContact } from "../services/types";
-import { sendPofileChangeOtpApi } from "../services/apis";
+import { getCloudinaryUrl, sendPofileChangeOtpApi } from "../services/apis";
+import toast from "react-hot-toast";
+import AdminPermissionsViewModal from "./AdminPermissionViewModal";
 
 export default function Settings() {
   const { user } = useUser();
@@ -50,6 +56,7 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [verifyingField, setVerifyingField] = useState<
     "email" | "phone" | null
@@ -68,9 +75,11 @@ export default function Settings() {
     phone: user?.phone_number || undefined,
     phone_verified: false,
     email_verified: false,
+    avatar: user?.avatar || undefined,
   });
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
   const [loadingAction, setLoadingAction] = useState(false);
+  const [isPermissionsOpen, setIsPermissionsOpen] = useState(false);
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
   const hasChanges =
@@ -82,11 +91,11 @@ export default function Settings() {
     JSON.stringify(emergencyContacts) !==
       JSON.stringify(user?.emergency_contacts || []) ||
     accountNumber !== (user?.bank_account_number || "") ||
+    profile.avatar !== (user?.avatar || "") ||
     selectedBank.code !== (user?.bank_code || "");
 
   useEffect(() => {
     if (user) {
-
       setProfile({
         estateName: user.estate_name || "Not set",
         estateCode: user.estate_code,
@@ -95,6 +104,7 @@ export default function Settings() {
         phone: user.phone_number || (isEditing ? "" : undefined),
         phone_verified: true,
         email_verified: true,
+        avatar: user?.avatar || undefined,
       });
 
       setPaymentMethod(user.payment_type || "manual");
@@ -282,6 +292,47 @@ export default function Settings() {
     }
   };
 
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const localPreviewUrl = URL.createObjectURL(file);
+
+    setProfile((prev) => ({
+      ...prev,
+      avatar: localPreviewUrl,
+    }));
+
+    setError(null);
+    try {
+      const uploadedUrl = await getCloudinaryUrl(file, "image");
+
+      if (uploadedUrl) {
+        setProfile((prev) => ({
+          ...prev,
+          avatar: uploadedUrl,
+        }));
+        toast.success("Avatar staged securely!");
+      } else {
+        toast.error("Avatar upload failed. Reverting changes.");
+        setProfile((prev) => ({
+          ...prev,
+          avatar: user?.avatar || undefined,
+        }));
+      }
+    } catch (err) {
+      console.error("Avatar handling layout exception:", err);
+      toast.error("An error occurred during image staging execution.");
+      setProfile((prev) => ({
+        ...prev,
+        avatar: user?.avatar || undefined,
+      }));
+    } finally {
+      // Clean up the local browser object memory leak loop safely
+      URL.revokeObjectURL(localPreviewUrl);
+    }
+  };
+
   const handleSaveConfig = async () => {
     if (!hasChanges) {
       alert("No changes detected to save.");
@@ -316,6 +367,7 @@ export default function Settings() {
           account_number: accountNumber,
           account_name: accountName,
         },
+        avatar: profile.avatar,
       },
     };
 
@@ -356,6 +408,7 @@ export default function Settings() {
       phone: user?.phone_number || "Not set",
       phone_verified: false,
       email_verified: false,
+      avatar: user?.avatar || undefined,
     });
     setIsEditing(false);
     setError(null);
@@ -455,21 +508,50 @@ export default function Settings() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
-              <div className="space-y-2">
+              <div className="w-full flex flex-col items-center justify-center rounded-3xl shrink-0">
+                <div
+                  className="relative w-40 h-40 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-montserrat font-bold text-3xl tracking-wide shadow-inner overflow-hidden group"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {profile.avatar ? (
+                    <img
+                      src={profile.avatar}
+                      crossOrigin="anonymous"
+                      alt="User Profile"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : profile.adminName !== "Not set" && profile.adminName ? (
+                    profile.adminName.slice(0, 2).toUpperCase()
+                  ) : (
+                    <User size={36} />
+                  )}
+
+                  {isEditing && (
+                    <label className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex flex-col items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white text-[9px] font-oswald font-black uppercase tracking-wider">
+                      <Camera size={16} />
+                      <span>Upload</span>
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        accept="image/*"
+                        onChange={handleAvatarChange}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+
+                  <div className="absolute -bottom-1.5 -right-1.5 p-1.5 bg-emerald-500 rounded-xl text-white border-2 border-white shadow-sm z-10">
+                    <ShieldCheck size={14} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2 flex flex-col justify-end">
                 <label className="text-[10px] font-oswald font-black text-slate-400 uppercase tracking-widest">
                   Estate Name
                 </label>
                 <div className="p-4 bg-slate-100 rounded-2xl font-sans font-bold text-slate-500 flex items-center gap-2 text-sm sm:text-base break-all">
                   <Lock size={14} className="shrink-0" /> {profile.estateName}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-oswald font-black text-slate-400 uppercase tracking-widest">
-                  Public Estate ID
-                </label>
-                <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl font-sans font-black text-indigo-600 text-sm sm:text-base">
-                  <code>{profile.estateCode}</code>
                 </div>
               </div>
 
@@ -580,6 +662,15 @@ export default function Settings() {
                       )
                     )}
                   </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-oswald font-black text-slate-400 uppercase tracking-widest">
+                  Public Estate ID
+                </label>
+                <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl font-sans font-black text-indigo-600 text-sm sm:text-base">
+                  <code>{profile.estateCode}</code>
                 </div>
               </div>
             </div>
@@ -780,6 +871,20 @@ export default function Settings() {
           {/* Security Actions */}
           <div className="bg-white p-5 sm:p-6 rounded-4xl sm:rounded-4xl border border-slate-100 shadow-sm space-y-2">
             <button
+              className="w-full flex items-center justify-between p-4 hover:bg-red-50 rounded-2xl transition-colors group"
+              // onClick={() => setShowDeletePrompt(true)}
+              onClick={() => setIsPermissionsOpen(true)}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg group-hover:scale-110 transition-transform">
+                  <ShieldCheck size={18} />
+                </div>
+                <span className="font-sans font-bold text-slate-700 text-sm">
+                  View Permissions
+                </span>
+              </div>
+            </button>
+            <button
               onClick={() =>
                 (window.location.href = "/home/settings/change-password")
               }
@@ -790,23 +895,10 @@ export default function Settings() {
                   <Lock size={18} />
                 </div>
                 <span className="font-sans font-bold text-slate-700 text-sm">
-                  Password Change
+                  More Configuration
                 </span>
               </div>
               <ChevronRight size={16} className="text-slate-300" />
-            </button>
-            <button
-              className="w-full flex items-center justify-between p-4 hover:bg-red-50 rounded-2xl transition-colors group"
-              onClick={() => setShowDeletePrompt(true)}
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-red-50 text-red-600 rounded-lg group-hover:scale-110 transition-transform">
-                  <Trash2 size={18} />
-                </div>
-                <span className="font-sans font-bold text-red-600 text-sm">
-                  Terminate Account
-                </span>
-              </div>
             </button>
           </div>
         </div>
@@ -885,7 +977,7 @@ export default function Settings() {
       {/* TERMINATION MODAL */}
       {showDeletePrompt && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-60 animate-in fade-in duration-200">
-          <div className="bg-white rounded-[2rem] sm:rounded-4xl p-6 sm:p-8 w-full max-w-md shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-4xl sm:rounded-4xl p-6 sm:p-8 w-full max-w-md shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-200">
             <div className="w-16 h-16 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mb-6">
               <ShieldAlert size={32} />
             </div>
@@ -925,6 +1017,13 @@ export default function Settings() {
           </div>
         </div>
       )}
+      <AdminPermissionsViewModal
+        user={user}
+        isOpen={isPermissionsOpen}
+        onClose={() => {
+          setIsPermissionsOpen(false);
+        }}
+      />
     </div>
   );
 }

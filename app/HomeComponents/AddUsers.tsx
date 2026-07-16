@@ -253,7 +253,7 @@ export default function AddAdmin() {
         {/* Core Identity Panel Card Frame (Keeps its natural height) */}
         <div className="bg-white rounded-2xl border border-slate-200/70 p-5 sm:p-6 shadow-2xs space-y-5 shrink-0">
           <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-            <div className="p-2.5 bg-slate-900 rounded-xl text-white">
+            <div className="p-2.5 bg-gm-navy rounded-xl text-white">
               <UserPlus size={18} />
             </div>
             <div>
@@ -372,7 +372,7 @@ export default function AddAdmin() {
         {/* Dynamic Granular Hierarchy Permissions Mapping Panel (Fills remaining space & handles internal scrolling) */}
         <div className="bg-white rounded-2xl border border-slate-200/70 p-5 sm:p-6 shadow-2xs flex flex-col flex-1 min-h-0">
           <div className="flex items-center gap-3 border-b border-slate-100 pb-4 shrink-0">
-            <div className="p-2.5 bg-slate-900 rounded-xl text-white">
+            <div className="p-2.5 bg-gm-navy rounded-xl text-white">
               <Shield size={18} />
             </div>
             <div>
@@ -555,8 +555,8 @@ export default function AddAdmin() {
               disabled={savingCustomRole}
               className={`w-full py-2.5 text-xs font-oswald font-bold uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 active:scale-98 ${
                 savingCustomRole
-                  ? "bg-slate-800 text-slate-400 cursor-not-allowed"
-                  : "bg-slate-900 hover:bg-slate-850 text-white"
+                  ? "bg-gm-navy text-slate-400 cursor-not-allowed"
+                  : "bg-gm-navy hover:bg-slate-850 text-white"
               }`}
             >
               {savingCustomRole ? (

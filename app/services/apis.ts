@@ -436,13 +436,21 @@ export const getRelativeTime = (timestamp: string) => {
 };
 
 export const getCloudinaryUrl = async (
-  file: File, // Expecting the actual File object from <input type="file">
+  file: File, // Pass the native Browser File object directly here instead of a string URI
   selectionType: "image" | "audio" | "video" | "document",
 ) => {
+  console.log("uploading into cloudinary");
   try {
-    // 1. SIZE CHECK: 50MB Limit
+    if (!file) {
+      console.error("No file provided for upload.");
+      return null;
+    }
+    console.log("uploading into cloudinary:", file);
+
+    const fileSize = file.size;
     const MAX_SIZE = 50 * 1024 * 1024;
-    if (file.size > MAX_SIZE) {
+
+    if (fileSize > MAX_SIZE) {
       alert("File too large. Max limit is 50MB.");
       return null;
     }
@@ -451,13 +459,14 @@ export const getCloudinaryUrl = async (
 
     // 2. Resource Type Logic
     let cloudinaryType = "image";
+
     if (selectionType === "audio" || selectionType === "video") {
-      cloudinaryType = "video"; // Cloudinary handles audio under the 'video' endpoint
+      cloudinaryType = "video"; // Cloudinary treats audio as a video resource type
     } else if (selectionType === "document") {
       cloudinaryType = "raw";
     }
 
-    // Web-standard FormData append
+    // Standard web browsers natively know how to read and stream the File object via FormData
     formData.append("file", file);
     formData.append("upload_preset", "gateman uploads");
 
@@ -473,9 +482,9 @@ export const getCloudinaryUrl = async (
 
     if (data.error) {
       console.error("Cloudinary Error:", data.error.message);
-      alert(`Cloudinary Error: ${data.error.message}`);
       return null;
     }
+    console.log("Cloudinary Url", data.secure_url);
 
     return data.secure_url;
   } catch (err) {
@@ -888,15 +897,12 @@ export const createAdminUserWorkspaceApi = async (payload: {
   }
 };
 
-export const fetchUserLogsApi = async (
-  type: string,
-  filters?: {
-    action_type?: string;
-    target_resource?: string;
-  },
-) => {
+export const fetchUserLogsApi = async (filters?: {
+  action_type?: string;
+  target_resource?: string;
+}) => {
   try {
-    let url = `${baseUrl}/api/master/user-logs`;
+    let url = `${baseUrl}/api/estate-users/user-logs`;
     if (filters) {
       const params = new URLSearchParams(filters as any);
       url += `?${params.toString()}`;
@@ -905,7 +911,8 @@ export const fetchUserLogsApi = async (
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type }),
+      body: JSON.stringify({}),
+      credentials: "include",
     });
     return await res.json();
   } catch (err) {
@@ -914,43 +921,45 @@ export const fetchUserLogsApi = async (
   }
 };
 
-export const fetchAllAdminsApi =
-  async (): Promise<FetchAdminsResponse> => {
-    try {
-      const response = await fetch(`${baseUrl}/api/estate-users/admins`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-      });
+export const fetchAllAdminsApi = async (): Promise<FetchAdminsResponse> => {
+  try {
+    const response = await fetch(`${baseUrl}/api/estate-users/admins`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+    });
 
-      const data = await response.json();
-      console.log("Fetched Admins Data:", data);
-      return data;
-    } catch (error) {
-      console.error("❌ Fetch All Admins Endpoint Exception:", error);
-      return {
-        success: false,
-        message:
-          "Network layer connection failure synchronizing admin registry data.",
-      };
-    }
-  };
+    const data = await response.json();
+    console.log("Fetched Admins Data:", data);
+    return data;
+  } catch (error) {
+    console.error("❌ Fetch All Admins Endpoint Exception:", error);
+    return {
+      success: false,
+      message:
+        "Network layer connection failure synchronizing admin registry data.",
+    };
+  }
+};
 
 export async function updateAdminMfaPolicyApi(
   userId: string,
   enforceMfa: boolean,
 ) {
   try {
-    const response = await fetch(`${baseUrl}/api/estate-users/${userId}/mfa-policy`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
+    const response = await fetch(
+      `${baseUrl}/api/estate-users/${userId}/mfa-policy`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ mfa_enabled: enforceMfa }),
+        credentials: "include",
       },
-      body: JSON.stringify({ mfa_enabled: enforceMfa }),
-      credentials: "include",
-    });
+    );
     return await response.json();
   } catch (err) {
     return {
@@ -1005,14 +1014,17 @@ export async function updateAdminPermissionsApi(
   permissions: string[],
 ) {
   try {
-    const response = await fetch(`${baseUrl}/api/estate-users/${userId}/permissions`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
+    const response = await fetch(
+      `${baseUrl}/api/estate-users/${userId}/permissions`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ permissions }),
+        credentials: "include",
       },
-      body: JSON.stringify({ permissions }),
-      credentials: "include",
-    });
+    );
     return await response.json();
   } catch (err) {
     return {
