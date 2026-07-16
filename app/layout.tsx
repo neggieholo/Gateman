@@ -3,6 +3,7 @@ import "./globals.css";
 import { UserProvider } from "./UserContext";
 import { Montserrat, Oswald, Roboto } from "next/font/google";
 import Script from "next/script";
+import { Toaster } from "react-hot-toast";
 
 const oswald = Oswald({
   subsets: ["latin"],
@@ -37,13 +38,32 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // Moved font variables to HTML tag for clean portal inheritance
     <html
       lang="en"
       className={`${oswald.variable} ${montserrat.variable} ${roboto.variable}`}
     >
       <body className="antialiased">
-        <UserProvider>{children}</UserProvider>
+        <UserProvider>
+          {children}
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              className:
+                "font-sans text-sm rounded-[1.5rem] border border-gm-navy bg-white text-slate-900 shadow-xl p-4 max-w-sm",
+              duration: 4000,
+              error: {
+                style: {
+                  borderColor: "var(--gm-navy, #2d3748)",
+                },
+              },
+              success: {
+                style: {
+                  borderColor: "var(--gm-navy, #2d3748)",
+                },
+              },
+            }}
+          />
+        </UserProvider>
 
         <Script
           src="https://cdn.smileidentity.com/js/v1/smileid.js"

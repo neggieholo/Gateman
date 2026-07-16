@@ -49,8 +49,10 @@ export const db = {
     lga: string,
     newOtp: string,
     metadata: string,
+    adminName: string,
+    selectedPlan: string,
   ) => {
-    const body = { name, email, password, state, lga, otp: newOtp, metadata };
+    const body = { name, email, password, state, lga, otp: newOtp, metadata, adminName, selectedPlan };
 
     const res = await fetch(`${baseUrl}/api/payment`, {
       method: "POST",

@@ -6,6 +6,7 @@ import {
   EstateDocsPayload,
   EstateEvent,
   EstateLocation,
+  FetchAdminsResponse,
   FetchNotificationsResponse,
   Invitation,
   RSVPRequest,
@@ -505,7 +506,7 @@ export const updateReportStatus = async (
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status, admin_response: adminFeedback }),
-    credentials:'include'
+    credentials: "include",
   });
   return await res.json();
 };
@@ -593,7 +594,7 @@ export const createLocation = async (
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(locData),
-    credentials:'include'
+    credentials: "include",
   });
   return await handleResponse(response);
 };
@@ -785,23 +786,265 @@ export const requestGuardLocation = async (guardId: string) => {
   }
 };
 
+// Helper to format 24h to AM/PM
+export const formatTime = (timeStr: string) => {
+  if (!timeStr) return "N/A";
+  const [hours, minutes] = timeStr.split(":");
+  const h = parseInt(hours);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const formattedHours = h % 12 || 12;
+  return `${formattedHours}:${minutes} ${ampm}`;
+};
 
-  // Helper to format 24h to AM/PM
-  export const formatTime = (timeStr: string) => {
-    if (!timeStr) return "N/A";
-    const [hours, minutes] = timeStr.split(":");
-    const h = parseInt(hours);
-    const ampm = h >= 12 ? "PM" : "AM";
-    const formattedHours = h % 12 || 12;
-    return `${formattedHours}:${minutes} ${ampm}`;
+export const formatDate = (dateStr: string) => {
+  if (!dateStr) return "N/A";
+  const date = new Date(dateStr);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${day}-${month}-${year}`;
+};
+
+export const fetchSystemPermissionsApi = async () => {
+  console.log("Fetching system permissions matrix...");
+  try {
+    const res = await fetch(`${baseUrl}/api/estate-users/system-permissions`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+
+    const data = await res.json();
+    console.log("Fetched system permissions matrix:", data);
+    return data;
+  } catch (err) {
+    console.error("API Error fetching system permissions matrix:", err);
+    return { success: false, permissions: [] };
+  }
+};
+
+export const fetchCustomRolesApi = async () => {
+  try {
+    const res = await fetch(`${baseUrl}/api/estate-users/custom-roles`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+    return await res.json();
+  } catch (err) {
+    console.error("API Error fetching custom roles lists:", err);
+    return { success: false, roles: [] };
+  }
+};
+
+export const createCustomRoleApi = async (
+  roleName: string,
+  description: string,
+  permissionIds: string[],
+) => {
+  try {
+    const res = await fetch(`${baseUrl}/api/estate-users/custom-roles`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        role_name: roleName,
+        description,
+        permission_ids: permissionIds,
+      }),
+      credentials: "include",
+    });
+    return await res.json();
+  } catch (err) {
+    console.error("API Error creating custom role:", err);
+    return {
+      success: false,
+      message: "Network connection fault storing role template.",
+    };
+  }
+};
+
+export const createAdminUserWorkspaceApi = async (payload: {
+  name: string;
+  email: string;
+  phone_number: string | null;
+  require_password_change: boolean;
+  permissions: string[];
+}) => {
+  try {
+    const res = await fetch(`${baseUrl}/api/estate-users/admins/create`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      credentials: "include",
+    });
+    return await res.json();
+  } catch (err) {
+    console.error("API Error creating administrative account:", err);
+    return {
+      success: false,
+      message: "Network connection fault creating user workspace profile.",
+    };
+  }
+};
+
+export const fetchUserLogsApi = async (
+  type: string,
+  filters?: {
+    action_type?: string;
+    target_resource?: string;
+  },
+) => {
+  try {
+    let url = `${baseUrl}/api/master/user-logs`;
+    if (filters) {
+      const params = new URLSearchParams(filters as any);
+      url += `?${params.toString()}`;
+    }
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error("API Error fetching system activity audit table:", err);
+    return { success: false, logs: [] };
+  }
+};
+
+export const fetchAllAdminsApi =
+  async (): Promise<FetchAdminsResponse> => {
+    try {
+      const response = await fetch(`${baseUrl}/api/estate-users/admins`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      });
+
+      const data = await response.json();
+      console.log("Fetched Admins Data:", data);
+      return data;
+    } catch (error) {
+      console.error("❌ Fetch All Admins Endpoint Exception:", error);
+      return {
+        success: false,
+        message:
+          "Network layer connection failure synchronizing admin registry data.",
+      };
+    }
   };
 
- export const formatDate = (dateStr: string) => {
-    if (!dateStr) return "N/A";
-    const date = new Date(dateStr);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
+export async function updateAdminMfaPolicyApi(
+  userId: string,
+  enforceMfa: boolean,
+) {
+  try {
+    const response = await fetch(`${baseUrl}/api/estate-users/${userId}/mfa-policy`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ mfa_enabled: enforceMfa }),
+      credentials: "include",
+    });
+    return await response.json();
+  } catch (err) {
+    return {
+      success: false,
+      message:
+        "Network synchronization failure updating security MFA policy configuration.",
+    };
+  }
+}
 
-    return `${day}-${month}-${year}`;
-  };
+export async function toggleAdminStatusApi(
+  userId: string,
+  targetActiveState: boolean,
+) {
+  try {
+    const response = await fetch(
+      `${baseUrl}/api/estate-users/${userId}/toggle-status`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: targetActiveState }),
+        credentials: "include",
+      },
+    );
+    return await response.json();
+  } catch (err) {
+    return {
+      success: false,
+      message: "Network synchronization failure changing account status.",
+    };
+  }
+}
+
+export async function deleteAdminProfileApi(userId: string) {
+  try {
+    const response = await fetch(`${baseUrl}/api/estate-users/${userId}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+    return await response.json();
+  } catch (err) {
+    return {
+      success: false,
+      message: "Network failure executing hard deletion pipeline.",
+    };
+  }
+}
+
+export async function updateAdminPermissionsApi(
+  userId: string,
+  permissions: string[],
+) {
+  try {
+    const response = await fetch(`${baseUrl}/api/estate-users/${userId}/permissions`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ permissions }),
+      credentials: "include",
+    });
+    return await response.json();
+  } catch (err) {
+    return {
+      success: false,
+      message:
+        "Network synchronization failure updating authorization layout map.",
+    };
+  }
+}
+
+export async function forceOverrideSubAccountPasswordApi(
+  subAccountId: string,
+  newPassword: string,
+) {
+  try {
+    const response = await fetch(
+      `${baseUrl}/api/estate-users/${subAccountId}/override-password`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ newPassword }),
+        credentials: "include",
+      },
+    );
+    return await response.json();
+  } catch (err) {
+    return {
+      success: false,
+      message:
+        "Network exception attempting administrative override pipeline transmission.",
+    };
+  }
+}

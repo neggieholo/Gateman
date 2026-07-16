@@ -14,6 +14,7 @@ import {
   FileText,
   User2,
   Briefcase,
+  User,
 } from "lucide-react";
 import { ViewState } from "../services/types";
 import { useUser } from "../UserContext";
@@ -83,7 +84,7 @@ export default function SideBar({
       url: "/home/events",
     },
     {
-      id: ViewState.USERS,
+      id: ViewState.RESIDENTS,
       label: "Residents",
       icon: Users,
       url: "/home/tenantmanagement",
@@ -99,6 +100,12 @@ export default function SideBar({
       label: "Services",
       icon: Briefcase,
       url: "/home/services",
+    },
+    {
+      id: ViewState.USERS,
+      label: "Users",
+      icon: User,
+      url: "/home/users",
     },
   ];
 

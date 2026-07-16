@@ -13,6 +13,10 @@ import {
   Eye,
   EyeClosed,
   MapPin,
+  Sparkles,
+  ShieldCheck,
+  Home,
+  X,
 } from "lucide-react";
 import { useUser } from "../UserContext";
 import Image from "next/image";
@@ -35,6 +39,11 @@ export default function Auth() {
   const [name, setName] = useState("");
   const [state, setState] = useState("");
   const [lga, setLga] = useState("");
+  const [adminName, setAdminName] = useState("");
+  const [selectedPlan, setSelectedPlan] = useState<
+    "estate_management" | "security_only" | "combo" | null
+  >(null);
+  const [showPlanModal, setShowPlanModal] = useState(false);
   // const [town, setTown] = useState('');
   const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]);
   const [metadata, setMetadata] = useState("");
@@ -92,6 +101,12 @@ export default function Auth() {
   };
 
   const handleRequestOtp = async () => {
+    if (!selectedPlan) {
+      setError("Please choose a subscription plan to continue.");
+      setShowPlanModal(true);
+      return;
+    }
+
     const trimmedEmail = email.trim();
     if (!validateEmail(trimmedEmail)) {
       alert("Invalid Email. Check your email format.");
@@ -156,6 +171,11 @@ export default function Auth() {
       return;
     }
 
+    if (!selectedPlan) {
+      alert("Please select a plan");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
@@ -168,6 +188,8 @@ export default function Auth() {
         lga,
         enteredOtp,
         metadata,
+        adminName,
+        selectedPlan,
       );
 
       setShowOtpInput(false);
@@ -181,6 +203,18 @@ export default function Auth() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isLogin && !isForgot) {
+      if (!adminName || !adminName.trim()) {
+        setError("Please enter your full name.");
+        return;
+      }
+
+      if (!selectedPlan) {
+        setError("Please choose a subscription plan to continue.");
+        setShowPlanModal(true);
+        return;
+      }
+    }
     setLoading(true);
     setError(null);
 
@@ -293,9 +327,9 @@ export default function Auth() {
     );
 
   return (
-    <div className="min-h-screen flex bg-[linear-gradient(to_bottom,#0A1F44_50%,#f1f5f9_50%)]">
+    <div className="max-h-screen flex bg-[linear-gradient(to_bottom,#0A1F44_50%,#f1f5f9_50%)] overflow-hidden">
       <div
-        className="hidden lg:flex lg:w-2/3 bg-gm-navy relative overflow-hidden"
+        className="min-h-screen hidden lg:flex lg:w-2/3 bg-gm-navy relative overflow-hidden"
         style={{ borderRadius: "0px 0px 120px 0px" }}
       >
         <div className="absolute inset-0 mix-blend-multiply z-10" />
@@ -345,8 +379,12 @@ export default function Auth() {
                 ))}
               </div>
               <div className="flex flex-col justify-center">
-                <span className="font-montserrat text-sm">2,000+ Residents</span>
-                <span className="text-xs text-indigo-200 font-sans">Trust Gateman</span>
+                <span className="font-montserrat text-sm">
+                  2,000+ Residents
+                </span>
+                <span className="text-xs text-indigo-200 font-sans">
+                  Trust Gateman
+                </span>
               </div>
             </div>
           </div>
@@ -359,10 +397,10 @@ export default function Auth() {
 
       {/* Right Side - Auth Form */}
       <div
-        className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-slate-100"
+        className="w-full lg:w-1/2 flex flex-col items-center p-8 bg-slate-100 overflow-y-auto h-screen"
         style={{ borderRadius: "120px 0px 0px 0px" }}
       >
-        <div className="w-full max-w-md space-y-8 bg-white p-8 md:p-12 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-white">
+        <div className="w-full max-w-md space-y-8 my-auto bg-white p-8 md:p-12 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-white">
           <div className="text-center">
             <h2 className="text-3xl font-montserrat text-slate-900 tracking-tight mb-2">
               {isLogin
@@ -396,6 +434,26 @@ export default function Auth() {
               <>
                 <div>
                   <label className="block text-sm font-oswald text-slate-700 mb-1.5 ml-1">
+                    Your Full Name
+                  </label>
+                  <div className="relative">
+                    <UserIcon
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                      size={20}
+                    />
+                    <input
+                      type="text"
+                      required
+                      value={adminName}
+                      onChange={(e) => setAdminName(e.target.value)}
+                      className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-100 text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-medium"
+                      placeholder="John Doe"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-oswald text-slate-700 mb-1.5 ml-1">
                     Estate Name
                   </label>
                   <div className="relative">
@@ -412,6 +470,33 @@ export default function Auth() {
                       placeholder="Platinum Estate"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-oswald text-slate-700 mb-1.5 ml-1">
+                    Subscription Tier
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPlanModal(true)}
+                    className="w-full flex items-center justify-between px-5 py-3.5 bg-indigo-50/50 hover:bg-indigo-50 border border-indigo-100 hover:border-indigo-200 text-left rounded-2xl transition-all group"
+                  >
+                    <div>
+                      <span className="block text-xs font-semibold text-indigo-500 uppercase tracking-wider">
+                        {!selectedPlan ? "No Selection" : "Active Selection"}
+                      </span>
+                      <span className="text-sm font-bold text-slate-900 capitalize">
+                        {selectedPlan === "estate_management" &&
+                          "Estate Management Plan"}
+                        {selectedPlan === "security_only" &&
+                          "Security Officers Plan"}
+                        {selectedPlan === "combo" && "Combo Master Plan"}
+                      </span>
+                    </div>
+                    <span className="text-xs font-bold text-indigo-600 bg-white px-3 py-1.5 rounded-xl border border-indigo-100 shadow-sm group-hover:scale-105 transition-transform">
+                      Change Plan
+                    </span>
+                  </button>
                 </div>
               </>
             )}
@@ -511,10 +596,7 @@ export default function Auth() {
                     >
                       <option value="">Select State</option>
                       {states_lgas.map((s) => (
-                        <option
-                          key={s.alias}
-                          value={s.state}
-                        >
+                        <option key={s.alias} value={s.state}>
                           {s.state}
                         </option>
                       ))}
@@ -730,6 +812,173 @@ export default function Auth() {
                 Resend
               </button>
             </p>
+          </div>
+        </div>
+      )}
+      {/* PLAN SELECTOR MODAL OVERLAY */}
+      {showPlanModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-4xl rounded-[2.5rem] p-8 md:p-10 shadow-2xl scale-in-center border border-slate-100 overflow-y-auto max-h-[90vh]">
+            <div
+              className="w-full h-fit text-md flex justify-end"
+              onClick={() => setShowPlanModal(false)}
+            >
+              <X size={16} />
+            </div>
+            <div className="text-center space-y-2 mb-8">
+              <h3 className="text-3xl font-montserrat text-slate-900 tracking-tight">
+                Select Your Subscription Plan
+              </h3>
+              <p className="text-slate-500 font-sans text-sm">
+                Choose the operational blueprint that fits your estate&apos;s
+                needs
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              {/* Option 1: Estate Management */}
+              <button
+                type="button"
+                onClick={() => setSelectedPlan("estate_management")}
+                className={`flex flex-col text-left p-6 rounded-[1.8rem] border-2 transition-all h-full justify-between ${
+                  selectedPlan === "estate_management"
+                    ? "border-indigo-600 bg-indigo-50/20 shadow-lg shadow-indigo-100"
+                    : "border-slate-100 hover:border-slate-200 bg-slate-50/50"
+                }`}
+              >
+                <div>
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${
+                      selectedPlan === "estate_management"
+                        ? "bg-indigo-600 text-white"
+                        : "bg-slate-200 text-slate-600"
+                    }`}
+                  >
+                    <Home size={20} />
+                  </div>
+                  <h4 className="font-bold text-slate-900 text-base mb-2 leading-snug">
+                    Estate Management Plan
+                  </h4>
+                  <p className="text-xs text-slate-500 leading-relaxed font-sans">
+                    Full coverage suite to register, manage, and coordinate all
+                    residents, administrative properties, and security stations
+                    with simplified security workflows.
+                  </p>
+                </div>
+                <div className="mt-6 pt-4 border-t border-slate-100/80 w-full">
+                  <span
+                    className={`text-xs font-bold ${
+                      selectedPlan === "estate_management"
+                        ? "text-indigo-600"
+                        : "text-slate-400"
+                    }`}
+                  >
+                    {selectedPlan === "estate_management"
+                      ? "Selected"
+                      : "Choose this Option"}
+                  </span>
+                </div>
+              </button>
+
+              {/* Option 2: Security Only */}
+              <button
+                type="button"
+                onClick={() => setSelectedPlan("security_only")}
+                className={`flex flex-col text-left p-6 rounded-[1.8rem] border-2 transition-all h-full justify-between ${
+                  selectedPlan === "security_only"
+                    ? "border-indigo-600 bg-indigo-50/20 shadow-lg shadow-indigo-100"
+                    : "border-slate-100 hover:border-slate-200 bg-slate-50/50"
+                }`}
+              >
+                <div>
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${
+                      selectedPlan === "security_only"
+                        ? "bg-indigo-600 text-white"
+                        : "bg-slate-200 text-slate-600"
+                    }`}
+                  >
+                    <ShieldCheck size={20} />
+                  </div>
+                  <h4 className="font-bold text-slate-900 text-base mb-2 leading-snug">
+                    Security Only Plan
+                  </h4>
+                  <p className="text-xs text-slate-500 leading-relaxed font-sans">
+                    Tailored strictly for gate security operations. Track active
+                    guard duty rosters, process gatepass verifications, and
+                    monitor visitor queues instantly.
+                  </p>
+                </div>
+                <div className="mt-6 pt-4 border-t border-slate-100/80 w-full">
+                  <span
+                    className={`text-xs font-bold ${
+                      selectedPlan === "security_only"
+                        ? "text-indigo-600"
+                        : "text-slate-400"
+                    }`}
+                  >
+                    {selectedPlan === "security_only"
+                      ? "Selected"
+                      : "Choose this Option"}
+                  </span>
+                </div>
+              </button>
+
+              {/* Option 3: Combo Master */}
+              <button
+                type="button"
+                onClick={() => setSelectedPlan("combo")}
+                className={`flex flex-col text-left p-6 rounded-[1.8rem] border-2 transition-all h-full justify-between relative ${
+                  selectedPlan === "combo"
+                    ? "border-indigo-600 bg-indigo-50/20 shadow-lg shadow-indigo-100"
+                    : "border-slate-100 hover:border-slate-200 bg-slate-50/50"
+                }`}
+              >
+                <div className="absolute top-3 right-3 bg-indigo-600 text-[10px] font-bold text-white px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                  Popular
+                </div>
+                <div>
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${
+                      selectedPlan === "combo"
+                        ? "bg-indigo-600 text-white"
+                        : "bg-slate-200 text-slate-600"
+                    }`}
+                  >
+                    <Sparkles size={20} />
+                  </div>
+                  <h4 className="font-bold text-slate-900 text-base mb-2 leading-snug">
+                    Combo Master Plan
+                  </h4>
+                  <p className="text-xs text-slate-500 leading-relaxed font-sans">
+                    Get both administration management and full active security
+                    system protocols. The ultimate system to synchronize staff,
+                    residents, and gates in real time.
+                  </p>
+                </div>
+                <div className="mt-6 pt-4 border-t border-slate-100/80 w-full">
+                  <span
+                    className={`text-xs font-bold ${
+                      selectedPlan === "combo"
+                        ? "text-indigo-600"
+                        : "text-slate-400"
+                    }`}
+                  >
+                    {selectedPlan === "combo"
+                      ? "Selected"
+                      : "Choose this Option"}
+                  </span>
+                </div>
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowPlanModal(false)}
+              className="w-full py-4 bg-slate-950 text-white hover:bg-slate-900 rounded-2xl font-bold text-lg transition-all"
+            >
+              Confirm Selection
+            </button>
           </div>
         </div>
       )}

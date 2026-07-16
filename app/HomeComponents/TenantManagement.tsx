@@ -33,6 +33,7 @@ export default function UnifiedResidentPortal() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const { user } = useUser();
+  const estateId = user?.estate_id;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -217,8 +218,9 @@ export default function UnifiedResidentPortal() {
                 <div className="w-full lg:w-1/3 flex flex-col items-center bg-slate-50 rounded-[2.5rem] p-6 sm:p-10 border border-slate-100 shrink-0 min-w-0">
                   <img
                     src={
-                      selectedTenant.avatar ||
-                      `https://ui-avatars.com/api/?name=${selectedTenant.name}`
+                      estateId && selectedTenant.avatar
+                        ? selectedTenant.avatar[estateId]
+                        : `https://ui-avatars.com/api/?name=${selectedTenant.name}`
                     }
                     className="w-full max-w-[20rem] aspect-square rounded-[2.5rem] object-cover shadow-2xl border-4 border-white mb-6 shrink-0"
                     alt=""
@@ -381,7 +383,9 @@ export default function UnifiedResidentPortal() {
 
                   <img
                     src={
-                      t.avatar || `https://ui-avatars.com/api/?name=${t.name}`
+                      estateId && t.avatar
+                        ? t.avatar[estateId]
+                        : `https://ui-avatars.com/api/?name=${t.name}`
                     }
                     className="w-16 h-16 sm:w-24 sm:h-24 rounded-4xl object-cover mb-4 relative z-10 border-4 border-white shadow-lg group-hover:scale-105 transition-transform shrink-0"
                     alt=""

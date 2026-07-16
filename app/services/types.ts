@@ -25,42 +25,27 @@ export interface User {
   phone_number: string;
   state?: string | null;
   lga?: string | null;
+  plan: string;
   role: "admin";
+  is_root_admin: boolean;
+  permissions: string[];
+  mfa_enabled: boolean;
+  mfa_type: "NONE" | "EMAIL" | "TOTP" | "SMS";
   wallet_balance: number;
   avatar?: string | Blob;
   subscription_expiry?: string;
-  created_at?: string;
+  created_at: string;
   emergency_contacts: EmergencyContact[];
   payment_type: string;
   external_api_url: string;
-
-  verification_step: number;
-  nin_number?: string;
-  bvn_number?: string;
-  admin_selfie_url?: string;
-  kyc_notes?: string;
-  verified_at?: string;
-
-  signature_url?: string;
-  profile_image_url?: string;
-  liveness_snaps?: string[];
+  is_active: boolean;
+  phone_verified: boolean;
+  email_verified: boolean;
 
   bank_account_number?: string;
   bank_code?: string;
   bank_account_name?: string;
   bank_name?: string;
-
-  admin_role?: string;
-  residential_address?: string;
-  admin_utility_url?: string;
-  identity_type: string;
-  verification_status: "unverified" | "pending" | "verified" | "rejected";
-  is_verified: boolean;
-  kyc_submitted_at: string;
-  has_seen_kyc_success: boolean;
-  consent_given: boolean;
-  consent_timestamp?: string;
-  kyc_selection: KYCSelection;
 }
 
 export interface Estate {
@@ -109,7 +94,6 @@ export interface Visitor {
   unit?: string; // For admin view
 }
 
-
 export interface CommunityEvent {
   id: string;
   title: string;
@@ -128,6 +112,7 @@ export enum ViewState {
   ACCESS = "access",
   FORUM = "forum",
   EVENTS = "events",
+  RESIDENTS = "residents",
   USERS = "users",
   REQUESTS = "requests",
 }
@@ -157,7 +142,7 @@ export interface Tenant {
   name: string;
   email: string;
   phone: string;
-  avatar: string;
+  avatar: Record<string, string>;
   created_at: string | null;
   estate_ids: string[];
   locations: {
@@ -170,7 +155,7 @@ export interface Tenant {
   id_back_url?: string;
   utility_bill_url?: string;
   estate_name?: string;
-  contract_urls:any;
+  contract_urls: any;
   push_token?: string;
 }
 
@@ -183,8 +168,8 @@ export interface JoinRequest {
   id: string;
   temp_tenant_id: string;
   estate_id: string;
-  locations:LocationPair;
-  status: "PENDING" | "APPROVED" | "DECLINED" | "BLOCKED"; 
+  locations: LocationPair;
+  status: "PENDING" | "APPROVED" | "DECLINED" | "BLOCKED";
   requested_at: string;
 
   // Fields added via SQL JOIN
@@ -694,14 +679,47 @@ export interface ServiceRequest {
   id: string;
   estate_id: string;
   service_id: string | null;
-  service_name?: string;  // Left Joined from estate_services
-  vendor_name?: string;   // Left Joined from estate_services
+  service_name?: string;
+  vendor_name?: string;
   resident_id: string;
   resident_name: string;
-  resident_unit: string;  // e.g., "Block G, Unit 4"
-  time_preferred: string; // e.g., "Morning (9AM - 12PM)"
+  resident_unit: string;
+  time_preferred: string;
   description: string;
   is_dispatched: boolean;
   is_completed: boolean;
   requested_at: string;
+}
+
+export interface PermissionNode {
+  id: string;
+  name: string;
+  parent_permission: string | null;
+}
+
+export interface CustomRoleMapping {
+  id: number;
+  role_name: string;
+  description?: string;
+  permission_ids: string[];
+}
+
+export interface UserLogEntry {
+  id: string;
+  user_id: string;
+  user_name: string;
+  user_email: string;
+  action_type: string;
+  target_resource: string;
+  description: string;
+  ip_address: string;
+  user_agent: string;
+  created_at: string;
+}
+
+export interface FetchAdminsResponse {
+  success: boolean;
+  count?: number;
+  users?: User[];
+  message?: string;
 }
