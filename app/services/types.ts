@@ -117,6 +117,15 @@ export enum ViewState {
   REQUESTS = "requests",
 }
 
+export enum SecurityViewState {
+  DASHBOARD = "dashboard",
+  REQUESTS = "requests",
+  PERSONNEL = "personnel",
+  ONDUTY = "onduty",
+  REPORTS = "reports",
+  GATEPASSES = "gatepasses",
+  LOGS = "logs",
+}
 // Types
 export type BillItem = {
   id: string;
@@ -501,37 +510,28 @@ export interface EventRegistration {
   created_at: string;
 }
 
-export interface EstateEvent {
+export interface LocationBooking {
   id: string;
   estate_id: string;
-  organizer_id: string | null;
-  title: string;
-  description: string | null;
+  resident_id: string; // Replaces organizer_id
+  resident_name: string; // Joined from profiles/residents table for UI display
+  venue_id: string;
+  venue_name: string; // Joined from estate_facilities table for UI display
 
   // Date and Time (Postgres formats)
   start_date: string; // ISO Date string (YYYY-MM-DD)
   end_date: string;
   start_time: string; // HH:mm:ss
   end_time: string;
-
-  venue_detail: string | null;
-  registered_number: number;
-  expected_guests: number;
-  banner_url: string | null;
   booked_dates: string[];
 
-  // Financial & Security
-  is_paid: boolean;
-  ticket_price: string; // Decimal comes as string from Postgres
-  subaccount_id: string | null;
-  ref_code: string;
+  // Approval Lifecycle Workflow Statuses
   is_approved: boolean;
   is_rejected: boolean;
-
   created_at: string;
 }
 
-export interface EstateLocation {
+export interface EstateFacility {
   id: number;
   estate_id: string;
   name: string;
@@ -540,11 +540,15 @@ export interface EstateLocation {
   event_booked_on: Record<
     string,
     {
-      event_banner_url: string;
+      venue_name: string;
       dates: string[];
     }
   >;
   capacity?: number;
+  isPaid?: boolean;
+  bookingRate?: number;
+  bookingRateUnit?: "per_hour" | "per_day" | "per_event";
+  is_active: boolean;
   created_at: string;
 }
 
@@ -572,17 +576,17 @@ export interface CreateEventRequest {
 /**
  * Data required for a guest to RSVP
  */
-export interface RSVPRequest {
-  event_id: string;
-  guest_name: string;
-  guest_email: string;
-}
+// export interface RSVPRequest {
+//   event_id: string;
+//   guest_name: string;
+//   guest_email: string;
+// }
 
 export interface ApproveRequest {
   success: boolean;
   message: string;
-  event: EstateEvent;
-  updatedLocation: EstateLocation;
+  event: LocationBooking;
+  updatedLocation: EstateFacility;
   error?: string;
 }
 

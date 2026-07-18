@@ -1,5 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @next/next/no-img-element */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -18,11 +19,20 @@ import {
   LayoutGrid,
   AlertCircle,
   Search,
+  Plus,
 } from "lucide-react";
-import { EstateEvent, EstateLocation } from "../services/types";
+import { EstateFacility, LocationBooking, Tenant } from "../services/types";
 import { useSearchParams } from "next/navigation";
-import { approveEvent, getAllEvents, getAllLocations } from "../services/apis";
+import {
+  approveEvent,
+  getAllBookings,
+  getAllLocations,
+} from "../services/apis";
 import LocationsView from "./LocationsView";
+import toast from "react-hot-toast";
+import AddBookingFormModal from "./AddBookingForm";
+import { useUser } from "../UserContext";
+import { db } from "../services/database";
 
 const formatToLocalDateString = (dateInput: string) => {
   if (!dateInput) return "";
@@ -34,9 +44,10 @@ const formatToLocalDateString = (dateInput: string) => {
   return adjusted.toISOString().split("T")[0];
 };
 
-export default function EventReviewPage() {
-  const [allEvents, setAllEvents] = useState<EstateEvent[]>([]);
-  const [selectedEvent, setSelectedEvent] = useState<EstateEvent | null>(null);
+export default function BookingsReviewPage() {
+  const [allbookings, setAllbookings] = useState<LocationBooking[]>([]);
+  const [selectedBooking, setSelectedBooking] =
+    useState<LocationBooking | null>(null);
   const [statusFilter, setStatusFilter] = useState<
     "ALL" | "PENDING" | "APPROVED" | "REJECTED"
   >("PENDING");
@@ -44,24 +55,28 @@ export default function EventReviewPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
-  const [locations, setLocations] = useState<EstateLocation[]>([]);
-  const [activeViewTab, setActiveViewTab] = useState<"events" | "locations">(
-    "events",
+  const [facilities, setfacilities] = useState<EstateFacility[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [activeViewTab, setActiveViewTab] = useState<"bookings" | "facility">(
+    "bookings",
   );
   const [isDetailedLocation, setIsDetailedLocation] = useState<boolean>(false);
+  const [openAddForm, setOpenAddForm] = useState<boolean>(false);
   const searchParams = useSearchParams();
   const targetIdParam = searchParams.get("id");
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [events, locationsData] = await Promise.all([
-        getAllEvents(),
+      const [bookings, facilityData, tenants] = await Promise.all([
+        getAllBookings(),
         getAllLocations(),
+        db.getAllTenants(),
       ]);
 
-      if (events) setAllEvents(events);
-      if (locationsData) setLocations(locationsData);
+      if (bookings) setAllbookings(bookings);
+      if (facilityData) setfacilities(facilityData);
+      if (tenants) setTenants(tenants);
     } catch (error) {
       console.error("Error Fetching Data:", error);
     } finally {
@@ -74,21 +89,21 @@ export default function EventReviewPage() {
   }, []);
 
   useEffect(() => {
-    if (!targetIdParam || allEvents.length === 0) return;
+    if (!targetIdParam || allbookings.length === 0) return;
 
-    const matchedEvent = allEvents.find(
+    const matchedBooking = allbookings.find(
       (e) => e.id.toString() === targetIdParam,
     );
-    if (matchedEvent) {
-      setActiveViewTab("events");
-      setSelectedEvent(matchedEvent);
+    if (matchedBooking) {
+      setActiveViewTab("bookings");
+      setSelectedBooking(matchedBooking);
       const newUrl = window.location.pathname;
       window.history.replaceState({ path: newUrl }, "", newUrl);
     }
-  }, [targetIdParam, allEvents]);
+  }, [targetIdParam, allbookings]);
 
-  const filteredEvents = useMemo(() => {
-    return allEvents.filter((e) => {
+  const filteredbookings = useMemo(() => {
+    return allbookings.filter((e) => {
       const matchesStatus =
         statusFilter === "ALL" ||
         (statusFilter === "APPROVED" && e.is_approved) ||
@@ -96,15 +111,15 @@ export default function EventReviewPage() {
         (statusFilter === "PENDING" && !e.is_approved && !e.is_rejected);
 
       const matchesSearch =
-        e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        e.ref_code.toLowerCase().includes(searchQuery.toLowerCase());
+        e.resident_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        e.venue_name?.toLowerCase().includes(searchQuery.toLowerCase());
 
       const eventDate = formatToLocalDateString(e.start_date);
       const matchesDate = !startDateFilter || eventDate === startDateFilter;
 
       return matchesStatus && matchesSearch && matchesDate;
     });
-  }, [allEvents, statusFilter, searchQuery, startDateFilter]);
+  }, [allbookings, statusFilter, searchQuery, startDateFilter]);
 
   const handleUpdateStatus = async (
     id: string,
@@ -115,7 +130,7 @@ export default function EventReviewPage() {
       const data = await approveEvent(id, verdict);
 
       if (data.success) {
-        setAllEvents((prev) =>
+        setAllbookings((prev) =>
           prev.map((e) =>
             e.id === id
               ? {
@@ -128,25 +143,25 @@ export default function EventReviewPage() {
         );
 
         if (data.updatedLocation) {
-          setLocations((prevLocs) =>
+          setfacilities((prevLocs) =>
             prevLocs.map((loc) =>
               loc.id === data.updatedLocation.id ? data.updatedLocation : loc,
             ),
           );
         }
-        setSelectedEvent(null);
+        setSelectedBooking(null);
       } else {
-        alert(data.error || "Update failed");
+        toast.error(data.error || "Update failed");
       }
     } catch (error) {
-      alert("Connection error.");
+      toast.error("Connection error.");
     } finally {
       setLoadingAction(null);
     }
   };
 
   // --- SUB-COMPONENT: EVENT LIST ---
-  const EventList = () => (
+  const BookingsList = () => (
     <div className="space-y-6 flex flex-col h-full animate-in fade-in duration-300 p-1 min-w-0">
       <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-3 rounded-2xl border border-slate-200/60 shadow-2xs min-w-0">
         <div className="flex items-center gap-3 min-w-0 w-full md:w-auto">
@@ -154,7 +169,7 @@ export default function EventReviewPage() {
             <LayoutGrid size={20} />
           </div>
           <h2 className="text-lg font-montserrat font-black text-slate-800 uppercase tracking-tight truncate">
-            Event Approvals
+            Venue Booking Approvals
           </h2>
         </div>
 
@@ -173,119 +188,165 @@ export default function EventReviewPage() {
             </button>
           ))}
         </div>
+
+        <div className="flex items-center bg-blue-600 rounded-2xl p-1">
+          <button
+            className="flex flex-1 p-1 rounded-lg text-[12px] font-montserrat text-white tracking-wider uppercase transition-all"
+            onClick={() => setOpenAddForm(true)}
+          >
+            <span className="text-white">
+              <Plus size={16} />
+            </span>
+            Add Booking
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar min-w-0">
-        {filteredEvents.length > 0 ? (
-          filteredEvents.map((event) => (
-            <button
-              key={event.id}
-              onClick={() => setSelectedEvent(event)}
-              className="w-full flex items-center justify-between p-4 bg-white border border-slate-200/60 rounded-2xl hover:border-blue-400/50 shadow-2xs hover:shadow-xs transition-all duration-200 group text-left min-w-0"
-            >
-              <div className="flex items-center gap-4 flex-1 min-w-0">
-                <div
-                  className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border overflow-hidden ${
-                    event.is_approved
-                      ? "bg-emerald-50 border-emerald-100 text-emerald-600"
-                      : event.is_rejected
-                        ? "bg-rose-50 border-rose-100 text-rose-600"
-                        : "bg-amber-50 border-amber-100 text-amber-600"
-                  }`}
-                >
-                  {event.banner_url ? (
-                    <img
-                      src={event.banner_url}
-                      className="w-full h-full object-cover"
-                      alt="flyer"
-                    />
-                  ) : (
-                    <Calendar size={18} />
-                  )}
-                </div>
+        {filteredbookings.length > 0 ? (
+          filteredbookings.map((booking) => {
+            // Resolve visual name matching coordinates from active facilities list
+            const venueMatch = facilities.find(
+              (loc) => loc.id.toString() === booking.venue_id?.toString(),
+            );
+            const venueName = venueMatch
+              ? venueMatch.name
+              : "Unknown Venue Asset";
 
-                <div className="flex justify-between items-center flex-1 min-w-0 pr-2">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-montserrat font-bold text-slate-800 text-sm group-hover:text-blue-600 transition-colors truncate block w-full mb-0.5">
-                      {event.title}
-                    </h3>
-                    <p className="text-[10px] font-oswald font-semibold text-slate-400 uppercase tracking-wide truncate block w-full">
-                      REF: {event.ref_code}{" "}
-                      <span className="text-slate-300 mx-1">•</span>{" "}
-                      {event.expected_guests} Guests
-                    </p>
+            return (
+              <button
+                key={booking.id}
+                onClick={() => setSelectedBooking(booking)}
+                className="w-full flex items-center justify-between p-4 bg-white border border-slate-200/60 rounded-2xl hover:border-blue-400/50 shadow-2xs hover:shadow-xs transition-all duration-200 group text-left min-w-0"
+              >
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <div
+                    className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border ${
+                      booking.is_approved
+                        ? "bg-emerald-50 border-emerald-100 text-emerald-600"
+                        : booking.is_rejected
+                          ? "bg-rose-50 border-rose-100 text-rose-600"
+                          : "bg-amber-50 border-amber-100 text-amber-600"
+                    }`}
+                  >
+                    <Calendar size={18} />
                   </div>
 
-                  <div className="text-right hidden sm:block shrink-0 pl-4">
-                    <p className="text-[10px] font-oswald font-semibold text-slate-500 uppercase tracking-wide">
-                      DATE: {formatToLocalDateString(event.start_date)}
-                    </p>
-                    <div className="flex items-center justify-end mt-1">
-                      <span
-                        className={`text-[9px] font-oswald font-bold uppercase px-1.5 py-0.5 rounded ${
-                          event.is_approved
-                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200/50"
-                            : event.is_rejected
-                              ? "bg-rose-50 text-rose-700 border border-rose-200/50"
-                              : "bg-amber-50 text-amber-700 border border-amber-200/50"
-                        }`}
-                      >
-                        {event.is_approved
-                          ? "Approved"
-                          : event.is_rejected
-                            ? "Rejected"
-                            : "Pending"}
-                      </span>
+                  <div className="flex justify-between items-center flex-1 min-w-0 pr-2">
+                    <div className="min-w-0 flex-1">
+                      {/* Render Resident Identity Parameter as the Principal Line Item Accent */}
+                      <h3 className="font-montserrat font-bold text-slate-800 text-sm group-hover:text-blue-600 transition-colors truncate block w-full mb-0.5">
+                        {tenants.find(
+                          (tenant) => tenant.id === booking.resident_id,
+                        )?.name || "Unassigned Resident Account"}
+                      </h3>
+                      {/* Secondary Line explicitly tracks localized Venue context */}
+                      <p className="text-[10px] font-oswald font-semibold text-slate-400 uppercase tracking-wide truncate block w-full">
+                        Venue:{" "}
+                        <span className="text-slate-600">{venueName}</span>
+                      </p>
+                    </div>
+
+                    <div className="text-right hidden sm:block shrink-0 pl-4">
+                      <p className="text-[10px] font-oswald font-semibold text-slate-500 uppercase tracking-wide">
+                        DATE: {formatToLocalDateString(booking.start_date)}
+                      </p>
+                      <div className="flex items-center justify-end mt-1">
+                        <span
+                          className={`text-[9px] font-oswald font-bold uppercase px-1.5 py-0.5 rounded ${
+                            booking.is_approved
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200/50"
+                              : booking.is_rejected
+                                ? "bg-rose-50 text-rose-700 border border-rose-200/50"
+                                : "bg-amber-50 text-amber-700 border border-amber-200/50"
+                          }`}
+                        >
+                          {booking.is_approved
+                            ? "Approved"
+                            : booking.is_rejected
+                              ? "Rejected"
+                              : "Pending"}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-              <div className="p-2 rounded-lg bg-slate-50 text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors shrink-0">
-                <ChevronRight size={16} />
-              </div>
-            </button>
-          ))
+                <div className="p-2 rounded-lg bg-slate-50 text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors shrink-0">
+                  <ChevronRight size={16} />
+                </div>
+              </button>
+            );
+          })
         ) : (
           <div className="p-8 bg-white rounded-2xl border-2 border-dashed border-slate-200/70 text-center">
             <p className="text-slate-400 text-xs font-medium">
-              {loading ? "Loading..." : "No events"}
+              {loading ? "Loading..." : "No active bookings registered"}
             </p>
           </div>
         )}
       </div>
+      <AddBookingFormModal
+        isOpen={openAddForm}
+        onClose={() => setOpenAddForm(false)}
+        venues={facilities}
+        onBookingSuccess={() => {
+          toast.success("Booking Successful");
+          setOpenAddForm(false);
+        }}
+      />
     </div>
   );
 
-  // --- SUB-COMPONENT: DETAIL VIEW ---
-  const DetailView = ({ event }: { event: EstateEvent }) => {
+  const DetailView = ({ booking }: { booking: LocationBooking }) => {
+    const {user} = useUser()
+    const estateId = user?.estate_id
     const isMultiDay =
-      event.end_date &&
-      formatToLocalDateString(event.end_date) !==
-        formatToLocalDateString(event.start_date);
+      booking.end_date &&
+      formatToLocalDateString(booking.end_date) !==
+        formatToLocalDateString(booking.start_date);
 
-    const start = new Date(formatToLocalDateString(event.start_date));
-    const end = new Date(formatToLocalDateString(event.end_date));
+    const start = new Date(formatToLocalDateString(booking.start_date));
+    const end = new Date(formatToLocalDateString(booking.end_date));
+
+    // 1. Find the tenant record safely
+    const tenantMatch = useMemo(() => {
+      if (!booking.resident_id || !tenants) return null;
+      return (
+        tenants.find(
+          (t) => t.id.toString() === booking.resident_id.toString(),
+        ) || null
+      );
+    }, [booking.resident_id, tenants]);
+
+    // 2. Format location structures
+    const formattedLocations = useMemo(() => {
+      if (!tenantMatch?.locations) return [];
+      return Object.values(tenantMatch.locations)
+        .flat()
+        .map((loc) => {
+          const unitsStr = Array.isArray(loc.unit) ? loc.unit.join(", ") : "";
+          return `${loc.block}: ${unitsStr}`;
+        });
+    }, [tenantMatch]);
 
     const resolvedVenueName = useMemo(() => {
-      const match = locations.find(
-        (loc) => loc.id.toString() === (event as any).venue_detail?.toString(),
+      const match = facilities.find(
+        (loc) => loc.id.toString() === booking.venue_id?.toString(),
       );
-      return match ? match.name : event.venue_detail || "Not Specified";
-    }, [event]);
+      return match ? match.name : "Not Specified";
+    }, [booking.venue_id]);
 
     const excludedDatesList = useMemo(() => {
       if (
-        !event.booked_dates ||
-        !Array.isArray(event.booked_dates) ||
-        event.booked_dates.length === 0
+        !booking.booked_dates ||
+        !Array.isArray(booking.booked_dates) ||
+        booking.booked_dates.length === 0
       ) {
         return [];
       }
-
       const excluded: string[] = [];
-      // const bookedSet = new Set(event.booked_dates.map((d) => d.split("T")[0]));
       const bookedSet = new Set(
-        event.booked_dates.map((d) => formatToLocalDateString(d)),
+        booking.booked_dates.map((d) => formatToLocalDateString(d)),
       );
 
       for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
@@ -295,138 +356,156 @@ export default function EventReviewPage() {
         }
       }
       return excluded;
-    }, [event.start_date, event.end_date, event.booked_dates]);
+    }, [booking.start_date, booking.end_date, booking.booked_dates]);
 
     return (
       <div className="bg-white rounded-2xl border border-slate-200/70 p-5 sm:p-6 shadow-2xs animate-in slide-in-from-right duration-300 flex flex-col h-full overflow-hidden min-w-0">
+        {/* Navigation Back Header */}
         <button
-          onClick={() => setSelectedEvent(null)}
+          onClick={() => setSelectedBooking(null)}
           className="w-fit flex items-center gap-1.5 text-slate-500 hover:text-blue-600 transition-colors mb-6 font-montserrat font-bold text-xs uppercase tracking-wider shrink-0"
         >
           <ArrowLeft size={16} /> Back to Approvals
         </button>
 
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 flex-1 overflow-y-auto pr-1 pb-4 min-w-0 custom-scrollbar">
-          {/* Left Block: Graphic Asset preview display frame */}
-          <div className="w-full lg:w-5/12 shrink-0">
-            <p className="text-slate-400 text-[10px] uppercase font-oswald font-bold tracking-wider mb-2">
-              Event Flyer
-            </p>
-            <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 shadow-3xs max-w-md mx-auto lg:max-w-none">
-              {event.banner_url ? (
-                <img
-                  src={event.banner_url}
-                  className="w-full object-contain bg-slate-50 max-h-[45vh] lg:max-h-[55vh]"
-                  alt="Event Banner Asset"
-                />
-              ) : (
-                <div className="w-full h-56 bg-slate-100 flex items-center justify-center text-slate-400 font-oswald font-bold text-xs uppercase tracking-widest">
-                  No layout graphic uploaded
-                </div>
-              )}
-              {event.banner_url && (
-                <a
-                  href={event.banner_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="absolute top-3 right-3 p-2.5 bg-white/90 backdrop-blur hover:bg-white rounded-xl text-blue-600 shadow-sm border border-slate-100 transition-all"
+          <div className="flex-1 min-w-0 space-y-6">
+            {/* Top Operational Row: Action Panel */}
+            <div className="flex flex-wrap items-center justify-end gap-2 border-b border-slate-100 pb-4 shrink-0 w-full ml-auto">
+              {(!booking.is_approved || booking.is_rejected) && (
+                <button
+                  disabled={!!loadingAction}
+                  onClick={() => handleUpdateStatus(booking.id, "approve")}
+                  className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-5 py-3 bg-blue-600 text-white rounded-xl font-montserrat font-bold text-xs uppercase tracking-wider hover:bg-blue-700 transition-all disabled:opacity-40 shadow-3xs active:scale-98"
                 >
-                  <ExternalLink size={16} />
-                </a>
+                  {loadingAction === "approving" ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <CheckCircle size={14} />
+                  )}
+                  <span>Approve Booking</span>
+                </button>
+              )}
+
+              {(!booking.is_rejected || booking.is_approved) && (
+                <button
+                  disabled={!!loadingAction}
+                  onClick={() => handleUpdateStatus(booking.id, "reject")}
+                  className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-5 py-3 bg-rose-50 text-rose-600 border border-rose-100/60 rounded-xl font-montserrat font-bold text-xs uppercase tracking-wider hover:bg-rose-100 transition-all disabled:opacity-40 shadow-3xs active:scale-98"
+                >
+                  {loadingAction === "rejecting" ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <XCircle size={14} />
+                  )}
+                  <span>Reject Booking</span>
+                </button>
               )}
             </div>
-          </div>
 
-          {/* Right Block: Telemetry register description attributes node */}
-          <div className="flex-1 min-w-0 space-y-5">
-            <div className="flex flex-col sm:flex-row justify-between items-start gap-4 border-b border-slate-100 pb-4 min-w-0">
-              <div className="min-w-0 flex-1">
-                <span
-                  className={`px-2 py-0.5 rounded text-[10px] font-oswald font-bold uppercase tracking-wide border ${event.is_paid ? "bg-blue-50 text-blue-600 border-blue-200/50" : "bg-emerald-50 text-emerald-600 border-emerald-200/50"}`}
-                >
-                  {event.is_paid ? "Paid Event" : "Free Event"}
+            {/* Highlighted Resident Profile Information Block */}
+            <div className="bg-slate-50/50 rounded-2xl border border-slate-200/50 p-5 flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 min-w-0 shadow-3xs">
+              {/* Enhanced Sized Profile Avatar Component */}
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white border border-slate-200 shadow-2xs flex items-center justify-center shrink-0 overflow-hidden text-slate-600 font-montserrat font-black text-xl sm:text-2xl">
+                {estateId && tenantMatch?.avatar?.[estateId] ? (
+                  <img
+                    src={tenantMatch.avatar[estateId]}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  (tenantMatch?.name || booking.resident_name || "U")
+                    .charAt(0)
+                    .toUpperCase()
+                )}
+              </div>
+
+              {/* Profile Text Content Area */}
+              <div className="min-w-0 flex-1 text-center sm:text-left space-y-1">
+                <span className="inline-block px-2.5 py-0.5 rounded text-[10px] font-oswald font-bold uppercase tracking-wider border bg-blue-50 text-blue-600 border-blue-200/50">
+                  Resident Profile
                 </span>
-                <h3 className="text-xl sm:text-2xl font-montserrat font-black text-slate-800 mt-2 leading-tight wrap-break-word">
-                  {event.title}
+
+                <h3 className="text-xl sm:text-2xl font-montserrat font-black text-slate-800 leading-tight tracking-tight break-words">
+                  {tenantMatch?.name ||
+                    booking.resident_name ||
+                    "Unassigned Resident Account"}
                 </h3>
-              </div>
 
-              {/* Status workflow mutation actions triggers combo stack */}
-              <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto">
-                {(!event.is_approved || event.is_rejected) && (
-                  <button
-                    disabled={!!loadingAction}
-                    onClick={() => handleUpdateStatus(event.id, "approve")}
-                    className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-montserrat font-bold text-xs uppercase tracking-wider hover:bg-blue-700 transition-all disabled:opacity-40 shadow-3xs active:scale-98"
-                  >
-                    {loadingAction === "approving" ? (
-                      <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                      <CheckCircle size={14} />
-                    )}
-                    <span>Approve</span>
-                  </button>
-                )}
+                <p className="text-xs sm:text-sm text-slate-500 font-medium font-montserrat">
+                  {tenantMatch?.email || "No email provided"}
+                </p>
 
-                {(!event.is_rejected || event.is_approved) && (
-                  <button
-                    disabled={!!loadingAction}
-                    onClick={() => handleUpdateStatus(event.id, "reject")}
-                    className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 bg-rose-50 text-rose-600 border border-rose-100/60 rounded-xl font-montserrat font-bold text-xs uppercase tracking-wider hover:bg-rose-100 transition-all disabled:opacity-40 shadow-3xs active:scale-98"
-                  >
-                    {loadingAction === "rejecting" ? (
-                      <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                      <XCircle size={14} />
-                    )}
-                    <span>Reject</span>
-                  </button>
-                )}
+                {/* Structured Assigned Housing Location Info */}
+                <div className="pt-1">
+                  {formattedLocations.length > 0 ? (
+                    <p className="text-xs sm:text-sm text-blue-700 font-bold font-montserrat bg-blue-50/50 border border-blue-100/50 rounded-lg px-2.5 py-1 w-fit mx-auto sm:ml-0">
+                      Allocated to: {formattedLocations.join(" | ")}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-slate-400 italic font-medium">
+                      No assigned address details
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
-            {(event.is_approved || event.is_rejected) && (
+            {/* Operational Flow Status Indicators */}
+            {(booking.is_approved || booking.is_rejected) && (
               <div
-                className={`p-3 rounded-xl flex items-center gap-2.5 border text-xs font-semibold ${event.is_approved ? "bg-emerald-50/60 border-emerald-100 text-emerald-700" : "bg-rose-50/60 border-rose-100 text-rose-700"}`}
+                className={`p-3.5 rounded-xl flex items-center gap-2.5 border text-xs font-semibold shadow-3xs ${
+                  booking.is_approved
+                    ? "bg-emerald-50/60 border-emerald-100 text-emerald-700"
+                    : "bg-rose-50/60 border-rose-100 text-rose-700"
+                }`}
               >
-                {event.is_approved ? (
+                {booking.is_approved ? (
                   <CheckCircle size={15} />
                 ) : (
                   <AlertCircle size={15} />
                 )}
                 <p className="font-montserrat font-bold text-[10px] uppercase tracking-wider">
-                  Current Status: {event.is_approved ? "Approved" : "Rejected"}
+                  Current Status:{" "}
+                  {booking.is_approved ? "Approved" : "Rejected"}
                 </p>
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
+            {/* Details Grid Section */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0">
               <DetailBox
-                icon={<Calendar size={16} />}
-                label="Date"
+                icon={<Calendar size={18} />}
+                label="Requested Booking Date"
                 value={
                   isMultiDay
-                    ? `${formatToLocalDateString(event.start_date)} to ${formatToLocalDateString(event.end_date)}`
-                    : formatToLocalDateString(event.start_date)
+                    ? `${formatToLocalDateString(booking.start_date)} to ${formatToLocalDateString(booking.end_date)}`
+                    : formatToLocalDateString(booking.start_date)
                 }
               />
               <DetailBox
-                icon={<Clock size={16} />}
-                label="Time"
-                value={`${event.start_time} - ${event.end_time}`}
+                icon={<Clock size={18} />}
+                label="Reservation Timeframe Window"
+                value={`${booking.start_time} - ${booking.end_time}`}
+              />
+              <DetailBox
+                icon={<MapPin size={18} />}
+                label="Target Venue Resource Location"
+                value={resolvedVenueName}
               />
             </div>
 
+            {/* Blackout Exception Schedule Panels */}
             {excludedDatesList.length > 0 && (
-              <div className="p-3 bg-rose-50/30 border border-rose-100/60 rounded-xl min-w-0">
-                <span className="text-[10px] font-oswald font-bold text-rose-600 uppercase tracking-wider block mb-1.5">
-                  Excluded Dates:
+              <div className="p-4 bg-rose-50/30 border border-rose-100/60 rounded-xl min-w-0">
+                <span className="text-[10px] font-oswald font-bold text-rose-600 uppercase tracking-wider block mb-2">
+                  Blackout/Excluded Dates:
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {excludedDatesList.map((d) => (
                     <span
                       key={d}
-                      className="text-xs font-oswald font-bold bg-white border border-rose-200/50 text-rose-600 px-2 py-0.5 rounded-md shadow-3xs"
+                      className="text-xs font-oswald font-bold bg-white border border-rose-200/50 text-rose-600 px-2.5 py-1 rounded-md shadow-3xs"
                     >
                       {d}
                     </span>
@@ -434,86 +513,49 @@ export default function EventReviewPage() {
                 </div>
               </div>
             )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
-              <DetailBox
-                icon={<MapPin size={16} />}
-                label="Venue"
-                value={resolvedVenueName}
-              />
-              <DetailBox
-                icon={<Ticket size={16} />}
-                label="Reference Code"
-                value={event.ref_code}
-                isOswaldValue
-              />
-              <DetailBox
-                icon={<Users size={16} />}
-                label="Expected Guest Threshold"
-                value={event.expected_guests.toString()}
-                isOswaldValue
-              />
-              <DetailBox
-                icon={<LayoutGrid size={16} />}
-                label="Ticket Price"
-                value={event.is_paid ? `₦${event.ticket_price}` : "Free Pass"}
-                isOswaldValue
-              />
-            </div>
-
-            <div className="p-4 bg-slate-50 border border-slate-200/60 rounded-xl min-w-0">
-              <h4 className="text-slate-400 text-[10px] uppercase font-oswald font-bold tracking-wider mb-1.5">
-                Event Description
-              </h4>
-              <p className="text-slate-600 text-sm leading-relaxed font-medium font-sans whitespace-pre-line">
-                {event.description ||
-                  "No specific brief metadata statement declared by coordinator."}
-              </p>
-            </div>
           </div>
         </div>
       </div>
     );
   };
 
+  // --- MAIN MODULE HOIST INTEGRATION ROUTER ---
   return (
     <div className="h-[calc(100vh-100px)] flex flex-col overflow-hidden p-4 bg-slate-50/50 relative font-sans">
-      {/* ABOVE SEARCH BAR TAB SELECTION PANEL */}
-      {!selectedEvent && !isDetailedLocation && (
+      {!selectedBooking && !isDetailedLocation && (
         <div className="flex justify-start mb-4 shrink-0 min-w-0">
           <div className="flex bg-slate-200/60 p-1 rounded-xl border border-slate-200/20 shadow-inner">
             <button
               onClick={() => {
-                setActiveViewTab("events");
+                setActiveViewTab("bookings");
                 setSearchQuery("");
               }}
               className={`flex items-center gap-1.5 px-5 py-2 rounded-lg font-montserrat font-bold text-xs uppercase tracking-wider transition-all ${
-                activeViewTab === "events"
+                activeViewTab === "bookings"
                   ? "bg-white shadow-3xs text-blue-600"
                   : "text-slate-500 hover:text-slate-700"
               }`}
             >
-              <LayoutGrid size={13} /> Events
+              <LayoutGrid size={13} /> Bookings Registry
             </button>
             <button
               onClick={() => {
-                setActiveViewTab("locations");
+                setActiveViewTab("facility");
                 setSearchQuery("");
               }}
               className={`flex items-center gap-1.5 px-5 py-2 rounded-lg font-montserrat font-bold text-xs uppercase tracking-wider transition-all ${
-                activeViewTab === "locations"
+                activeViewTab === "facility"
                   ? "bg-white shadow-3xs text-blue-600"
                   : "text-slate-500 hover:text-slate-700"
               }`}
             >
-              <MapPin size={13} /> Venues
+              <MapPin size={13} /> Facilities
             </button>
           </div>
         </div>
       )}
 
-      {/* FILTER SEARCH METADATA BLOCK ARTIFACT */}
-      {!selectedEvent && !isDetailedLocation && (
+      {!selectedBooking && !isDetailedLocation && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4 shrink-0 min-w-0">
           <div className="relative flex items-center flex-1 w-full min-w-0">
             <Search
@@ -523,8 +565,8 @@ export default function EventReviewPage() {
             <input
               type="text"
               placeholder={
-                activeViewTab === "events"
-                  ? "Search by event title parameters or reference tokens..."
+                activeViewTab === "bookings"
+                  ? "Search by resident identity tracking attributes..."
                   : "Search by venue registration label or quadrant area..."
               }
               value={searchQuery}
@@ -533,7 +575,7 @@ export default function EventReviewPage() {
             />
           </div>
 
-          {activeViewTab === "events" && (
+          {activeViewTab === "bookings" && (
             <div className="relative flex items-center w-full sm:w-56 shrink-0 min-w-0">
               <Calendar
                 className="absolute left-3.5 text-slate-400 pointer-events-none"
@@ -550,19 +592,19 @@ export default function EventReviewPage() {
         </div>
       )}
 
-      {/* DYNAMIC REGISTRY BLOCK VIEWPORT HOIST SWITCHER */}
       <div className="flex-1 overflow-hidden min-w-0">
-        {activeViewTab === "events" ? (
-          selectedEvent ? (
-            <DetailView event={selectedEvent} />
+        {activeViewTab === "bookings" ? (
+          selectedBooking ? (
+            <DetailView booking={selectedBooking} />
           ) : (
-            <EventList />
+            <BookingsList />
           )
         ) : (
           <LocationsView
-            locations={locations}
+            locations={facilities}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
+            tenants={tenants}
             setIsDetailedLocation={setIsDetailedLocation}
             refreshData={fetchData}
           />

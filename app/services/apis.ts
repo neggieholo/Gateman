@@ -4,13 +4,11 @@ import {
   ApproveRequest,
   DashboardStats,
   EstateDocsPayload,
-  EstateEvent,
-  EstateLocation,
+  EstateFacility,
   FetchAdminsResponse,
   FetchNotificationsResponse,
   Invitation,
-  RSVPRequest,
-  RSVPResponse,
+  LocationBooking,
   sessionResponse,
 } from "./types";
 import { parseISO, formatDistanceToNow } from "date-fns";
@@ -535,42 +533,42 @@ const handleResponse = async (response: Response) => {
   return data;
 };
 
-export const getAllEvents = async (): Promise<EstateEvent[]> => {
+export const getAllBookings = async (): Promise<LocationBooking[]> => {
   const response = await fetch(`${baseUrl}/api/event/all`, {
     credentials: "include",
   });
   return await handleResponse(response);
 };
 
-export const getEventById = async (id: string): Promise<EstateEvent> => {
+export const getEventById = async (id: string): Promise<LocationBooking> => {
   const response = await fetch(`${baseUrl}/api/event/public/${id}`, {
     credentials: "include",
   });
   return await handleResponse(response);
 };
 
-export const registerForEvent = async (
-  rsvpData: RSVPRequest,
-): Promise<RSVPResponse> => {
-  const response = await fetch(`${baseUrl}/api/event/rsvp`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(rsvpData),
-  });
+// export const registerForEvent = async (
+//   rsvpData: RSVPRequest,
+// ): Promise<RSVPResponse> => {
+//   const response = await fetch(`${baseUrl}/api/event/rsvp`, {
+//     method: "POST",
+//     headers: { "Content-Type": "application/json" },
+//     body: JSON.stringify(rsvpData),
+//   });
 
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || "Registration failed");
-  }
+//   if (!response.ok) {
+//     const errorData = await response.json();
+//     throw new Error(errorData.error || "Registration failed");
+//   }
 
-  return await response.json();
-};
+//   return await response.json();
+// };
 
 export const approveEvent = async (
-  eventId: string,
+  booking_id: string,
   verdict: string,
 ): Promise<ApproveRequest> => {
-  const response = await fetch(`${baseUrl}/api/event/approve/${eventId}`, {
+  const response = await fetch(`${baseUrl}/api/event/approve/${booking_id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ verdict }),
@@ -582,14 +580,14 @@ export const approveEvent = async (
   return data;
 };
 
-export const getAllLocations = async (): Promise<EstateLocation[]> => {
+export const getAllLocations = async (): Promise<EstateFacility[]> => {
   const response = await fetch(`${baseUrl}/api/event/locations/all`, {
     credentials: "include",
   });
   return await handleResponse(response);
 };
 
-export const getLocationById = async (id: number): Promise<EstateLocation> => {
+export const getLocationById = async (id: number): Promise<EstateFacility> => {
   const response = await fetch(`${baseUrl}/api/event/locations/${id}`, {
     credentials: "include",
   });
@@ -597,8 +595,8 @@ export const getLocationById = async (id: number): Promise<EstateLocation> => {
 };
 
 export const createLocation = async (
-  locData: Partial<EstateLocation>,
-): Promise<EstateLocation> => {
+  locData: Partial<EstateFacility>,
+): Promise<EstateFacility> => {
   const response = await fetch(`${baseUrl}/api/event/locations/create`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -610,8 +608,8 @@ export const createLocation = async (
 
 export const editLocation = async (
   id: number,
-  locData: Partial<EstateLocation>,
-): Promise<{ message: string; location: EstateLocation }> => {
+  locData: Partial<EstateFacility>,
+): Promise<{ message: string; location: EstateFacility }> => {
   const response = await fetch(`${baseUrl}/api/event/locations/edit/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -634,7 +632,7 @@ export const deleteLocation = async (
 export const getEventAtLocationDate = async (
   locationId: number,
   dateStr: string,
-): Promise<{ event: EstateEvent | null }> => {
+): Promise<{ booking: LocationBooking | null }> => {
   const response = await fetch(
     `${baseUrl}/api/event/locations/${locationId}/event-at-date?date=${dateStr}`,
     {
@@ -1060,3 +1058,21 @@ export async function forceOverrideSubAccountPasswordApi(
     };
   }
 }
+
+export const deleteStaleCloudinaryAsset = async (url: string): Promise<boolean> => {
+  try {
+    const response = await fetch(`${baseUrl}/api/admin/assets/delete`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ url }),
+    });
+
+    const data = await response.json();
+    return data.success;
+  } catch (error) {
+    console.error("Failed executing storage bucket cleanup sequence:", error);
+    return false;
+  }
+};

@@ -168,7 +168,7 @@ export default function Settings() {
         setMetadata(otpRes.metadata);
         setShowOtpInput(true);
       } else {
-        alert(otpRes.message);
+        toast.error(otpRes.message);
         setError(otpRes.message || "Failed to send OTP");
       }
     } catch (err) {
@@ -335,7 +335,7 @@ export default function Settings() {
 
   const handleSaveConfig = async () => {
     if (!hasChanges) {
-      alert("No changes detected to save.");
+      toast.error("No changes detected to save.");
       // setIsEditing(false);
       return;
     }
@@ -344,12 +344,12 @@ export default function Settings() {
     const isPhoneChanged = profile.phone !== user?.phone_number;
 
     if (isEmailChanged && !profile.email_verified) {
-      alert("Please verify your new email address before saving.");
+      toast.error("Please verify your new email address before saving.");
       return; // Exit the function early
     }
 
     if (isPhoneChanged && !profile.phone_verified) {
-      alert("Please verify your new phone number before saving.");
+      toast.error("Please verify your new phone number before saving.");
       return; // Exit the function early
     }
     setSaving(true);

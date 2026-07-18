@@ -29,6 +29,8 @@ interface UnifiedUserContextType extends UserContextType {
   setBadgeCount: (count: number) => void;
   loadingNotifications: boolean;
   socket: Socket | null;
+  plan: string | null;
+  setPlan: (plan: string | null) => void;
 }
 
 const UserContext = createContext<UnifiedUserContextType | undefined>(
@@ -47,7 +49,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [badgeCount, setBadgeCount] = useState<number>(0);
   const [refreshTrigger, setRefreshTrigger] = useState<boolean>(false);
   const triggerRefresh = () => setRefreshTrigger((prev) => !prev);
-  
+  const [plan, setPlan] = useState<string | null>(null);
 
   useEffect(() => {
     const getNotifications = async () => {
@@ -136,6 +138,8 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         setBadgeCount,
         socket: socketRef.current,
         loadingNotifications,
+        plan,
+        setPlan,
       }}
     >
       {children}

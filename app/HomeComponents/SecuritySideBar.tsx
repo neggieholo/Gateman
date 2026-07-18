@@ -3,24 +3,22 @@
 import React, { useState } from "react";
 import {
   Home,
-  Zap,
-  ShieldCheck,
-  MessageSquare,
-  Calendar,
+  UserPlus,
   Users,
+  ShieldCheck,
+  AlertOctagon,
+  Ticket,
+  FileText,
   ChevronDown,
   LogOut,
-  Inbox,
-  FileText,
   User2,
-  Briefcase,
-  User,
 } from "lucide-react";
-import { ViewState } from "../services/types";
 import { useUser } from "../UserContext";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import { postLogout } from "../services/apis";
+import { SecurityViewState } from "../services/types";
+
 
 interface SideBarProps {
   isOpen?: boolean;
@@ -31,16 +29,16 @@ function defaultAfterNavClick() {
   console.log("");
 }
 
-export default function SideBar({
+export default function SecuritySideBar({
   isOpen = true,
   afterNavClick = defaultAfterNavClick,
 }: SideBarProps) {
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const { user, setUser, socket } = useUser();
+  const { setUser, socket } = useUser();
   const router = useRouter();
   const pathname = usePathname();
 
-  const handleLogout = async() => {
+  const handleLogout = async () => {
     if (socket) {
       console.log("🔌 Disconnecting socket...");
       socket.disconnect();
@@ -52,60 +50,49 @@ export default function SideBar({
     router.push("/");
   };
 
+  // Restructured nav list matching your security tabs + dashboard
   const navItems = [
     {
-      id: ViewState.DASHBOARD,
+      id: SecurityViewState.DASHBOARD,
       label: "Home",
       icon: Home,
       url: "/home/dashboard",
     },
     {
-      id: ViewState.PAYMENT_APPROVALS,
-      label: "Payments",
-      icon: FileText,
-      url: "/home/payments",
-    },
-    {
-      id: ViewState.ACCESS,
-      label: "Security",
-      icon: ShieldCheck,
-      url: "/home/security",
-    },
-    {
-      id: ViewState.FORUM,
-      label: "Community",
-      icon: MessageSquare,
-      url: "/home/community",
-    },
-    {
-      id: ViewState.EVENTS,
-      label: "Bookings",
-      icon: Calendar,
-      url: "/home/events",
-    },
-    {
-      id: ViewState.RESIDENTS,
-      label: "Residents",
-      icon: Users,
-      url: "/home/tenantmanagement",
-    },
-    {
-      id: ViewState.REQUESTS,
+      id: SecurityViewState.REQUESTS,
       label: "Requests",
-      icon: Inbox,
-      url: "/home/joinrequestpage",
+      icon: UserPlus,
+      url: "/home/requests",
     },
     {
-      id: ViewState.SERVICES,
-      label: "Services",
-      icon: Briefcase,
-      url: "/home/services",
+      id: SecurityViewState.PERSONNEL,
+      label: "Personnel",
+      icon: Users,
+      url: "/home/personnel",
     },
     {
-      id: ViewState.USERS,
-      label: "Users",
-      icon: User,
-      url: "/home/users",
+      id: SecurityViewState.ONDUTY,
+      label: "On Duty",
+      icon: ShieldCheck,
+      url: "/home/onduty",
+    },
+    {
+      id: SecurityViewState.REPORTS,
+      label: "Reports",
+      icon: AlertOctagon,
+      url: "/home/reports",
+    },
+    {
+      id: SecurityViewState.GATEPASSES,
+      label: "Gate Passes",
+      icon: Ticket,
+      url: "/home/gatepasses",
+    },
+    {
+      id: SecurityViewState.LOGS,
+      label: "Logs",
+      icon: FileText,
+      url: "/home/logs",
     },
   ];
 
@@ -122,7 +109,7 @@ export default function SideBar({
           <div className="relative w-full h-14 backdrop-blur-md rounded-xl flex items-center justify-center overflow-hidden">
             <Image
               src="/gmlogo.jpg"
-              alt="Gatenan Logo"
+              alt="GateMan Logo"
               fill
               className="object-contain p-1"
             />
@@ -142,8 +129,8 @@ export default function SideBar({
                 }}
                 className={`flex items-center space-x-2 w-full px-3 py-3.5 rounded-2xl transition-all duration-200 group ${
                   isActive
-                    ? "bg-white text-primary font-semibold shadow-sm" // White bg, Primary text
-                    : "text-white/70 hover:bg-white/10 hover:text-white" // Ghost white on primary bg
+                    ? "bg-white text-primary font-semibold shadow-sm"
+                    : "text-white/70 hover:bg-white/10 hover:text-white"
                 }`}
               >
                 <item.icon
@@ -151,7 +138,9 @@ export default function SideBar({
                   className={`transition-colors ${isActive ? "text-primary" : "text-white"}`}
                   strokeWidth={isActive ? 2.5 : 2}
                 />
-                <span className={`${isActive ? "text-primary" : "text-white"} font-oswald`}>
+                <span
+                  className={`${isActive ? "text-primary" : "text-white"} font-oswald`}
+                >
                   {item.label}
                 </span>
 
@@ -173,12 +162,12 @@ export default function SideBar({
               <User2 />
               <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></div>
             </div>
-            <div className="flex flex-col items-start flex-1 min-w-0">              
+            <div className="flex flex-col items-start flex-1 min-w-0">
               <div className="flex items-center mt-0.5">
                 <span
                   className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide ${getRoleBadgeColor()}`}
                 >
-                  Admin
+                  Security Admin
                 </span>
               </div>
             </div>

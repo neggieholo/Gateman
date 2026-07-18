@@ -17,12 +17,14 @@ import {
   ShieldCheck,
   Home,
   X,
+  Smartphone,
 } from "lucide-react";
 import { useUser } from "../UserContext";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { checkSession, sendOtpApi } from "../services/apis";
 import { states_lgas } from "../utils/states_lgas";
+import toast from "react-hot-toast";
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -30,7 +32,7 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [requestingOtp, setRequestingOtp] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { setUser } = useUser();
+  const { setUser, setPlan } = useUser();
   const router = useRouter();
 
   // Form State
@@ -46,6 +48,8 @@ export default function Auth() {
   const [showPlanModal, setShowPlanModal] = useState(false);
   // const [town, setTown] = useState('');
   const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]);
+  const [mfaType, setMfaType] = useState<"EMAIL" | "TOTP" | "NONE">("NONE");
+  const [otpLoading, setOtpLoading] = useState(false);
   const [metadata, setMetadata] = useState("");
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
@@ -101,21 +105,24 @@ export default function Auth() {
   };
 
   const handleRequestOtp = async () => {
-    if (!selectedPlan) {
+    if (!isLogin && !selectedPlan) {
       setError("Please choose a subscription plan to continue.");
       setShowPlanModal(true);
       return;
     }
 
     const trimmedEmail = email.trim();
-    if (!validateEmail(trimmedEmail)) {
-      alert("Invalid Email. Check your email format.");
-      setLoading(false);
-      return;
-    }
 
-    setError("");
-    setRequestingOtp(true);
+    if (!isLogin) {
+      if (!validateEmail(trimmedEmail)) {
+        toast.error("Invalid Email. Check your email format.");
+        setLoading(false);
+        return;
+      }
+
+      setError("");
+      setRequestingOtp(true);
+    }
 
     try {
       const otpRes = await sendOtpApi(trimmedEmail);
@@ -145,7 +152,11 @@ export default function Auth() {
 
     const finalOtpString = newOtp.join("");
     if (finalOtpString.length === 6) {
-      handleRegister(finalOtpString);
+      if (!isLogin) {
+        handleRegister(finalOtpString);
+      } else {
+        handleOtpVerify(finalOtpString);
+      }
     }
   };
 
@@ -198,6 +209,79 @@ export default function Auth() {
       setError(err.message || "Registration failed. Please try again.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOtpVerify = async (finalOtp: string) => {
+    setOtpLoading(true);
+    setError(null);
+
+    try {
+      let coordinates = null;
+
+      if (navigator.geolocation) {
+        try {
+          // 🎯 Explicitly define the Promise return signature as GeolocationPosition
+          const position = await new Promise<GeolocationPosition>(
+            (resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: true,
+                timeout: 7000,
+              });
+            },
+          );
+
+          coordinates = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          };
+        } catch (geoError: any) {
+          if (geoError.code === geoError.PERMISSION_DENIED) {
+            setError(
+              "Access Denied: Administrative security policy requires location verification.",
+            );
+            setLoading(false);
+            return;
+          }
+
+          console.warn(
+            "Hardware position unavailable. Falling back safely to IP anchoring.",
+          );
+        }
+      } else {
+        console.warn(
+          "Browser environment does not support geolocation metrics.",
+        );
+      }
+      const response = await fetch("/api/estate-users/verify-otp-only", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          otp: finalOtp,
+          target: email,
+          type: mfaType === "TOTP" ? "totp" : "email",
+          metadata: mfaType === "EMAIL" ? metadata : undefined,
+          rememberMe: rememberMe,
+          coordinates,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setUser(data.user);
+        router.push("/home/dashboard");
+        setShowOtpInput(false);
+        setOtp(["", "", "", "", "", ""]);
+      } else {
+        setError(data.message || "Verification failed. Please try again.");
+        setOtp(["", "", "", "", "", ""]);
+        inputRefs.current[0]?.focus();
+      }
+    } catch (err) {
+      setError("Connection to verification engine failed. Please try again.");
+    } finally {
+      setOtpLoading(false);
     }
   };
 
@@ -280,8 +364,112 @@ export default function Auth() {
           setError("Server error. Please try again later.");
           return;
         }
+        console.log("Auth Data:", data);
+
+        if (data.status === "PASSWORD_RESET_REQUIRED") {
+          setLoading(false);
+
+          toast.error(
+            (t) => (
+              <div className="flex flex-col gap-1.5 p-1">
+                <p className="font-sans font-black text-slate-900 text-sm tracking-tight">
+                  Administrative Account Lock
+                </p>
+                <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                  An administrative password reset has been triggered for your
+                  security profile. Please contact the{" "}
+                  <strong>System Registrar</strong> to authorize and assign your
+                  new login credentials.
+                </p>
+                <div className="flex justify-end mt-1">
+                  <button
+                    onClick={() => toast.dismiss(t.id)}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[10px] font-oswald font-black uppercase tracking-wider transition-colors shadow-sm"
+                  >
+                    Acknowledge
+                  </button>
+                </div>
+              </div>
+            ),
+            {
+              duration: Infinity,
+              position: "top-center",
+            },
+          );
+          return;
+        }
+
+        if (data.status === "MFA_DEADLINE_MISSED") {
+          setLoading(false);
+
+          toast.error(
+            (t) => (
+              <div className="flex flex-col gap-1.5 p-1">
+                <p className="font-sans font-black text-slate-900 text-sm tracking-tight">
+                  Administrative Account Lock
+                </p>
+                <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                  An administrative block has been triggered due to failure to
+                  set MFA. Please contact the <strong>System Registrar</strong>{" "}
+                  to reslove the issue.
+                </p>
+                <div className="flex justify-end mt-1">
+                  <button
+                    onClick={() => toast.dismiss(t.id)}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[10px] font-oswald font-black uppercase tracking-wider transition-colors shadow-sm"
+                  >
+                    Acknowledge
+                  </button>
+                </div>
+              </div>
+            ),
+            {
+              duration: Infinity,
+              position: "top-center",
+            },
+          );
+          return;
+        }
+
+        if (data.success && data.user && !data.user.email_verified) {
+          setUser(data.user);
+          setMfaType("EMAIL");
+          setLoading(false);
+
+          await handleRequestOtp();
+          return;
+        }
+
+        // CATCH EMAIL MFA INTERRUPTION
+        if (data.status === "EMAIL_MFA_REQUIRED") {
+          setUser(data.user);
+          setMfaType("EMAIL");
+          setLoading(false);
+
+          // Fire off your native frontend OTP generator method automatically!
+          await handleRequestOtp();
+          return;
+        }
+
+        // CATCH TOTP AUTHENTICATOR APP INTERRUPTION
+        if (data.status === "TOTP_MFA_REQUIRED") {
+          setUser(data.user);
+          setMfaType("TOTP");
+          setShowOtpInput(true); // Open the entry boxes directly (no delivery cycle needed)
+          setLoading(false);
+          return;
+        }
+
         if (data.success) {
           setUser(data.user);
+          setPlan(data.user.plan);
+          if (data.onboarding?.showPasswordWarningPopup) {
+            localStorage.setItem("DASHBOARD_PASS_WARN", "true");
+          }
+
+          if (data.onboarding?.showMfaSetupOnboarding) {
+            localStorage.setItem("DASHBOARD_MFA_WARN", "true");
+          }
           router.push("/home/dashboard");
         } else {
           const errorMessage =
@@ -291,12 +479,13 @@ export default function Auth() {
             errorMessage.includes("Unexpected token") ||
             errorMessage.includes("fetch")
           ) {
-            setError("Server is currently restarting. Please wait a moment.");
+            setError("The core server is rebooting. Stand by.");
           } else {
             setError(errorMessage);
           }
         }
       } else {
+        setMfaType("EMAIL");
         handleRequestOtp();
       }
     } catch (err: any) {
@@ -740,14 +929,36 @@ export default function Auth() {
           <div className="bg-white w-full max-w-md rounded-[2.5rem] p-8 md:p-10 shadow-2xl scale-in-center border border-slate-100">
             <div className="text-center space-y-4 mb-8">
               <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Mail size={32} />
+                {mfaType === "EMAIL" ? (
+                  <Mail size={32} />
+                ) : (
+                  <Smartphone size={32} />
+                )}
               </div>
               <h3 className="text-2xl font-bold text-slate-900">
-                Verify your email
+                {mfaType === "EMAIL"
+                  ? "Verify your email"
+                  : "Device Verification"}
               </h3>
               <p className="text-slate-500 text-sm">
-                We&apos;ve sent a 6-digit code to <br />
-                <span className="font-semibold text-slate-900">{email}</span>
+                {mfaType === "EMAIL" ? (
+                  <>
+                    We&apos;ve sent a 6-digit code to <br />
+                    <span className="font-semibold text-slate-900">
+                      {email}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    Open your authenticator security application and enter{" "}
+                    <br />
+                    the changing{" "}
+                    <span className="font-semibold text-slate-900">
+                      6-digit token
+                    </span>{" "}
+                    linked to your terminal.
+                  </>
+                )}
               </p>
             </div>
 
@@ -778,7 +989,7 @@ export default function Auth() {
                 {loading ? (
                   <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
-                  "Verify & Register"
+                  "Verify"
                 )}
               </button>
 

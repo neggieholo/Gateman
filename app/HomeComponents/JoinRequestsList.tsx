@@ -47,7 +47,7 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
   const { user } = useUser();
 
   // FIXED: Default fallback now strictly set to selfie and rent_contract ONLY
-  const kycConfig = user?.kyc_selection || {
+  const kycConfig = {
     ids: false,
     selfie: true,
     utility_bill: false,
@@ -244,13 +244,13 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
           </button>
           <button
             onClick={() => setShowPrompt({ id: req.id, type: "decline" })}
-            className="flex-1 min-w-[5.5rem] flex items-center justify-center gap-1.5 bg-amber-500 text-white py-2.5 sm:py-3 rounded-lg font-montserrat font-bold text-xs uppercase tracking-wider hover:bg-amber-600 transition-colors shadow-sm"
+            className="flex-1 min-w-22 flex items-center justify-center gap-1.5 bg-amber-500 text-white py-2.5 sm:py-3 rounded-lg font-montserrat font-bold text-xs uppercase tracking-wider hover:bg-amber-600 transition-colors shadow-sm"
           >
             <X size={16} /> <span>Decline</span>
           </button>
           <button
             onClick={() => setShowPrompt({ id: req.id, type: "block" })}
-            className="flex-1 min-w-[5.5rem] flex items-center justify-center gap-1.5 bg-red-600 text-white py-2.5 sm:py-3 rounded-lg font-montserrat font-bold text-xs uppercase tracking-wider hover:bg-red-700 transition-colors shadow-sm"
+            className="flex-1 min-w-22 flex items-center justify-center gap-1.5 bg-red-600 text-white py-2.5 sm:py-3 rounded-lg font-montserrat font-bold text-xs uppercase tracking-wider hover:bg-red-700 transition-colors shadow-sm"
           >
             <Ban size={16} /> <span>Block</span>
           </button>

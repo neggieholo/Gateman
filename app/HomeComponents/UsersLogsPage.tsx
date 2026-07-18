@@ -32,6 +32,7 @@ export default function UserLogsPage({
   // 🎛️ Local Filter States (Strictly Name and Date)
   const [nameFilter, setNameFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
+  const displayedRole = "All " + (role === "TENANT" ? "RESIDENT" : role);
 
   // 📡 1. Live Data Synchronization Loop
   useEffect(() => {
@@ -156,7 +157,7 @@ export default function UserLogsPage({
   };
 
   return (
-    <div className="flex-1 space-y-6 font-sans text-slate-700 min-w-0">
+    <div className="flex-1 space-y-6 font-sans text-slate-700 min-w-0 p-3">
       {/* Header and Title Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white rounded-2xl border border-slate-200/70 p-5 shadow-2xs">
         <div className="flex items-center gap-3">
@@ -165,7 +166,7 @@ export default function UserLogsPage({
           </div>
           <div>
             <h1 className="text-base font-montserrat font-black text-slate-800 uppercase tracking-tight leading-none">
-              View {isolatedAdminName ? isolatedAdminName + "'s" : "User"}{" "}
+              View {isolatedAdminName ? isolatedAdminName + "'s" : displayedRole}{" "}
               Activity Logs
             </h1>
             <p className="text-xs text-slate-400 font-medium mt-1">

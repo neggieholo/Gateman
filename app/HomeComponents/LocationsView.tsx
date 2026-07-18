@@ -16,18 +16,23 @@ import {
   Edit2,
   Trash2,
   XCircle,
+  CreditCard,
+  Calendar,
 } from "lucide-react";
-import { EstateLocation, EstateEvent } from "../services/types";
+import { EstateFacility, LocationBooking, Tenant } from "../services/types";
 import {
   getEventAtLocationDate,
   createLocation,
   editLocation,
   deleteLocation,
 } from "../services/apis";
+import { formatDate, formatTime } from "../services/apis";
+import { useUser } from "../UserContext";
 
 interface LocationsViewProps {
-  locations: EstateLocation[];
+  locations: EstateFacility[];
   searchQuery: string;
+  tenants: Tenant[];
   setSearchQuery: (query: string) => void;
   setIsDetailedLocation: (isDetailed: boolean) => void;
   refreshData: () => Promise<void>;
@@ -36,15 +41,20 @@ interface LocationsViewProps {
 export default function LocationsView({
   locations,
   searchQuery,
+  tenants,
   setIsDetailedLocation,
   refreshData,
 }: LocationsViewProps) {
-  const [selectedLoc, setSelectedLoc] = useState<EstateLocation | null>(null);
+  const { user } = useUser();
+  const estateId = user?.estate_id;
+  const [selectedLoc, setSelectedLoc] = useState<EstateFacility | null>(null);
   const [selectedDateStr, setSelectedDateStr] = useState<string>("");
 
   // Multi-Event & Pagination tracking states
-  const [activeDateEvents, setActiveDateEvents] = useState<EstateEvent[]>([]);
-  const [currentEventIndex, setCurrentEventIndex] = useState<number>(0);
+  const [activeDateBookings, setActiveDateBookings] = useState<
+    LocationBooking[]
+  >([]);
+  const [currentBookingIndex, setCurrentBookingIndex] = useState<number>(0);
   const [loadingEvent, setLoadingEvent] = useState<boolean>(false);
 
   // Calendar Navigation State
@@ -54,10 +64,16 @@ export default function LocationsView({
 
   // Modal & Form States
   const [showModal, setShowModal] = useState<"create" | "edit" | null>(null);
-  const [targetLoc, setTargetLoc] = useState<EstateLocation | null>(null);
+  const [targetLoc, setTargetLoc] = useState<EstateFacility | null>(null);
   const [formName, setFormName] = useState("");
   const [formInEstate, setFormInEstate] = useState("");
   const [formCapacity, setFormCapacity] = useState<number | "">("");
+  const [formIsPaid, setFormIsPaid] = useState(false);
+  const [formIsActive, setFormIsActive] = useState(false);
+  const [formBookingRate, setBookingRate] = useState<number | "">("");
+  const [formBookingrange, setBookingRange] = useState<
+    "per_hour" | "per_day" | "per_event"
+  >("per_hour");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const todayStart = useMemo(() => {
@@ -172,21 +188,21 @@ export default function LocationsView({
 
     const fetchActiveSlotContent = async () => {
       setLoadingEvent(true);
-      setCurrentEventIndex(0);
+      setCurrentBookingIndex(0);
       try {
         const data = await getEventAtLocationDate(
           selectedLoc.id,
           selectedDateStr,
         );
-        const eventsList = Array.isArray(data.event)
-          ? data.event
-          : data.event
-            ? [data.event]
+        const bookingsList = Array.isArray(data.booking)
+          ? data.booking
+          : data.booking
+            ? [data.booking]
             : [];
-        setActiveDateEvents(eventsList);
+        setActiveDateBookings(bookingsList);
       } catch (err) {
         console.error("Failed fetching slot context:", err);
-        setActiveDateEvents([]);
+        setActiveDateBookings([]);
       } finally {
         setLoadingEvent(false);
       }
@@ -195,11 +211,11 @@ export default function LocationsView({
     fetchActiveSlotContent();
   }, [selectedDateStr, selectedLoc]);
 
-  const currentActiveEvent = useMemo(() => {
-    return activeDateEvents[currentEventIndex] || null;
-  }, [activeDateEvents, currentEventIndex]);
+  const currentActiveBooking = useMemo(() => {
+    return activeDateBookings[currentBookingIndex] || null;
+  }, [activeDateBookings, currentBookingIndex]);
 
-  const handleSelectLocation = (loc: EstateLocation) => {
+  const handleSelectLocation = (loc: EstateFacility) => {
     setSelectedLoc(loc);
     setIsDetailedLocation(true);
 
@@ -215,7 +231,7 @@ export default function LocationsView({
   const handleBackToList = () => {
     setSelectedLoc(null);
     setSelectedDateStr("");
-    setActiveDateEvents([]);
+    setActiveDateBookings([]);
     setIsDetailedLocation(false);
   };
 
@@ -244,15 +260,23 @@ export default function LocationsView({
     setFormName("");
     setFormInEstate("");
     setFormCapacity("");
+    setFormIsActive(true);
+    setFormIsPaid(false);
+    setBookingRate("");
+    setBookingRange("per_hour");
     setShowModal("create");
   };
 
-  const openEditModal = (e: React.MouseEvent, loc: EstateLocation) => {
+  const openEditModal = (e: React.MouseEvent, loc: EstateFacility) => {
     e.stopPropagation();
     setTargetLoc(loc);
     setFormName(loc.name);
     setFormInEstate(loc.location_in_estate || "");
     setFormCapacity(loc.capacity || "");
+    setFormIsActive(loc.is_active);
+    setFormIsPaid(loc.isPaid || false);
+    setBookingRate(loc.bookingRate || "");
+    setBookingRange(loc.bookingRateUnit || "per_hour");
     setShowModal("edit");
   };
 
@@ -263,19 +287,27 @@ export default function LocationsView({
     const numericalCapacity =
       formCapacity === "" ? undefined : Number(formCapacity);
 
+    // --- FORMAT REVENUE PAYLOAD PROPERTIES ---
+    const payload = {
+      name: formName,
+      location_in_estate: formInEstate || undefined,
+      capacity: numericalCapacity,
+      is_active: formIsActive,
+      isPaid: formIsPaid,
+      bookingRate:
+        formIsPaid && formBookingRate !== ""
+          ? Number(formBookingRate)
+          : undefined,
+      bookingRateUnit: formIsPaid ? formBookingrange : undefined,
+    };
+
     try {
       if (showModal === "create") {
-        await createLocation({
-          name: formName,
-          location_in_estate: formInEstate || undefined,
-          capacity: numericalCapacity,
-        });
+        // --- UPDATED WITH NEW PAYLOAD DATA ---
+        await createLocation(payload);
       } else if (showModal === "edit" && targetLoc) {
-        await editLocation(targetLoc.id, {
-          name: formName,
-          location_in_estate: formInEstate || undefined,
-          capacity: numericalCapacity,
-        });
+        // --- UPDATED WITH NEW PAYLOAD DATA ---
+        await editLocation(targetLoc.id, payload);
       }
       await refreshData();
       setShowModal(null);
@@ -302,27 +334,67 @@ export default function LocationsView({
     }
   };
 
-  // --- VIEW 1: DETAILED GRID CALENDAR PERSPECTIVE MATRIX ---
+  const tenantMatch = useMemo(() => {
+    if (!currentActiveBooking?.resident_id || !tenants) return null;
+    return (
+      tenants.find(
+        (t) =>
+          t.id?.toString() === currentActiveBooking.resident_id?.toString(),
+      ) || null
+    );
+  }, [currentActiveBooking?.resident_id, tenants]);
+
+  const formattedLocations = useMemo(() => {
+    if (!tenantMatch?.locations) return [];
+    return Object.values(tenantMatch.locations)
+      .flat()
+      .map((loc) => {
+        const unitsStr = Array.isArray(loc.unit) ? loc.unit.join(", ") : "";
+        return `${loc.block}: ${unitsStr}`;
+      });
+  }, [tenantMatch]);
+
   if (selectedLoc) {
     return (
       <div className="bg-white rounded-2xl border border-slate-200/70 p-5 sm:p-6 shadow-2xs animate-in slide-in-from-right duration-300 flex flex-col h-full overflow-hidden min-w-0 font-sans">
         <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-100 pb-4 mb-5 gap-4 min-w-0 shrink-0">
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl sm:text-2xl font-montserrat font-black text-slate-800 tracking-tight truncate block w-full">
-              {selectedLoc.name}
-            </h1>
-            <div className="flex flex-wrap items-center gap-4 text-slate-400 font-bold text-[11px] mt-1 uppercase tracking-wide font-oswald">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-montserrat font-black text-slate-800 tracking-tight truncate max-w-md">
+                {selectedLoc.name}
+              </h1>
+              <span
+                className={`text-[10px] font-oswald uppercase tracking-wider font-bold px-2 py-0.5 rounded-md border ${
+                  selectedLoc.is_active
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200/60"
+                    : "bg-rose-50 text-rose-700 border-rose-200/60"
+                }`}
+              >
+                {selectedLoc.is_active ? "Active" : "Inactive"}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4 text-slate-400 font-bold text-[11px] uppercase tracking-wide font-oswald">
               <span className="flex items-center gap-1.5 text-slate-500 font-sans normal-case tracking-normal font-semibold">
                 <MapPin size={13} className="text-blue-600" />
                 {selectedLoc.location_in_estate || "Main Area Asset Zone"}
               </span>
-              <span className="flex items-center gap-1">
+              <span className="flex items-center gap-1.5 text-slate-500 font-sans normal-case tracking-normal font-semibold">
                 <Users size={13} className="text-blue-600" />
-                Capacity Limit:{" "}
-                <span className="text-slate-600 ml-0.5">
+                Capacity:{" "}
+                <span className="text-slate-700 font-bold ml-0.5">
                   {selectedLoc.capacity
                     ? `${selectedLoc.capacity} Max`
                     : "Unspecified"}
+                </span>
+              </span>
+              <span className="flex items-center gap-1.5 text-slate-500 font-sans normal-case tracking-normal font-semibold">
+                <CreditCard size={13} className="text-blue-600" />
+                Pricing:{" "}
+                <span className="text-slate-700 font-bold ml-0.5">
+                  {selectedLoc.isPaid && selectedLoc.bookingRate
+                    ? `₦${selectedLoc.bookingRate} / ${selectedLoc.bookingRateUnit?.replace("per_", "")}`
+                    : "Free Access"}
                 </span>
               </span>
             </div>
@@ -336,7 +408,6 @@ export default function LocationsView({
         </div>
 
         <div className="flex-1 flex flex-col lg:flex-row gap-5 overflow-hidden min-w-0">
-          {/* LEFT PANEL: Calendar Layout */}
           <div className="flex-1 bg-slate-50/50 border border-slate-200/60 rounded-xl p-4 flex flex-col overflow-hidden min-w-0">
             <div className="flex items-center justify-between mb-4 shrink-0">
               <h2 className="text-xs font-montserrat font-black text-slate-700 uppercase tracking-wide">
@@ -474,21 +545,23 @@ export default function LocationsView({
                 </span>
               </div>
 
-              {activeDateEvents.length > 1 && (
+              {activeDateBookings.length > 1 && (
                 <div className="flex items-center gap-1 bg-slate-50 border border-slate-200/60 p-0.5 rounded-lg shrink-0">
                   <button
-                    disabled={currentEventIndex === 0}
-                    onClick={() => setCurrentEventIndex((prev) => prev - 1)}
+                    disabled={currentBookingIndex === 0}
+                    onClick={() => setCurrentBookingIndex((prev) => prev - 1)}
                     className="p-1 rounded text-slate-500 hover:bg-white border border-transparent hover:border-slate-200/60 transition disabled:opacity-20 disabled:hover:bg-transparent"
                   >
                     <ChevronLeft size={12} />
                   </button>
                   <span className="text-[10px] font-oswald font-bold text-slate-700 px-1">
-                    {currentEventIndex + 1}/{activeDateEvents.length}
+                    {currentBookingIndex + 1}/{activeDateBookings.length}
                   </span>
                   <button
-                    disabled={currentEventIndex === activeDateEvents.length - 1}
-                    onClick={() => setCurrentEventIndex((prev) => prev + 1)}
+                    disabled={
+                      currentBookingIndex === activeDateBookings.length - 1
+                    }
+                    onClick={() => setCurrentBookingIndex((prev) => prev + 1)}
                     className="p-1 rounded text-slate-500 hover:bg-white border border-transparent hover:border-slate-200/60 transition disabled:opacity-20 disabled:hover:bg-transparent"
                   >
                     <ChevronRight size={12} />
@@ -508,54 +581,89 @@ export default function LocationsView({
                     Syncing Log Matrix...
                   </p>
                 </div>
-              ) : currentActiveEvent ? (
+              ) : currentActiveBooking ? (
                 <div className="space-y-4 animate-in fade-in duration-200 text-left flex flex-col justify-between h-full min-w-0">
-                  <div className="space-y-3 min-w-0 w-full">
-                    {currentActiveEvent.banner_url && (
-                      <img
-                        src={currentActiveEvent.banner_url}
-                        alt="Flyer Asset Context"
-                        className="w-full h-32 object-cover rounded-xl border border-slate-100 shadow-3xs shrink-0"
-                      />
-                    )}
+                  <div className="space-y-4 min-w-0 w-full">
+                    {/* Slot Header Badge */}
                     <div className="min-w-0">
-                      <span className="text-[9px] font-oswald font-bold px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200/50 rounded uppercase tracking-wide">
-                        Reserved Slot{" "}
-                        {activeDateEvents.length > 1 &&
-                          `#${currentEventIndex + 1}`}
+                      <span className="text-[9px] font-oswald font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200/50 rounded uppercase tracking-wide">
+                        Booking Slot{" "}
+                        {activeDateBookings.length > 1 &&
+                          `#${currentBookingIndex + 1}`}
                       </span>
-                      <h3 className="font-montserrat font-bold text-base text-slate-800 mt-2 leading-snug break-words">
-                        {currentActiveEvent.title}
-                      </h3>
-                      <p className="text-[10px] font-oswald font-semibold text-slate-400 mt-1 uppercase tracking-wide">
-                        REF ID: {currentActiveEvent.ref_code}
-                      </p>
                     </div>
 
-                    <div className="space-y-2 text-xs font-semibold text-slate-600 min-w-0">
-                      <div className="flex items-center gap-2.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200/40 min-w-0">
-                        <Clock size={14} className="text-blue-600 shrink-0" />
-                        <span className="truncate font-sans">
-                          {currentActiveEvent.start_time} -{" "}
-                          {currentActiveEvent.end_time}
+                    {/* Profile Section: Avatar, Name & Location */}
+                    <div className="flex items-center gap-3.5 bg-slate-50/60 p-3 rounded-xl border border-slate-200/50 min-w-0">
+                      <div className="w-14 h-14 rounded-xl bg-white border border-slate-200 shadow-3xs flex items-center justify-center shrink-0 overflow-hidden text-slate-600 font-montserrat font-black text-lg">
+                        {user &&
+                        estateId &&
+                        tenantMatch?.avatar?.[String(estateId)] ? (
+                          <img
+                            src={tenantMatch.avatar[String(estateId)]}
+                            alt="Profile"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Fallback safely if Cloudinary/image URL returns a 404 broken link
+                              e.currentTarget.style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          (tenantMatch?.name || "U").charAt(0).toUpperCase()
+                        )}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-montserrat font-bold text-base text-slate-800 leading-snug truncate">
+                          {tenantMatch?.name || "Facility Reservation"}
+                        </h3>
+                        {formattedLocations.length > 0 ? (
+                          <p className="text-[11px] text-blue-600 font-bold font-montserrat mt-0.5 truncate">
+                            Unit {formattedLocations.join(" | ")}
+                          </p>
+                        ) : (
+                          <p className="text-[11px] text-slate-400 italic mt-0.5">
+                            No assigned address
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Date and Time Fields with Enlarged Fonts */}
+                    <div className="space-y-2.5 min-w-0">
+                      <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200/30 min-w-0">
+                        <Clock size={16} className="text-blue-600 shrink-0" />
+                        <span className="text-sm font-semibold text-slate-800 truncate font-sans tracking-wide">
+                          {currentActiveBooking.start_time} -{" "}
+                          {currentActiveBooking.end_time}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200/40 min-w-0">
-                        <Users size={14} className="text-blue-600 shrink-0" />
-                        <span className="font-oswald tracking-wide font-medium text-slate-700">
-                          Expected: {currentActiveEvent.expected_guests} Guests
+
+                      <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200/30 min-w-0">
+                        <Calendar
+                          size={16}
+                          className="text-blue-600 shrink-0"
+                        />
+                        <span className="font-montserrat text-xs font-bold text-slate-700 truncate tracking-tight">
+                          {currentActiveBooking.start_date
+                            ? formatDate(currentActiveBooking.start_date)
+                            : ""}{" "}
+                          to{" "}
+                          {currentActiveBooking.end_date
+                            ? formatDate(currentActiveBooking.end_date)
+                            : ""}
                         </span>
                       </div>
                     </div>
                   </div>
 
+                  {/* Footer Action Button */}
                   <button
-                    onClick={() =>
-                      (window.location.href = `/home/events?id=${currentActiveEvent.id}`)
-                    }
-                    className="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-montserrat font-bold text-xs uppercase tracking-wider py-2.5 rounded-xl transition-all shadow-3xs text-center block shrink-0 active:scale-98"
+                    type="button"
+                    onClick={(e) => e.preventDefault()}
+                    className="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-montserrat font-bold text-xs uppercase tracking-wider py-3 rounded-xl transition-all shadow-3xs text-center block shrink-0 active:scale-98"
                   >
-                    See Event Details
+                    View Resident
                   </button>
                 </div>
               ) : (
@@ -635,9 +743,25 @@ export default function LocationsView({
                     <MapPin size={20} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="font-montserrat font-bold text-slate-800 text-sm group-hover:text-blue-600 transition-colors truncate block w-full mb-0.5">
-                      {loc.name}
-                    </h3>
+                    <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                      <h3 className="font-montserrat font-bold text-slate-800 text-sm group-hover:text-blue-600 transition-colors truncate block max-w-xs sm:max-w-md">
+                        {loc.name}
+                      </h3>
+                      <span
+                        className={`text-[9px] font-oswald uppercase tracking-wider font-bold px-1.5 py-0.2 rounded border ${
+                          loc.is_active
+                            ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                            : "bg-rose-50 text-rose-600 border-rose-100"
+                        }`}
+                      >
+                        {loc.is_active ? "Active" : "Inactive"}
+                      </span>
+                      {loc.isPaid && (
+                        <span className="text-[9px] font-oswald uppercase tracking-wider font-bold px-1.5 py-0.2 bg-amber-50 text-amber-600 border border-amber-100 rounded">
+                          Paid (₦{loc.bookingRate})
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-slate-500 font-medium truncate block w-full">
                       {loc.location_in_estate ||
                         "No detailed layout descriptions given."}
@@ -687,7 +811,7 @@ export default function LocationsView({
       {/* OPERATIONAL OVERLAY DIALOGS */}
       {showModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-3xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-150 font-sans">
-          <div className="bg-white rounded-xl p-5 w-full max-w-sm shadow-xl border border-slate-100 animate-in zoom-in-95 duration-200 text-left">
+          <div className="bg-white rounded-xl p-5 w-full max-w-md shadow-xl border border-slate-100 animate-in zoom-in-95 duration-200 text-left overflow-y-auto max-h-[90vh] custom-scrollbar">
             <div className="flex justify-between items-center mb-4 border-b border-slate-50 pb-2">
               <h3 className="text-sm font-montserrat font-black text-slate-800 uppercase tracking-wide">
                 {showModal === "create"
@@ -703,6 +827,24 @@ export default function LocationsView({
             </div>
 
             <div className="space-y-4">
+              {/* Status Field */}
+              <div className="flex items-center justify-between bg-slate-50 p-2.5 rounded-lg border border-slate-200/50">
+                <div>
+                  <label className="block text-[10px] font-montserrat font-bold uppercase text-slate-700 tracking-wide">
+                    Operational Status
+                  </label>
+                  <p className="text-[10px] text-slate-400 font-medium">
+                    Toggle visibility layout access
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={formIsActive}
+                  onChange={(e) => setFormIsActive(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                />
+              </div>
+
               <div>
                 <label className="block text-[9px] font-oswald font-bold uppercase text-slate-400 tracking-wider mb-1.5">
                   Location Name *
@@ -743,10 +885,71 @@ export default function LocationsView({
                 />
               </div>
 
+              {/* Premium Billing Configurations */}
+              <div className="border-t border-slate-100 pt-3 mt-2 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-[10px] font-montserrat font-bold uppercase text-slate-700 tracking-wide">
+                      Paid Venue Booking
+                    </label>
+                    <p className="text-[10px] text-slate-400 font-medium">
+                      Require payments layer options
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={formIsPaid}
+                    onChange={(e) => setFormIsPaid(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                  />
+                </div>
+
+                {formIsPaid && (
+                  <div className="grid grid-cols-2 gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div>
+                      <label className="block text-[9px] font-oswald font-bold uppercase text-slate-400 tracking-wider mb-1">
+                        Rate Amount (₦) *
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="e.g. 5000"
+                        value={formBookingRate}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setBookingRate(val === "" ? "" : parseFloat(val));
+                        }}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-medium bg-slate-50 outline-none focus:border-blue-500 transition-colors text-slate-700 font-sans"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-oswald font-bold uppercase text-slate-400 tracking-wider mb-1">
+                        Billing Unit Unit *
+                      </label>
+                      <select
+                        value={formBookingrange}
+                        onChange={(e) =>
+                          setBookingRange(
+                            e.target.value as
+                              | "per_hour"
+                              | "per_day"
+                              | "per_event",
+                          )
+                        }
+                        className="w-full px-2.5 py-2 border border-slate-200 rounded-lg text-xs font-medium bg-slate-50 outline-none focus:border-blue-500 transition-colors text-slate-700 font-sans h-[34px]"
+                      >
+                        <option value="per_hour">Per Hour</option>
+                        <option value="per_day">Per Day</option>
+                        <option value="per_event">Per Event</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <button
                 disabled={isSubmitting}
                 onClick={handleSaveLocation}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-montserrat font-bold text-xs uppercase tracking-wider py-3 rounded-xl shadow-3xs flex items-center justify-center gap-1.5 disabled:opacity-50 transition-all mt-2 active:scale-98"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-montserrat font-bold text-xs uppercase tracking-wider py-3 rounded-xl shadow-3xs flex items-center justify-center gap-1.5 disabled:opacity-50 transition-all mt-4 active:scale-98"
               >
                 {isSubmitting && <Loader2 size={13} className="animate-spin" />}
                 <span>
