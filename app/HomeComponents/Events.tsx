@@ -20,6 +20,10 @@ import {
   AlertCircle,
   Search,
   Plus,
+  CreditCard,
+  FileText,
+  Check,
+  Copy,
 } from "lucide-react";
 import { EstateFacility, LocationBooking, Tenant } from "../services/types";
 import { useSearchParams } from "next/navigation";
@@ -27,6 +31,7 @@ import {
   approveEvent,
   getAllBookings,
   getAllLocations,
+  getBookingStatusBadge,
 } from "../services/apis";
 import LocationsView from "./LocationsView";
 import toast from "react-hot-toast";
@@ -49,7 +54,12 @@ export default function BookingsReviewPage() {
   const [selectedBooking, setSelectedBooking] =
     useState<LocationBooking | null>(null);
   const [statusFilter, setStatusFilter] = useState<
-    "ALL" | "PENDING" | "APPROVED" | "REJECTED"
+    | "ALL"
+    | "PENDING"
+    | "PAYMENT_PENDING"
+    | "PAYMENT_SUBMITTED"
+    | "APPROVED"
+    | "REJECTED"
   >("PENDING");
   const [startDateFilter, setStartDateFilter] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -104,15 +114,23 @@ export default function BookingsReviewPage() {
 
   const filteredbookings = useMemo(() => {
     return allbookings.filter((e) => {
+      const isApproved = e.status === "APPROVED";
+      const isRejected = e.status === "REJECTED";
+      const isPending = e.status === "PENDING_APPROVAL";
+      const isPaymentPending = e.status === "PAYMENT_PENDING";
+      const isPaiD = e.status === "PAYMENT_SUBMITTED";
+
       const matchesStatus =
         statusFilter === "ALL" ||
-        (statusFilter === "APPROVED" && e.is_approved) ||
-        (statusFilter === "REJECTED" && e.is_rejected) ||
-        (statusFilter === "PENDING" && !e.is_approved && !e.is_rejected);
+        (statusFilter === "APPROVED" && isApproved) ||
+        (statusFilter === "REJECTED" && isRejected) ||
+        (statusFilter === "PENDING" && isPending) ||
+        (statusFilter === "PAYMENT_PENDING" && isPaymentPending) ||
+        (statusFilter === "PAYMENT_SUBMITTED" && isPaiD);
 
-      const matchesSearch =
-        e.resident_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        e.venue_name?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = e.venue_name
+        ?.toLowerCase()
+        .includes(searchQuery.toLowerCase());
 
       const eventDate = formatToLocalDateString(e.start_date);
       const matchesDate = !startDateFilter || eventDate === startDateFilter;
@@ -173,23 +191,31 @@ export default function BookingsReviewPage() {
           </h2>
         </div>
 
-        <div className="flex bg-slate-100 p-0.5 rounded-xl border border-slate-200/30 w-full md:w-auto shrink-0">
-          {["ALL", "PENDING", "APPROVED", "REJECTED"].map((s) => (
+        {/* Filter Bar with Matching Enum Keys */}
+        <div className="flex bg-slate-100 p-0.5 rounded-xl border border-slate-200/30 w-full md:w-auto shrink-0 overflow-x-auto">
+          {[
+            { label: "ALL", value: "ALL" },
+            { label: "PENDING", value: "PENDING_APPROVAL" },
+            { label: "PAYMENT PENDING", value: "PAYMENT_PENDING" },
+            { label: "PAYMENT SUBMITTED", value: "PAYMENT_SUBMITTED" },
+            { label: "APPROVED", value: "APPROVED" },
+            { label: "REJECTED", value: "REJECTED" },
+          ].map((tab) => (
             <button
-              key={s}
-              onClick={() => setStatusFilter(s as any)}
-              className={`flex-1 md:flex-initial px-4 py-2 rounded-lg text-[10px] font-montserrat font-bold tracking-wider uppercase transition-all ${
-                statusFilter === s
+              key={tab.value}
+              onClick={() => setStatusFilter(tab.value as any)}
+              className={`flex-1 md:flex-initial px-3 py-2 rounded-lg text-[10px] font-montserrat font-bold tracking-wider uppercase transition-all whitespace-nowrap ${
+                statusFilter === tab.value
                   ? "bg-white text-blue-600 shadow-3xs"
                   : "text-slate-400 hover:text-slate-600"
               }`}
             >
-              {s}
+              {tab.label}
             </button>
           ))}
         </div>
 
-        <div className="flex items-center bg-blue-600 rounded-2xl p-1">
+        {/* <div className="flex items-center bg-blue-600 rounded-2xl p-1">
           <button
             className="flex flex-1 p-1 rounded-lg text-[12px] font-montserrat text-white tracking-wider uppercase transition-all"
             onClick={() => setOpenAddForm(true)}
@@ -199,19 +225,19 @@ export default function BookingsReviewPage() {
             </span>
             Add Booking
           </button>
-        </div>
+        </div> */}
       </div>
 
       <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar min-w-0">
         {filteredbookings.length > 0 ? (
           filteredbookings.map((booking) => {
-            // Resolve visual name matching coordinates from active facilities list
             const venueMatch = facilities.find(
               (loc) => loc.id.toString() === booking.venue_id?.toString(),
             );
             const venueName = venueMatch
               ? venueMatch.name
               : "Unknown Venue Asset";
+            const badge = getBookingStatusBadge(booking.status);
 
             return (
               <button
@@ -221,26 +247,18 @@ export default function BookingsReviewPage() {
               >
                 <div className="flex items-center gap-4 flex-1 min-w-0">
                   <div
-                    className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border ${
-                      booking.is_approved
-                        ? "bg-emerald-50 border-emerald-100 text-emerald-600"
-                        : booking.is_rejected
-                          ? "bg-rose-50 border-rose-100 text-rose-600"
-                          : "bg-amber-50 border-amber-100 text-amber-600"
-                    }`}
+                    className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border ${badge.border} ${badge.bg} text-gm-navy transition-colors`}
                   >
                     <Calendar size={18} />
                   </div>
 
                   <div className="flex justify-between items-center flex-1 min-w-0 pr-2">
                     <div className="min-w-0 flex-1">
-                      {/* Render Resident Identity Parameter as the Principal Line Item Accent */}
                       <h3 className="font-montserrat font-bold text-slate-800 text-sm group-hover:text-blue-600 transition-colors truncate block w-full mb-0.5">
                         {tenants.find(
                           (tenant) => tenant.id === booking.resident_id,
                         )?.name || "Unassigned Resident Account"}
                       </h3>
-                      {/* Secondary Line explicitly tracks localized Venue context */}
                       <p className="text-[10px] font-oswald font-semibold text-slate-400 uppercase tracking-wide truncate block w-full">
                         Venue:{" "}
                         <span className="text-slate-600">{venueName}</span>
@@ -253,19 +271,9 @@ export default function BookingsReviewPage() {
                       </p>
                       <div className="flex items-center justify-end mt-1">
                         <span
-                          className={`text-[9px] font-oswald font-bold uppercase px-1.5 py-0.5 rounded ${
-                            booking.is_approved
-                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200/50"
-                              : booking.is_rejected
-                                ? "bg-rose-50 text-rose-700 border border-rose-200/50"
-                                : "bg-amber-50 text-amber-700 border border-amber-200/50"
-                          }`}
+                          className={`text-[9px] font-oswald font-bold uppercase px-1.5 py-0.5 rounded border ${badge.border} ${badge.bg} text-gm-navy`}
                         >
-                          {booking.is_approved
-                            ? "Approved"
-                            : booking.is_rejected
-                              ? "Rejected"
-                              : "Pending"}
+                          {badge.label}
                         </span>
                       </div>
                     </div>
@@ -285,6 +293,7 @@ export default function BookingsReviewPage() {
           </div>
         )}
       </div>
+
       <AddBookingFormModal
         isOpen={openAddForm}
         onClose={() => setOpenAddForm(false)}
@@ -298,8 +307,10 @@ export default function BookingsReviewPage() {
   );
 
   const DetailView = ({ booking }: { booking: LocationBooking }) => {
-    const {user} = useUser()
-    const estateId = user?.estate_id
+    const { user } = useUser();
+    const estateId = user?.estate_id;
+    const [copied, setCopied] = useState(false);
+
     const isMultiDay =
       booking.end_date &&
       formatToLocalDateString(booking.end_date) !==
@@ -308,7 +319,6 @@ export default function BookingsReviewPage() {
     const start = new Date(formatToLocalDateString(booking.start_date));
     const end = new Date(formatToLocalDateString(booking.end_date));
 
-    // 1. Find the tenant record safely
     const tenantMatch = useMemo(() => {
       if (!booking.resident_id || !tenants) return null;
       return (
@@ -318,7 +328,6 @@ export default function BookingsReviewPage() {
       );
     }, [booking.resident_id, tenants]);
 
-    // 2. Format location structures
     const formattedLocations = useMemo(() => {
       if (!tenantMatch?.locations) return [];
       return Object.values(tenantMatch.locations)
@@ -358,9 +367,24 @@ export default function BookingsReviewPage() {
       return excluded;
     }, [booking.start_date, booking.end_date, booking.booked_dates]);
 
+    const badge = getBookingStatusBadge(booking.status);
+    const isApproved = booking.status === "APPROVED";
+    const isRejected = booking.status === "REJECTED";
+
+    // Quick helper to handle reference copy
+    const handleCopyRef = (ref: string) => {
+      navigator.clipboard.writeText(ref);
+      setCopied(true);
+      toast.success("Transaction reference copied!");
+      setTimeout(() => setCopied(false), 2000);
+    };
+
+    const hasPaymentDetails = Boolean(
+      booking.payment_url || booking.transaction_ref,
+    );
+
     return (
       <div className="bg-white rounded-2xl border border-slate-200/70 p-5 sm:p-6 shadow-2xs animate-in slide-in-from-right duration-300 flex flex-col h-full overflow-hidden min-w-0">
-        {/* Navigation Back Header */}
         <button
           onClick={() => setSelectedBooking(null)}
           className="w-fit flex items-center gap-1.5 text-slate-500 hover:text-blue-600 transition-colors mb-6 font-montserrat font-bold text-xs uppercase tracking-wider shrink-0"
@@ -370,9 +394,9 @@ export default function BookingsReviewPage() {
 
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 flex-1 overflow-y-auto pr-1 pb-4 min-w-0 custom-scrollbar">
           <div className="flex-1 min-w-0 space-y-6">
-            {/* Top Operational Row: Action Panel */}
+            {/* Action Row */}
             <div className="flex flex-wrap items-center justify-end gap-2 border-b border-slate-100 pb-4 shrink-0 w-full ml-auto">
-              {(!booking.is_approved || booking.is_rejected) && (
+              {!isApproved && (
                 <button
                   disabled={!!loadingAction}
                   onClick={() => handleUpdateStatus(booking.id, "approve")}
@@ -383,11 +407,15 @@ export default function BookingsReviewPage() {
                   ) : (
                     <CheckCircle size={14} />
                   )}
-                  <span>Approve Booking</span>
+                  <span>
+                    {booking.status === "PAYMENT_SUBMITTED"
+                      ? "Verify & Approve"
+                      : "Approve Booking"}
+                  </span>
                 </button>
               )}
 
-              {(!booking.is_rejected || booking.is_approved) && (
+              {!isRejected && (
                 <button
                   disabled={!!loadingAction}
                   onClick={() => handleUpdateStatus(booking.id, "reject")}
@@ -403,9 +431,8 @@ export default function BookingsReviewPage() {
               )}
             </div>
 
-            {/* Highlighted Resident Profile Information Block */}
+            {/* Profile Card */}
             <div className="bg-slate-50/50 rounded-2xl border border-slate-200/50 p-5 flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 min-w-0 shadow-3xs">
-              {/* Enhanced Sized Profile Avatar Component */}
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white border border-slate-200 shadow-2xs flex items-center justify-center shrink-0 overflow-hidden text-slate-600 font-montserrat font-black text-xl sm:text-2xl">
                 {estateId && tenantMatch?.avatar?.[estateId] ? (
                   <img
@@ -414,29 +441,23 @@ export default function BookingsReviewPage() {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  (tenantMatch?.name || booking.resident_name || "U")
-                    .charAt(0)
-                    .toUpperCase()
+                  (tenantMatch?.name || "U").charAt(0).toUpperCase()
                 )}
               </div>
 
-              {/* Profile Text Content Area */}
               <div className="min-w-0 flex-1 text-center sm:text-left space-y-1">
                 <span className="inline-block px-2.5 py-0.5 rounded text-[10px] font-oswald font-bold uppercase tracking-wider border bg-blue-50 text-blue-600 border-blue-200/50">
                   Resident Profile
                 </span>
 
-                <h3 className="text-xl sm:text-2xl font-montserrat font-black text-slate-800 leading-tight tracking-tight break-words">
-                  {tenantMatch?.name ||
-                    booking.resident_name ||
-                    "Unassigned Resident Account"}
+                <h3 className="text-xl sm:text-2xl font-montserrat font-black text-slate-800 leading-tight tracking-tight wrap-break-word">
+                  {tenantMatch?.name || "Unassigned Resident Account"}
                 </h3>
 
                 <p className="text-xs sm:text-sm text-slate-500 font-medium font-montserrat">
                   {tenantMatch?.email || "No email provided"}
                 </p>
 
-                {/* Structured Assigned Housing Location Info */}
                 <div className="pt-1">
                   {formattedLocations.length > 0 ? (
                     <p className="text-xs sm:text-sm text-blue-700 font-bold font-montserrat bg-blue-50/50 border border-blue-100/50 rounded-lg px-2.5 py-1 w-fit mx-auto sm:ml-0">
@@ -451,28 +472,121 @@ export default function BookingsReviewPage() {
               </div>
             </div>
 
-            {/* Operational Flow Status Indicators */}
-            {(booking.is_approved || booking.is_rejected) && (
-              <div
-                className={`p-3.5 rounded-xl flex items-center gap-2.5 border text-xs font-semibold shadow-3xs ${
-                  booking.is_approved
-                    ? "bg-emerald-50/60 border-emerald-100 text-emerald-700"
-                    : "bg-rose-50/60 border-rose-100 text-rose-700"
-                }`}
-              >
-                {booking.is_approved ? (
-                  <CheckCircle size={15} />
-                ) : (
-                  <AlertCircle size={15} />
-                )}
-                <p className="font-montserrat font-bold text-[10px] uppercase tracking-wider">
-                  Current Status:{" "}
-                  {booking.is_approved ? "Approved" : "Rejected"}
-                </p>
+            {/* Status Banner */}
+            <div
+              className={`p-3.5 rounded-xl flex items-center gap-2.5 border text-xs font-semibold shadow-3xs ${badge.border} ${badge.bg} text-gm-navy`}
+            >
+              {isApproved ? (
+                <CheckCircle size={15} />
+              ) : isRejected ? (
+                <AlertCircle size={15} />
+              ) : (
+                <Clock size={15} />
+              )}
+              <p className="font-montserrat font-bold text-[10px] uppercase tracking-wider">
+                Current Status: {badge.label}
+              </p>
+            </div>
+
+            {/* NEW: Payment Verification Panel (Rendered if ANY payment proof/ref exists) */}
+            {hasPaymentDetails && (
+              <div className="p-4 bg-purple-50/40 border border-purple-200/60 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between border-b border-purple-100 pb-2">
+                  <span className="text-[10px] font-oswald font-bold text-purple-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <CreditCard size={14} /> Payment Proof & Audit Info
+                  </span>
+                  {booking.is_paid && (
+                    <span className="text-[9px] font-oswald font-bold uppercase px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200">
+                      Settled
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  {/* Clickable Thumbnail / Document Preview */}
+                  {booking.payment_url ? (
+                    <a
+                      href={booking.payment_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group relative w-24 h-24 sm:w-28 sm:h-28 rounded-xl bg-slate-900 border border-purple-200 overflow-hidden shrink-0 flex items-center justify-center shadow-xs hover:shadow-md transition-all"
+                    >
+                      {/* Render Image or File Fallback */}
+                      <img
+                        src={booking.payment_url}
+                        alt="Payment Receipt"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-90 group-hover:opacity-100"
+                        onError={(e) => {
+                          // Fallback if payment_url is a document/PDF rather than a direct image
+                          (e.target as HTMLElement).style.display = "none";
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-slate-900/40 group-hover:bg-slate-900/20 transition-colors flex flex-col items-center justify-center gap-1 text-white p-2 text-center">
+                        <ExternalLink size={18} className="drop-shadow-sm" />
+                        <span className="text-[9px] font-montserrat font-bold uppercase tracking-tight">
+                          View Receipt
+                        </span>
+                      </div>
+                    </a>
+                  ) : (
+                    <div className="w-24 h-24 rounded-xl bg-purple-100/60 border border-dashed border-purple-300 flex flex-col items-center justify-center text-purple-400 p-2 text-center shrink-0">
+                      <FileText size={20} />
+                      <span className="text-[9px] font-montserrat font-semibold mt-1">
+                        No Image File
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Transaction Reference & Quick Actions */}
+                  <div className="flex-1 space-y-2 min-w-0 w-full">
+                    <div>
+                      <label className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-wide block">
+                        Transaction Reference
+                      </label>
+                      {booking.transaction_ref ? (
+                        <div className="flex items-center gap-2 mt-1">
+                          <code className="text-xs font-mono font-bold text-purple-900 bg-white border border-purple-200 rounded-lg px-2.5 py-1.5 truncate max-w-full block">
+                            {booking.transaction_ref}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleCopyRef(booking.transaction_ref!)
+                            }
+                            className="p-1.5 rounded-lg bg-white border border-purple-200 text-purple-600 hover:bg-purple-100 transition-colors shrink-0"
+                            title="Copy Reference"
+                          >
+                            {copied ? (
+                              <Check size={14} className="text-emerald-600" />
+                            ) : (
+                              <Copy size={14} />
+                            )}
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-400 italic">
+                          No reference recorded
+                        </p>
+                      )}
+                    </div>
+
+                    {booking.payment_url && (
+                      <a
+                        href={booking.payment_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-montserrat font-bold text-purple-700 hover:text-purple-900 underline underline-offset-2 pt-1"
+                      >
+                        Open receipt document in new tab{" "}
+                        <ExternalLink size={12} />
+                      </a>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* Details Grid Section */}
+            {/* Details Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0">
               <DetailBox
                 icon={<Calendar size={18} />}
@@ -495,7 +609,7 @@ export default function BookingsReviewPage() {
               />
             </div>
 
-            {/* Blackout Exception Schedule Panels */}
+            {/* Excluded Dates */}
             {excludedDatesList.length > 0 && (
               <div className="p-4 bg-rose-50/30 border border-rose-100/60 rounded-xl min-w-0">
                 <span className="text-[10px] font-oswald font-bold text-rose-600 uppercase tracking-wider block mb-2">

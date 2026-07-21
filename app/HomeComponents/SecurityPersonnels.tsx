@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { securityDb } from "../services/database";
 import { SecurityUser } from "../services/types";
 import {
@@ -13,8 +13,9 @@ import {
   Loader2,
   History,
   ArrowLeft,
+  ExternalLink,
 } from "lucide-react";
-import { formatLastSeen } from "../services/apis";
+import { fetchReadableAddress, formatLastSeen } from "../services/apis";
 import UserLogsPage from "./UsersLogsPage";
 
 export default function SecurityPersonnelsList() {
@@ -24,6 +25,9 @@ export default function SecurityPersonnelsList() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState(false);
   const [selectedGuard, setSelectedGuard] = useState<SecurityUser | null>(null);
+  const [viewLogs, setViewLogs] = useState(false);
+  const [lastKnownAddress, setLastKnownAddress] = useState<string>("");
+
 
   const fetchGuards = async () => {
     setError(false);
@@ -61,12 +65,38 @@ export default function SecurityPersonnelsList() {
     }
   };
 
-  if (selectedGuard) {
+  useEffect(() => {
+    const rawLocation =
+      selectedGuard?.last_known_location ||
+      selectedGuard?.checkin_location ||
+      "";
+
+    if (!rawLocation) {
+      setLastKnownAddress("");
+      return;
+    }
+
+    let isMounted = true;
+
+    fetchReadableAddress(rawLocation)
+      .then((address) => {
+        if (isMounted) setLastKnownAddress(address);
+      })
+      .catch(() => {
+        if (isMounted) setLastKnownAddress("Unknown location");
+      });
+
+    return () => {
+      isMounted = false; // Prevent state updates if selectedGuard changes mid-fetch
+    };
+  }, [selectedGuard?.last_known_location, selectedGuard?.checkin_location]);
+
+  if (viewLogs && selectedGuard) {
     return (
       <div className="bg-white p-2 sm:p-8 rounded-4xl border border-slate-100 shadow-sm space-y-4 animate-in fade-in zoom-in-95 duration-200">
         <button
           onClick={() => {
-            setSelectedGuard(null);
+            setViewLogs(false);
           }}
           className="flex items-center gap-2 text-xs font-sans font-bold text-slate-500 hover:text-slate-800 transition-colors mb-2"
         >
@@ -101,11 +131,166 @@ export default function SecurityPersonnelsList() {
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar">
-        {filteredGuards.length > 0 ? (
+        {selectedGuard ? (
+          /* --- GUARD DETAIL VIEW --- */
+          <div className="bg-white rounded-[3rem] border border-slate-100 p-8 animate-in slide-in-from-right duration-300">
+            <button
+              onClick={() => setSelectedGuard(null)}
+              className="flex items-center gap-2 text-slate-500 hover:text-slate-800 mb-8 font-bold cursor-pointer"
+            >
+              <ArrowLeft size={20} /> Back to Directory
+            </button>
+
+            <div className="flex flex-col lg:flex-row gap-12">
+              {/* Profile Sidebar */}
+              <div className="w-full lg:w-1/3 flex flex-col items-center bg-slate-50 rounded-[2.5rem] p-6 sm:p-10 border border-slate-100 shrink-0 min-w-0">
+                <div className="relative mb-6">
+                  <img
+                    src={
+                      selectedGuard.avatar ||
+                      `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedGuard.name)}`
+                    }
+                    className="w-full max-w-[20rem] aspect-square rounded-[2.5rem] object-cover shadow-2xl border-4 border-white mb-6 shrink-0"
+                    alt={selectedGuard.name}
+                  />
+                  <span
+                    className={`absolute bottom-2 right-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border-2 border-white shadow-sm ${
+                      selectedGuard.is_on_duty
+                        ? "bg-emerald-500 text-white"
+                        : "bg-slate-400 text-white"
+                    }`}
+                  >
+                    {selectedGuard.is_on_duty ? "On Duty" : "Off Duty"}
+                  </span>
+                </div>
+
+                <h2 className="text-3xl font-black text-slate-900 mb-1 text-center">
+                  {selectedGuard.name}
+                </h2>
+                <p className="text-slate-500 font-bold mb-4 italic text-center">
+                  {selectedGuard.email}
+                </p>
+                <span className="text-[10px] font-black text-slate-600 bg-slate-200/60 px-3 py-1 rounded-full uppercase tracking-widest">
+                  {selectedGuard.role}
+                </span>
+              </div>
+
+              {/* Info Grid */}
+              <div className="flex-1 space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="p-6 bg-white border border-slate-100 rounded-3xl">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                      Phone Number
+                    </p>
+                    <p className="text-md font-black text-slate-800">
+                      {selectedGuard.phone || "No Phone Recorded"}
+                    </p>
+                  </div>
+
+                  <div className="p-6 bg-white border border-slate-100 rounded-3xl overflow-x-auto">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                      Last Known Location
+                    </p>
+                    <p className="text-md font-black text-slate-800 truncate">
+                      {lastKnownAddress || "No Location Recorded"}
+                    </p>
+                    {selectedGuard.last_location_time && (
+                      <p className="text-xs text-slate-400 font-medium mt-1">
+                        Updated:{" "}
+                        {new Date(
+                          selectedGuard.last_location_time,
+                        ).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Duty Log Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="p-6 bg-slate-50 border border-slate-100 rounded-3xl">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                      Last Check-In
+                    </p>
+                    <p className="text-sm font-black text-slate-800">
+                      {selectedGuard.last_checkin
+                        ? new Date(selectedGuard.last_checkin).toLocaleString()
+                        : "No check-in record"}
+                    </p>
+                    {selectedGuard.checkin_location && (
+                      <p className="text-xs text-slate-500 font-bold mt-1">
+                        Loc: {selectedGuard.checkin_location}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="p-6 bg-slate-50 border border-slate-100 rounded-3xl">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                      Last Check-Out
+                    </p>
+                    <p className="text-sm font-black text-slate-800">
+                      {selectedGuard.last_checkout
+                        ? new Date(selectedGuard.last_checkout).toLocaleString()
+                        : "No check-out record"}
+                    </p>
+                    {selectedGuard.checkout_location && (
+                      <p className="text-xs text-slate-500 font-bold mt-1">
+                        Loc: {selectedGuard.checkout_location}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Verification Documents Section */}
+                <section>
+                  <h4 className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-6 px-1">
+                    Verification Documents
+                  </h4>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 px-1">
+                      <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded uppercase tracking-widest">
+                        {selectedGuard.id_type || "Government ID"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <DocPreview
+                        url={selectedGuard.id_front_url}
+                        label="ID Front View"
+                      />
+                      <DocPreview
+                        url={selectedGuard.id_back_url}
+                        label="ID Back View"
+                      />
+                    </div>
+                  </div>
+                </section>
+
+                {/* Action Controls */}
+                <div className="flex flex-col sm:flex-row gap-4 pt-8">
+                  <button
+                    className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-lg cursor-pointer"
+                    onClick={() => setViewLogs(true)}
+                  >
+                    View Logs
+                  </button>
+                  <button
+                    className="flex-1 py-4 bg-red-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-600 active:scale-95 transition-all cursor-pointer"
+                    onClick={() => {
+                      handleDelete(selectedGuard.id);
+                    }}
+                  >
+                    Remove Security Personnel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : filteredGuards.length > 0 ? (
           <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-6 p-4">
             {filteredGuards.map((guard) => (
               <div
                 key={guard.id}
+                onClick={() => setSelectedGuard(guard)}
                 className="flex flex-col bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-2xs hover:shadow-xs hover:border-slate-200 transition-all h-72"
               >
                 <div className="flex flex-row flex-1 p-4 gap-4 min-w-0">
@@ -133,21 +318,7 @@ export default function SecurityPersonnelsList() {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 text-slate-400 min-w-0">
-                      <Mail size={14} className="shrink-0 text-slate-300" />
-                      <p className="text-xs truncate font-sans font-medium">
-                        {guard.email}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-slate-400 min-w-0">
-                      <Phone size={14} className="shrink-0 text-slate-300" />
-                      <p className="text-xs truncate font-sans font-semibold">
-                        {guard.phone || "No phone connected"}
-                      </p>
-                    </div>
-
-                    <div className="flex justify-between gap-2 mt-1">
+                    <div className="flex justify-start gap-2 mt-1">
                       {/* Last Check-in Section */}
                       <div className="flex flex-col">
                         <div className="space-y-0.5">
@@ -179,44 +350,9 @@ export default function SecurityPersonnelsList() {
                           </div>
                         </div>
                       </div>
-
-                      <div className="w-fit h-fit p-3 flex justify-center">
-                        <button
-                          onClick={() => setSelectedGuard(guard)}
-                          className="p-1.5 hover:bg-slate-100 rounded-lg border text-slate-500 hover:text-slate-800 transition-all inline-flex items-center gap-1 font-bold text-[14px]"
-                        >
-                          <History size={14} />
-                          <span className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-widest">
-                            View Logs
-                          </span>
-                        </button>
-                      </div>
                     </div>
                   </div>
                 </div>
-
-                {/* Action Button at the base */}
-                <button
-                  onClick={() => handleDelete(guard.id)}
-                  disabled={deletingId === guard.id}
-                  className={`w-full py-3.5 border-t border-slate-50 font-montserrat font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-colors shrink-0 ${
-                    deletingId === guard.id
-                      ? "bg-slate-50 text-slate-300 cursor-not-allowed"
-                      : "bg-slate-50/50 text-red-600 hover:bg-red-50/80 hover:text-red-700"
-                  }`}
-                >
-                  {deletingId === guard.id ? (
-                    <>
-                      <Loader2 size={14} className="animate-spin" />
-                      Removing...
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 size={14} />
-                      Remove Personnel
-                    </>
-                  )}
-                </button>
               </div>
             ))}
           </div>
@@ -245,3 +381,35 @@ export default function SecurityPersonnelsList() {
     </div>
   );
 }
+
+const DocPreview = ({ url, label }: { url?: string; label: string }) => (
+  <div className="space-y-2">
+    <div className="flex justify-between items-center">
+      <span className="text-xs font-bold text-slate-400 uppercase tracking-tighter">
+        {label}
+      </span>
+      {url && (
+        <a
+          href={url}
+          target="_blank"
+          className="text-blue-500 hover:text-blue-700"
+        >
+          <ExternalLink size={14} />
+        </a>
+      )}
+    </div>
+    {url ? (
+      <img
+        src={url}
+        className="w-full h-40 object-cover rounded-lg border border-slate-200 bg-slate-100"
+        alt={label}
+      />
+    ) : (
+      <div className="w-full h-40 bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center">
+        <span className="text-slate-300 text-sm italic font-medium">
+          Not Provided
+        </span>
+      </div>
+    )}
+  </div>
+);

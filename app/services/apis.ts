@@ -1059,7 +1059,9 @@ export async function forceOverrideSubAccountPasswordApi(
   }
 }
 
-export const deleteStaleCloudinaryAsset = async (url: string): Promise<boolean> => {
+export const deleteStaleCloudinaryAsset = async (
+  url: string,
+): Promise<boolean> => {
   try {
     const response = await fetch(`${baseUrl}/api/admin/assets/delete`, {
       method: "POST",
@@ -1074,5 +1076,53 @@ export const deleteStaleCloudinaryAsset = async (url: string): Promise<boolean> 
   } catch (error) {
     console.error("Failed executing storage bucket cleanup sequence:", error);
     return false;
+  }
+};
+
+export type BookingStatus =
+  | "PENDING_APPROVAL"
+  | "PAYMENT_PENDING"
+  | "PAYMENT_SUBMITTED"
+  | "APPROVED"
+  | "REJECTED";
+
+export const getBookingStatusBadge = (status: BookingStatus) => {
+  switch (status) {
+    case "APPROVED":
+      return {
+        label: "Approved",
+        color: "text-emerald-500",
+        bg: "bg-emerald-100 dark:bg-emerald-950/40",
+        border: "border-emerald-200 dark:border-emerald-800/50",
+      };
+    case "PAYMENT_PENDING":
+      return {
+        label: "Payment Pending",
+        color: "text-blue-500",
+        bg: "bg-blue-100 dark:bg-blue-950/40",
+        border: "border-blue-200 dark:border-blue-800/50",
+      };
+    case "PAYMENT_SUBMITTED":
+      return {
+        label: "Payment Under Review",
+        color: "text-purple-500",
+        bg: "bg-purple-100 dark:bg-purple-950/40",
+        border: "border-purple-200 dark:border-purple-800/50",
+      };
+    case "REJECTED":
+      return {
+        label: "Rejected",
+        color: "text-red-500",
+        bg: "bg-red-100 dark:bg-red-950/40",
+        border: "border-red-200 dark:border-red-800/50",
+      };
+    case "PENDING_APPROVAL":
+    default:
+      return {
+        label: "Pending",
+        color: "text-amber-500",
+        bg: "bg-amber-100 dark:bg-amber-950/40",
+        border: "border-amber-200 dark:border-amber-800/50",
+      };
   }
 };

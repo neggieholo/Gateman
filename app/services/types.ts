@@ -510,26 +510,35 @@ export interface EventRegistration {
   created_at: string;
 }
 
+export type BookingStatus = 
+  | 'PENDING_APPROVAL'
+  | 'PAYMENT_PENDING'
+  | 'PAYMENT_SUBMITTED'
+  | 'APPROVED'
+  | 'REJECTED';
+
 export interface LocationBooking {
   id: string;
   estate_id: string;
-  resident_id: string; // Replaces organizer_id
-  resident_name: string; // Joined from profiles/residents table for UI display
+  resident_id: string;  
   venue_id: string;
-  venue_name: string; // Joined from estate_facilities table for UI display
+  venue_name: string;
 
-  // Date and Time (Postgres formats)
   start_date: string; // ISO Date string (YYYY-MM-DD)
   end_date: string;
   start_time: string; // HH:mm:ss
   end_time: string;
   booked_dates: string[];
 
-  // Approval Lifecycle Workflow Statuses
-  is_approved: boolean;
-  is_rejected: boolean;
+  is_paid: boolean;
+  status: BookingStatus;
+
+  transaction_ref?: string;
+  payment_url?: string;
+
   created_at: string;
 }
+
 
 export interface EstateFacility {
   id: number;
