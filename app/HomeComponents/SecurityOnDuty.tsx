@@ -10,33 +10,35 @@ import {
   MapPin,
   Mail,
   Phone,
-  RefreshCw,
-  ShieldCheck,
+  Image as ImageIcon,
   Loader2,
   Clock,
+  X,
 } from "lucide-react";
-import { fetchReadableAddress, requestGuardLocation } from "../services/apis";
-import { formatLastSeen } from "../services/apis";
+import {
+  fetchReadableAddress,
+  formatTime,
+  requestGuardLocation,
+} from "../services/apis";
+import { formatDate } from "../services/apis";
+import toast from "react-hot-toast";
+import { useUser } from "../UserContext";
 
 export default function OnDutyPersonnel() {
+  const { contextEstateId } = useUser();
   const [guards, setGuards] = useState<SecurityUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [checkinCode, setCheckinCode] = useState<string | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [securityPhoto, setSecurityPhoto] = useState<string | null>(null);
   const [pendingRequests, setPendingRequests] = useState<
     Record<string, boolean>
   >({});
 
   const fetchData = async () => {
     try {
-      const [personnelData, existingCode] = await Promise.all([
-        securityDb.getAllSecurity(),
-        securityDb.getCheckinCode(),
-      ]);
+      const personnelData = await securityDb.getAllSecurity(contextEstateId!);
 
       setGuards(personnelData.filter((g) => g.is_on_duty));
-      setCheckinCode(existingCode);
     } catch (err) {
       console.error("Load Error:", err);
     } finally {
@@ -47,18 +49,6 @@ export default function OnDutyPersonnel() {
   useEffect(() => {
     fetchData();
   }, []);
-
-  const handleGenerateCode = async () => {
-    setIsGenerating(true);
-    try {
-      const newCode = await securityDb.generateCheckinCode();
-      setCheckinCode(newCode);
-    } catch (err) {
-      alert("Failed to generate code");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
   const AddressDisplay = ({ location }: { location: string | null }) => {
     const [address, setAddress] = useState<string>("Loading address...");
@@ -88,6 +78,14 @@ export default function OnDutyPersonnel() {
       g.email.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
+  const setPhoto = (photo: string | undefined) => {
+    if (!photo || photo === null) {
+      toast.error("No Photo found");
+      return;
+    }
+    setSecurityPhoto(photo);
+  };
+
   const handleRequestLocation = async (guardId: string, guardName: string) => {
     if (pendingRequests[guardId]) return;
 
@@ -95,11 +93,11 @@ export default function OnDutyPersonnel() {
 
     try {
       await requestGuardLocation(guardId);
-      alert(
+      toast.success(
         `Location request sent to ${guardName}. You will be notified when it updates.`,
       );
     } catch (err: any) {
-      alert(err.message || "Failed to send request");
+      toast.error(err.message || "Failed to send request");
     } finally {
       setPendingRequests((prev) => ({ ...prev, [guardId]: false }));
     }
@@ -120,41 +118,6 @@ export default function OnDutyPersonnel() {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-      </div>
-
-      {/* 2. Check-in Code Section */}
-      <div className="bg-blue-600 rounded-3xl p-5 sm:p-6 mb-8 shadow-md flex flex-col lg:flex-row items-center justify-between text-white gap-6">
-        <div className="flex items-center gap-4 self-start lg:self-auto">
-          <div className="bg-white/10 p-3 rounded-2xl border border-white/10 shrink-0">
-            <ShieldCheck size={28} />
-          </div>
-          <div>
-            <h2 className="text-lg sm:text-xl font-montserrat font-black tracking-tight">
-              Security Check-in Code
-            </h2>
-            <p className="text-blue-100 text-xs mt-0.5 font-medium">
-              Generate a new 10-digit code for guard handovers.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row items-center gap-4 bg-white/5 p-2 rounded-2xl border border-white/10 w-full lg:w-auto">
-          <span className="text-2xl sm:text-3xl font-mono font-black tracking-[0.25em] text-center w-full sm:w-auto px-4 py-2 sm:py-0">
-            {checkinCode || "----------"}
-          </span>
-          <button
-            onClick={handleGenerateCode}
-            disabled={isGenerating}
-            className="w-full sm:w-auto bg-white text-blue-600 px-6 py-3 rounded-xl font-montserrat font-bold text-xs uppercase tracking-wider hover:bg-blue-50 active:scale-98 transition-all flex items-center justify-center gap-2 shadow-sm shrink-0"
-          >
-            {isGenerating || loading ? (
-              <Loader2 className="animate-spin" size={14} />
-            ) : (
-              <RefreshCw size={14} />
-            )}
-            {checkinCode ? "Refresh" : "Generate"}
-          </button>
-        </div>
       </div>
 
       {/* 3. Personnel List Section Identifier */}
@@ -233,30 +196,88 @@ export default function OnDutyPersonnel() {
 
                     <div className="min-w-0">
                       <h2 className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-wider">
-                        Last Known Location
+                        Check-In Time
                       </h2>
                       <div className="flex items-center gap-2 mt-0.5 min-w-0">
-                        <div className="flex-1 min-w-0 truncate">
-                          {guard.last_known_location ? (
-                            <AddressDisplay
-                              location={guard.last_known_location}
-                            />
-                          ) : (
-                            <span className="text-xs text-slate-400 font-medium">
-                              No tracked live data
+                        {guard.last_checkin && (
+                          <div className="flex gap-3">
+                            <span className="flex items-center gap-1 text-[10px] font-oswald font-bold px-2 py-0.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 shrink-0 uppercase tracking-wide">
+                              {formatTime(
+                                guard.last_checkin
+                                  ?.split("T")[1]
+                                  ?.split(".")[0],
+                              )}
                             </span>
-                          )}
-                        </div>
-                        {guard.last_location_time && (
-                          <span className="flex items-center gap-1 text-[10px] font-oswald font-bold px-2 py-0.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 shrink-0 uppercase tracking-wide">
-                            <Clock size={10} />
-                            {formatLastSeen(guard.last_location_time)}
-                          </span>
+                            <span className="flex items-center gap-1 text-[10px] font-oswald font-bold px-2 py-0.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 shrink-0 uppercase tracking-wide">
+                              <Clock size={10} />
+                              {formatDate(guard.last_checkin.split("T")[0])}
+                            </span>
+                          </div>
                         )}
                       </div>
                     </div>
                   </div>
 
+                  <button
+                    className="flex items-center justify-center gap-2 w-full py-2.5 bg-white border border-blue-200 text-blue-600 rounded-xl text-xs font-montserrat font-bold uppercase tracking-wider hover:bg-blue-600 hover:text-white hover:border-blue-600 active:scale-98 transition-all shadow-2xs"
+                    onClick={() => setPhoto(guard.last_liveness_photo_url)}
+                  >
+                    <ImageIcon size={13} />
+                    View Check-In Photo
+                  </button>
+                </div>
+                <div className="w-full md:w-80 lg:w-96 p-5 sm:p-6 bg-slate-50/40 flex flex-col justify-center space-y-4 shrink-0">
+                  <div className="flex flex-col gap-3">
+                    <div className="min-w-0">
+                      <h2 className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-wider">
+                        Last Known Location
+                      </h2>
+                      <div className="mt-0.5 truncate">
+                        {guard.last_known_location ? (
+                          <AddressDisplay
+                            location={guard.last_known_location}
+                          />
+                        ) : (
+                          <span className="text-xs text-slate-400 font-medium">
+                            No tracked live data
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="min-w-0">
+                      <h2 className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-wider">
+                        Last Location Time
+                      </h2>
+                      <div className="flex items-center gap-2 mt-0.5 min-w-0">
+                        {guard.last_location_time && (
+                          <div className="flex gap-3">
+                            <span className="flex items-center gap-1 text-[10px] font-oswald font-bold px-2 py-0.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 shrink-0 uppercase tracking-wide">
+                              {formatTime(
+                                guard.last_location_time
+                                  ?.split(" ")[1]
+                                  ?.split(".")[0],
+                              )}
+                            </span>
+                            <span className="flex items-center gap-1 text-[10px] font-oswald font-bold px-2 py-0.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 shrink-0 uppercase tracking-wide">
+                              <Clock size={10} />
+                              {formatDate(
+                                guard.last_location_time.split("T")[0],
+                              )}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    className="flex items-center justify-center gap-2 w-full py-2.5 bg-white border border-blue-200 text-blue-600 rounded-xl text-xs font-montserrat font-bold uppercase tracking-wider hover:bg-blue-600 hover:text-white hover:border-blue-600 active:scale-98 transition-all shadow-2xs"
+                    onClick={() => setPhoto(guard.last_known_location_selfie)}
+                  >
+                    <ImageIcon size={13} />
+                    View Live Location Photo
+                  </button>
                   <button
                     className="flex items-center justify-center gap-2 w-full py-2.5 bg-white border border-blue-200 text-blue-600 rounded-xl text-xs font-montserrat font-bold uppercase tracking-wider hover:bg-blue-600 hover:text-white hover:border-blue-600 active:scale-98 transition-all shadow-2xs"
                     onClick={() => handleRequestLocation(guard.id, guard.name)}
@@ -283,6 +304,34 @@ export default function OnDutyPersonnel() {
           )}
         </div>
       </div>
+      {/* Check-In Photo Modal */}
+      {securityPhoto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+          <div className="relative bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 px-6 border-b border-slate-100">
+              <h3 className="font-montserrat font-bold text-slate-800 text-sm uppercase tracking-wide">
+                Check-In Verification Photo
+              </h3>
+              <button
+                onClick={() => setSecurityPhoto(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 flex items-center justify-center bg-slate-950 max-h-[70vh]">
+              <img
+                src={securityPhoto}
+                alt="Check-in verification selfie"
+                className="max-h-[60vh] w-auto object-contain rounded-xl"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

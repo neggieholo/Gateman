@@ -1,26 +1,43 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { JoinRequest } from "../services/types";
 import JoinRequestsList from "./JoinRequestsList";
 import { db } from "../services/database";
 import BlockedUsersList from "./BlockedUsersList";
 import { BlockedUser } from "../services/types";
+import { useUser } from "../UserContext";
+import { showAccessDeniedToast } from "./Users";
+import toast from "react-hot-toast";
 
 export default function JoinRequestsPage() {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+  const { user, contextEstateId } = useUser();
   const [pendingRequests, setPendingRequests] = useState<JoinRequest[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
   const [activeTab, setActiveTab] = useState<"pending" | "blocked">("pending");
   const [hideTabs, setHideTabs] = useState<boolean>(false);
 
-  const loadData = async () => {
+  const canView =
+    user?.permissions?.includes("residents_management") ||
+    user?.permissions?.includes("view_residents") ||
+    user?.permissions?.includes("all-access");
+
+  const canMangeRequests =
+    user?.permissions?.includes("residents_management") ||
+    user?.permissions?.includes("manage_join_requests") ||
+    user?.permissions?.includes("all-access");
+
+  const loadData = useCallback(async () => {
+    if (!contextEstateId) return;
+
     setLoading(true);
     try {
       const [requestsData, blockedData] = await Promise.all([
-        db.getAllRequests(),
-        db.fetchBlocked(),
+        db.getAllRequests(contextEstateId),
+        db.fetchBlocked(contextEstateId),
       ]);
 
       setPendingRequests(requestsData.filter((r) => r.status === "PENDING"));
@@ -30,30 +47,45 @@ export default function JoinRequestsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [contextEstateId]);
 
   // Run once on mount to get all counts
   useEffect(() => {
+    if (!canView) {
+      showAccessDeniedToast();
+      return;
+    }
     loadData();
-  }, []);
+  }, [canView, loadData]);
 
   const handleApprove = async (id: string) => {
+    if (!canMangeRequests) {
+      showAccessDeniedToast();
+      return;
+    }
     try {
-      const res = await fetch(`${baseUrl}/api/admin/approve-tenant/${id}`, {
-        method: "POST",
-        credentials: "include",
-      });
+      const res = await fetch(
+        `${baseUrl}/api/admin/approve-tenant/${id}?estate_id=${contextEstateId}`,
+        {
+          method: "POST",
+          credentials: "include",
+        },
+      );
 
       if (!res.ok) throw new Error("Failed to approve request");
 
       loadData();
     } catch (err) {
       console.error(err);
-      alert("Could not approve join request. Please try again.");
+      toast.error("Could not approve join request. Please try again.");
     }
   };
 
   const handleDecline = async (id: string, feedback: string) => {
+    if (!canMangeRequests) {
+      showAccessDeniedToast();
+      return;
+    }
     try {
       const res = await fetch(`${baseUrl}/api/admin/join-request/delete`, {
         method: "DELETE",
@@ -61,7 +93,11 @@ export default function JoinRequestsPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ id, message: feedback }),
+        body: JSON.stringify({
+          id,
+          message: feedback,
+          estate_id: contextEstateId,
+        }),
       });
 
       if (!res.ok) throw new Error("Failed to decline request");
@@ -69,11 +105,15 @@ export default function JoinRequestsPage() {
       loadData();
     } catch (err) {
       console.error(err);
-      alert("Could not decline join request. Please try again.");
+      toast.error("Could not decline join request. Please try again.");
     }
   };
 
   const handleBlock = async (id: string, feedback: string) => {
+    if (!canMangeRequests) {
+      showAccessDeniedToast();
+      return;
+    }
     try {
       const res = await fetch(`${baseUrl}/api/admin/join-request/block`, {
         method: "PUT",
@@ -81,7 +121,11 @@ export default function JoinRequestsPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ id, message: feedback }),
+        body: JSON.stringify({
+          id,
+          message: feedback,
+          estate_id: contextEstateId,
+        }),
       });
 
       if (!res.ok) throw new Error("Failed to block request");
@@ -89,16 +133,20 @@ export default function JoinRequestsPage() {
       loadData();
     } catch (err) {
       console.error(err);
-      alert("Could not block join request. Please try again.");
+      toast.error("Could not block join request. Please try again.");
     }
   };
 
   const onUnblockAction = async (id: string) => {
+    if (!canMangeRequests) {
+      showAccessDeniedToast();
+      return;
+    }
     try {
-      await db.handleUnblock(id);
+      await db.handleUnblock(id, contextEstateId!);
       loadData();
     } catch (err) {
-      alert("Could not unblock user.");
+      toast.error("Could not unblock user.");
     }
   };
 

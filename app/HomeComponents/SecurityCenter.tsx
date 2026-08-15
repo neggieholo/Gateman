@@ -9,6 +9,7 @@ import {
   Ticket,
   AlertOctagon,
   FileText,
+  ShieldAlert,
 } from "lucide-react";
 import GatePassesView from "./GatePassView";
 import SecurityJoinRequestsPage from "./SecurityJoinRequestPage";
@@ -16,8 +17,10 @@ import SecurityPersonnelsList from "./SecurityPersonnels";
 import OnDutyPersonnel from "./SecurityOnDuty";
 import SecurityReportsView from "./SecurityReportsView";
 import UserLogsPage from "./UsersLogsPage";
+import { useUser } from "../UserContext";
 
 export default function SecurityManagement() {
+  const { user } = useUser();
   const [activeTab, setActiveTab] = useState<
     "requests" | "personnel" | "onduty" | "reports" | "gatepasses" | "logs"
   >("requests");
@@ -67,6 +70,11 @@ export default function SecurityManagement() {
     },
   ];
 
+  const canView =
+    user?.permissions?.includes("security_management") ||
+    user?.permissions?.includes("view_guards") ||
+    user?.permissions?.includes("all-access");
+
   return (
     <div className="space-y-6 pb-24 md:pb-8 font-sans">
       {/* Tab Navigation */}
@@ -95,19 +103,34 @@ export default function SecurityManagement() {
       </div>
 
       {/* Dynamic Content Area */}
-      <div className="h-100 px-3">
-        {activeTab === "requests" && <SecurityJoinRequestsPage />}
+      {canView ? (
+        <div className="h-100 px-3">
+          {activeTab === "requests" && <SecurityJoinRequestsPage />}
 
-        {activeTab === "personnel" && <SecurityPersonnelsList />}
+          {activeTab === "personnel" && <SecurityPersonnelsList />}
 
-        {activeTab === "onduty" && <OnDutyPersonnel />}
+          {activeTab === "onduty" && <OnDutyPersonnel />}
 
-        {activeTab === "reports" && <SecurityReportsView />}
+          {activeTab === "reports" && <SecurityReportsView />}
 
-        {activeTab === "gatepasses" && <GatePassesView />}
+          {activeTab === "gatepasses" && <GatePassesView />}
 
-        {activeTab === "logs" && <UserLogsPage role="SECURITY" />}
-      </div>
+          {activeTab === "logs" && <UserLogsPage role="SECURITY" />}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center p-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200/80 max-w-xl mx-auto my-8">
+          <div className="p-3 bg-red-50 text-red-600 rounded-full mb-4">
+            <ShieldAlert size={28} />
+          </div>
+          <h3 className="text-sm font-montserrat font-black text-slate-800 uppercase tracking-wide mb-1">
+            Workspace Access Restricted
+          </h3>
+          <p className="text-xs text-slate-400 max-w-xs leading-relaxed font-medium">
+            You do not currently hold the authorized digital credentials or
+            clear operational rights needed to view this interface panel.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Search,
   ArrowLeft,
@@ -19,14 +19,17 @@ import { db } from "../services/database";
 import { Tenant, LocationPair } from "../services/types";
 import ResidentsSuggestionsView from "./ResidentSuggestionsView";
 import { useUser } from "../UserContext";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import UserLogsPage from "./UsersLogsPage";
 import AddResidentForm from "./AddResidentForm";
+import { showAccessDeniedToast } from "./Users";
+import JoinRequestsPage from "./JoinRequestPage";
 
 export default function UnifiedResidentPortal() {
-  const [activeTab, setActiveTab] = useState<"TENANTS" | "REPORTS" | "LOGS" | "ADD">(
-    "TENANTS",
-  );
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<
+    "REQUESTS" | "TENANTS" | "REPORTS" | "LOGS" | "ADD"
+  >("TENANTS");
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
   const [viewIndividualLogs, setViewIndividualLogs] = useState(false);
@@ -35,40 +38,109 @@ export default function UnifiedResidentPortal() {
   const [historyStack, setHistoryStack] = useState<Tenant[]>([]);
   const searchParams = useSearchParams();
   const authorId = searchParams.get("author_id");
+  const showRequests = searchParams.get("requests") === "true";
 
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
-  const { user } = useUser();
-  const estateId = user?.estate_id;
+  const { user, contextEstateId } = useUser();
+
+  const canView =
+    user?.permissions?.includes("residents_management") ||
+    user?.permissions?.includes("view_residents") ||
+    user?.permissions?.includes("all-access");
+
+  const canAdd =
+    user?.permissions?.includes("residents_management") ||
+    user?.permissions?.includes("add_resident") ||
+    user?.permissions?.includes("all-access");
+
+  const canMangeRequests =
+    user?.permissions?.includes("residents_management") ||
+    user?.permissions?.includes("manage_join_requests") ||
+    user?.permissions?.includes("all-access");
+
+  const canDelete =
+    user?.permissions?.includes("residents_management") ||
+    user?.permissions?.includes("delete_resident_account") ||
+    user?.permissions?.includes("all-access");
+
+  const canEditStatus =
+    user?.permissions?.includes("residents_management") ||
+    user?.permissions?.includes("modify_resident_status") ||
+    user?.permissions?.includes("all-access");
+
+  const canViewLogs =
+    user?.permissions?.includes("residents_management") ||
+    user?.permissions?.includes("view_resident_logs") ||
+    user?.permissions?.includes("all-access");
+
+  // const canViewPosts =
+  //   user?.permissions?.includes("community_management") ||
+  //   user?.permissions?.includes("view_community_posts") ||
+  //   user?.permissions?.includes("all-access");
+
+  const canViewReports =
+    user?.permissions?.includes("estate_administration") ||
+    user?.permissions?.includes("view_estate_reports") ||
+    user?.permissions?.includes("all-access");
+
+  // const canViewRecords =
+  //   user?.permissions?.includes("estate_administration") ||
+  //   user?.permissions?.includes("view_estate_records") ||
+  //   user?.permissions?.includes("all-access");
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const tenantData = await db.getAllTenants();
-        setTenants(tenantData);
-        if (authorId) {
-          const targetTenant = tenantData.find((t) => t.id === authorId);
-          if (targetTenant) {
-            setSelectedTenant(targetTenant);
-            setActiveTab("TENANTS");
-          }
-
-          const newUrl = window.location.pathname;
-          window.history.replaceState({ ...window.history.state }, "", newUrl);
-        }
-      } catch (err) {
-        console.error("Fetch error:", err);
-      } finally {
-        setLoading(false);
+    if (showRequests) {
+      if (canMangeRequests) {
+        setActiveTab("REQUESTS");
+      } else {
+        showAccessDeniedToast();
       }
-    };
+      // Safe to strip immediately since no async DB call depends on this param
+      window.history.replaceState(
+        { ...window.history.state },
+        "",
+        window.location.pathname,
+      );
+    }
+  }, [showRequests, canMangeRequests]);
+
+  const fetchData = useCallback(async () => {
+    if (!contextEstateId) return; // Guard clause if estate ID isn't available yet
+
+    setLoading(true);
+    try {
+      const tenantData = await db.getAllTenants(contextEstateId);
+      setTenants(tenantData);
+
+      if (authorId) {
+        const targetTenant = tenantData.find((t) => t.id === authorId);
+        if (targetTenant) {
+          setActiveTab("TENANTS");
+          setSelectedTenant(targetTenant);
+        }
+
+        const newUrl = window.location.pathname;
+        window.history.replaceState({ ...window.history.state }, "", newUrl);
+      }
+    } catch (err) {
+      console.error("Fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [contextEstateId, authorId, setSelectedTenant, setActiveTab]);
+
+  useEffect(() => {
+    if (!canView) {
+      showAccessDeniedToast();
+      return;
+    }
     fetchData();
-  }, []);
+  }, [canView, fetchData]);
 
   const getResidentLocationsString = (tenant: Tenant): string => {
-    if (!tenant?.locations || !user?.estate_id) return "No Location Bound";
-    const estateLocations: LocationPair[] = tenant.locations[user.estate_id];
+    if (!tenant?.locations || !contextEstateId) return "No Location Bound";
+    const estateLocations: LocationPair[] = tenant.locations[contextEstateId];
     if (!estateLocations || estateLocations.length === 0)
       return "No Location Bound";
 
@@ -92,10 +164,14 @@ export default function UnifiedResidentPortal() {
   });
 
   const handleDelete = async (id: string) => {
+    if (!canDelete) {
+      showAccessDeniedToast();
+      return;
+    }
     if (!window.confirm("Are you sure you want to delete this tenant?")) return;
 
     try {
-      await db.deleteTenant(id);
+      await db.deleteTenant(id, contextEstateId!);
       setTenants((prev) => prev.filter((t) => t.id !== id));
       setSelectedTenant(null);
       setHistoryStack([]); // Clear navigation trail upon deletion
@@ -106,19 +182,19 @@ export default function UnifiedResidentPortal() {
 
   // 🌟 Fixed: Secure, functional useMemo implementation with safe JSON parsing fallback
   const locations = useMemo(() => {
-    if (!selectedTenant?.contract_urls || !user?.estate_id) return [];
+    if (!selectedTenant?.contract_urls || !contextEstateId) return [];
 
     const rawData = selectedTenant.contract_urls;
     if (typeof rawData === "string") {
       try {
         const parsed = JSON.parse(rawData);
-        return parsed[user.estate_id] || [];
+        return parsed[contextEstateId] || [];
       } catch {
         return [];
       }
     }
-    return rawData[user.estate_id] || [];
-  }, [selectedTenant, user?.estate_id]);
+    return rawData[contextEstateId] || [];
+  }, [selectedTenant, contextEstateId]);
 
   // 🌟 Handles diving deeper into a Parent Account
   const handleNavigateToParent = (parentId: string) => {
@@ -144,8 +220,8 @@ export default function UnifiedResidentPortal() {
       setHistoryStack((prev) => prev.slice(0, -1));
       setSelectedTenant(previousTenant);
     } else {
-      // Nothing remains in history trace; safe to exit back to directory view
       setSelectedTenant(null);
+      setHistoryStack([]);
     }
   };
 
@@ -156,9 +232,10 @@ export default function UnifiedResidentPortal() {
         <div className="flex gap-2 p-1.5 bg-slate-100 rounded-4xl shadow-inner max-w-full overflow-x-auto custom-scrollbar">
           <button
             onClick={() => {
-              setActiveTab("TENANTS");
-              setSelectedTenant(null);
-              setHistoryStack([]); // Clear history on explicit root tab switch
+              if (activeTab !== "TENANTS") {
+                setActiveTab("TENANTS");
+                setHistoryStack([]);
+              }
             }}
             className={`flex items-center gap-3 px-8 py-3 rounded-3xl text-sm font-montserrat font-black transition-all whitespace-nowrap ${
               activeTab === "TENANTS"
@@ -173,7 +250,30 @@ export default function UnifiedResidentPortal() {
             </span>
           </button>
           <button
-            onClick={() => setActiveTab("REPORTS")}
+            onClick={() => {
+              if (!canMangeRequests) {
+                showAccessDeniedToast();
+                return;
+              }
+              setActiveTab("REQUESTS");
+            }}
+            className={`flex items-center gap-3 px-8 py-3 rounded-3xl text-sm font-montserrat font-black transition-all whitespace-nowrap ${
+              activeTab === "REQUESTS"
+                ? "bg-white text-blue-600 shadow-md"
+                : "text-slate-400 hover:text-slate-600"
+            }`}
+          >
+            <Users size={18} />
+            REQUESTS
+          </button>
+          <button
+            onClick={() => {
+              if (!canViewReports) {
+                showAccessDeniedToast();
+                return;
+              }
+              setActiveTab("REPORTS");
+            }}
             className={`flex items-center gap-3 px-8 py-3 rounded-3xl text-sm font-montserrat font-black transition-all whitespace-nowrap ${
               activeTab === "REPORTS"
                 ? "bg-white text-rose-600 shadow-md"
@@ -184,7 +284,13 @@ export default function UnifiedResidentPortal() {
             SUGGESTIONS & REPORTS
           </button>
           <button
-            onClick={() => setActiveTab("LOGS")}
+            onClick={() => {
+              if (!canViewLogs) {
+                showAccessDeniedToast();
+                return;
+              }
+              setActiveTab("LOGS");
+            }}
             className={`flex items-center gap-3 px-8 py-3 rounded-3xl text-sm font-montserrat font-black transition-all whitespace-nowrap ${
               activeTab === "LOGS"
                 ? "bg-white text-purple-600 shadow-md"
@@ -195,7 +301,13 @@ export default function UnifiedResidentPortal() {
             COLLECTIVE LOGS
           </button>
           <button
-            onClick={() => setActiveTab("ADD")}
+            onClick={() => {
+              if (!canAdd) {
+                showAccessDeniedToast();
+                return;
+              }
+              setActiveTab("ADD");
+            }}
             className={`flex items-center gap-3 px-8 py-3 rounded-3xl text-sm font-montserrat font-black transition-all whitespace-nowrap ${
               activeTab === "ADD"
                 ? "bg-white text-indigo-600 shadow-md"
@@ -226,6 +338,12 @@ export default function UnifiedResidentPortal() {
 
       {/* --- CONTENT AREA --- */}
       <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-w-0">
+        {activeTab === "REQUESTS" && (
+          <div className="animate-in fade-in duration-500 h-full min-w-0">
+            <JoinRequestsPage />
+          </div>
+        )}
+
         {activeTab === "TENANTS" && (
           <>
             {/* 1. INDIVIDUAL LOGS VIEW (Takes highest priority if active) */}
@@ -264,14 +382,14 @@ export default function UnifiedResidentPortal() {
                   <div className="w-full lg:w-1/3 flex flex-col items-center bg-slate-50 rounded-[2.5rem] p-6 sm:p-10 border border-slate-100 shrink-0 min-w-0">
                     <img
                       src={
-                        estateId && selectedTenant.avatar
-                          ? selectedTenant.avatar[estateId]
+                        contextEstateId && selectedTenant.avatar
+                          ? selectedTenant.avatar[contextEstateId]
                           : `https://ui-avatars.com/api/?name=${selectedTenant.name}`
                       }
                       className="w-full max-w-[20rem] aspect-square rounded-[2.5rem] object-cover shadow-2xl border-4 border-white mb-6 shrink-0"
                       alt=""
                     />
-                    <h2 className="text-2xl sm:text-3xl font-montserrat font-black text-slate-900 mb-1 text-center break-words w-full px-1">
+                    <h2 className="text-2xl sm:text-3xl font-montserrat font-black text-slate-900 mb-1 text-center wrap-break-word w-full px-1">
                       {selectedTenant.name}
                     </h2>
 
@@ -392,15 +510,33 @@ export default function UnifiedResidentPortal() {
                       </div>
                     </section>
 
-                    <div className="flex gap-4 pt-8 shrink-0 justify-evenly">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-8 shrink-0">
+                      {/* 1. View Logs */}
                       <button
-                        className="flex-1 py-4 bg-gm-navy/60 border-2 border-transparent text-white rounded-2xl font-montserrat font-black text-xs uppercase tracking-widest hover:bg-gm-navy/80 transition-all active:scale-98 shadow-sm"
+                        type="button"
+                        className="py-3.5 px-4 bg-gm-navy/60 text-white rounded-2xl font-montserrat font-black text-[11px] uppercase tracking-wider hover:bg-gm-navy/80 transition-all active:scale-95 shadow-sm text-center"
                         onClick={() => setViewIndividualLogs(true)}
                       >
-                        View logs
+                        View Logs
                       </button>
+
+                      {/* 2. Payment History */}
                       <button
-                        className="flex-1 py-4 bg-red-500 border-2 border-transparent text-white rounded-2xl font-montserrat font-black text-xs uppercase tracking-widest hover:bg-red-600 transition-all active:scale-98 shadow-sm"
+                        type="button"
+                        className="py-3.5 px-4 bg-emerald-600 text-white rounded-2xl font-montserrat font-black text-[11px] uppercase tracking-wider hover:bg-emerald-700 transition-all active:scale-95 shadow-sm text-center"
+                        onClick={() => {
+                          router.push(
+                            `/home/payments?resident_=${selectedTenant.name}`,
+                          );
+                        }}
+                      >
+                        Payment History
+                      </button>
+
+                      {/* 5. Remove Resident */}
+                      <button
+                        type="button"
+                        className="py-3.5 px-4 bg-rose-600 text-white rounded-2xl font-montserrat font-black text-[11px] uppercase tracking-wider hover:bg-rose-700 transition-all active:scale-95 shadow-sm text-center"
                         onClick={() => handleDelete(selectedTenant.id)}
                       >
                         Remove Resident
@@ -420,36 +556,40 @@ export default function UnifiedResidentPortal() {
 
             {/* 4. RESIDENT DIRECTORY GRID CARDS LAYOUT (Shows if no selection active) */}
             {!selectedTenant && filteredTenants.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 min-w-0">
+              <div className="flex flex-col gap-3 min-w-0">
                 {filteredTenants.map((t) => (
                   <button
                     key={t.id}
                     onClick={() => {
                       setSelectedTenant(t);
-                      setHistoryStack([]); // Clear history stack when opening profile directly from grid
+                      setHistoryStack([]);
                     }}
-                    className="group flex flex-col items-center bg-white p-4 sm:p-8 rounded-[2.5rem] border border-slate-100 hover:border-indigo-200 hover:shadow-2xl hover:shadow-indigo-500/5 transition-all relative overflow-hidden text-center min-w-0"
+                    className="group flex items-center gap-4 bg-white p-3 sm:p-4 rounded-2xl border border-slate-100 hover:border-indigo-200 hover:shadow-lg transition-all relative overflow-hidden text-left min-w-0 w-full"
                   >
-                    <div className="absolute top-0 right-0 w-12 h-12 sm:w-20 sm:h-20 bg-slate-50 rounded-bl-[2.5rem] group-hover:bg-indigo-50 transition-colors" />
+                    {/* Avatar Container */}
+                    <div className="relative shrink-0">
+                      <img
+                        src={
+                          contextEstateId && t.avatar
+                            ? t.avatar[contextEstateId]
+                            : `https://ui-avatars.com/api/?name=${t.name}`
+                        }
+                        className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl object-cover border-2 border-white shadow-sm group-hover:scale-105 transition-transform"
+                        alt=""
+                      />
+                      {t.parent_account_id && (
+                        <span className="absolute -top-1 -left-1 bg-amber-500 text-[8px] font-oswald font-bold tracking-widest text-white px-1.5 py-0.5 rounded-md uppercase shadow-sm">
+                          Sub
+                        </span>
+                      )}
+                    </div>
 
-                    {t.parent_account_id && (
-                      <div className="absolute top-3 left-3 bg-amber-500 text-[8px] font-oswald font-bold tracking-widest text-white px-2 py-0.5 rounded-md uppercase z-20 shadow-sm">
-                        Sub
-                      </div>
-                    )}
-
-                    <img
-                      src={
-                        estateId && t.avatar
-                          ? t.avatar[estateId]
-                          : `https://ui-avatars.com/api/?name=${t.name}`
-                      }
-                      className="w-16 h-16 sm:w-24 sm:h-24 rounded-4xl object-cover mb-4 relative z-10 border-4 border-white shadow-lg group-hover:scale-105 transition-transform shrink-0"
-                      alt=""
-                    />
-                    <h3 className="font-montserrat font-black text-sm sm:text-base text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1 w-full px-1 break-all">
-                      {t.name}
-                    </h3>
+                    {/* Details Section */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-montserrat font-black text-sm sm:text-base text-slate-900 group-hover:text-indigo-600 transition-colors truncate">
+                        {t.name}
+                      </h3>
+                    </div>
                   </button>
                 ))}
               </div>
@@ -471,7 +611,12 @@ export default function UnifiedResidentPortal() {
 
         {activeTab === "ADD" && (
           <div className="animate-in fade-in duration-500 h-full min-w-0">
-            <AddResidentForm onSubmitSuccess={() => setActiveTab("TENANTS")} />
+            <AddResidentForm
+              onSubmitSuccess={() => {
+                setActiveTab("TENANTS");
+                fetchData();
+              }}
+            />
           </div>
         )}
       </div>

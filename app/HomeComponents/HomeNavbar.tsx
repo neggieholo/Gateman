@@ -1,14 +1,22 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useUser } from "@/app/UserContext";
 import { useRouter } from "next/navigation";
 import { checkSession } from "../services/apis";
 // import Link from 'next/link';
 
 const HomeNavbar = () => {
-  const { user, setUser, isLoading, setIsLoading, badgeCount, setPlan } =
-    useUser();
+  const {
+    user,
+    setUser,
+    isLoading,
+    setIsLoading,
+    badgeCount,
+    setPlan,
+    contextEstateId,
+    setContextEstateId,
+  } = useUser();
   const router = useRouter();
 
   const [mounted, setMounted] = useState(false);
@@ -19,14 +27,16 @@ const HomeNavbar = () => {
         setMounted(true);
         setIsLoading(true);
         const res = await checkSession();
+        console.log("Session check data:", res);
 
-        if (!res.success) {
+        if (!res.success || res?.user?.role !== "ADMIN") {
           console.warn("Session invalid, redirecting...");
           window.location.replace("/");
         } else {
           setUser(res.user);
-          if (res.user) {
-            setPlan(res?.user?.plan);
+          if (res.user?.estate_ids && res.user.estate_ids.length > 0) {
+            setContextEstateId(res.user.estate_ids[0]);
+            setPlan(res.user.estates[0].plan);
           }
           setIsLoading(false);
         }
@@ -37,9 +47,12 @@ const HomeNavbar = () => {
     }
 
     cSessionCheck();
-  }, [setUser, setIsLoading]);
+  }, [setUser, setIsLoading, setContextEstateId, setPlan]);
 
-  const fullname = mounted && !isLoading ? user?.estate_name : "...";
+  const activeEstate = useMemo(() => {
+    if (!user?.estates || !contextEstateId) return null;
+    return user.estates.find((e) => e.id === contextEstateId) || null;
+  }, [contextEstateId, user]);
 
   return (
     <header
@@ -54,7 +67,7 @@ const HomeNavbar = () => {
         <h1 className="text-3xl font-montserrat text-slate-800 tracking-tight">
           Welcome,{" "}
           <span className="text-primary font-montserrat font-extrabold">
-            {fullname}
+            {activeEstate?.estate_name || "..."}
           </span>
         </h1>
       </div>
@@ -63,14 +76,9 @@ const HomeNavbar = () => {
       <div className="flex items-center gap-8">
         {/* NOTIFICATION HUB */}
         <div className="flex items-center gap-2">
-          <div className="indicator group">
-            {badgeCount > 0 && (
-              <span className="indicator-item badge bg-red-600 border-white border-2 text-white text-[10px] font-black scale-110 group-hover:animate-bounce shadow-sm">
-                {badgeCount}
-              </span>
-            )}
+          <div className="relative inline-flex">
             <button
-              className="btn btn-ghost btn-circle bg-slate-50 hover:bg-primary/10 hover:text-primary transition-all duration-300 shadow-sm border mx-2 border-slate-100"
+              className="btn btn-ghost btn-circle bg-slate-50 hover:bg-primary/10 hover:text-primary transition-all duration-300 shadow-sm border border-slate-100"
               onClick={() => router.push("/home/notifications")}
             >
               <svg
@@ -88,6 +96,12 @@ const HomeNavbar = () => {
                 />
               </svg>
             </button>
+
+            {badgeCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[11px] font-bold text-white shadow-md ring-2 ring-white">
+                {badgeCount}
+              </span>
+            )}
           </div>
 
           <button
@@ -116,18 +130,6 @@ const HomeNavbar = () => {
             </svg>
           </button>
         </div>
-
-        {/* USER PROFILE */}
-        {/* <div className="flex items-center gap-4 pl-6 border-l border-slate-100">
-          <div className="flex flex-col items-end">
-            <span className="text-sm font-black text-slate-800 uppercase tracking-tighter leading-none mb-1">
-              {fullname?.[0] ? `${fullname[0]}.` : ''}
-            </span>
-            <span className="text-[10px] font-bold text-slate-400 truncate max-w-37.5 tracking-tight">
-              {displayEmail}
-            </span>
-          </div>
-        </div> */}
       </div>
     </header>
   );

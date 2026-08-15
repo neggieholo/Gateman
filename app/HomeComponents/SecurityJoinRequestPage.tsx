@@ -6,8 +6,12 @@ import SecurityJoinRequestsList from "./SecurityJoinRequestList";
 import { db, securityDb } from "../services/database";
 import SecurityBlockedUsersList from "./SecurityBlockedUsersList";
 import { BlockedUser } from "../services/types";
+import { useUser } from "../UserContext";
+import { showAccessDeniedToast } from "./Users";
+import toast from "react-hot-toast";
 
 export default function SecurityJoinRequestsPage() {
+  const { user, contextEstateId } = useUser();
   const [pendingRequests, setPendingRequests] = useState<SecurityJoinRequest[]>(
     [],
   );
@@ -16,12 +20,22 @@ export default function SecurityJoinRequestsPage() {
   const [activeTab, setActiveTab] = useState<"pending" | "blocked">("pending");
   const [hideTabs, setHideTabs] = useState<boolean>(false);
 
+  const canView =
+    user?.permissions?.includes("security_management") ||
+    user?.permissions?.includes("view_guards") ||
+    user?.permissions?.includes("all-access");
+
+  const canChangeStatus =
+    user?.permissions?.includes("security_management") ||
+    user?.permissions?.includes("manage_guard_requests") ||
+    user?.permissions?.includes("all-access");
+
   const loadData = async () => {
     setLoading(true);
     try {
       const [requests, blockedGuardsList] = await Promise.all([
-        securityDb.getSecurityRequests(),
-        securityDb.fetchBlockedGuards(),
+        securityDb.getSecurityRequests(contextEstateId!),
+        securityDb.fetchBlockedGuards(contextEstateId!),
       ]);
 
       setPendingRequests(requests.filter((r) => r.status === "PENDING"));
@@ -34,49 +48,73 @@ export default function SecurityJoinRequestsPage() {
   };
 
   useEffect(() => {
+    if (!canView) {
+      showAccessDeniedToast();
+      return;
+    }
     loadData();
   }, []);
 
   const handleApprove = async (id: string) => {
+    if (!canChangeStatus) {
+      showAccessDeniedToast();
+      return;
+    }
     try {
       const res = await securityDb.approveSecurity(id);
       if (!res.success) throw new Error("Failed to approve request");
       await loadData();
     } catch (err) {
       console.error(err);
-      alert("Could not approve join request. Please try again.");
+      toast.error("Could not approve join request. Please try again.");
     }
   };
 
   const handleDecline = async (id: string, feedback: string) => {
+    if (!canChangeStatus) {
+      showAccessDeniedToast();
+      return;
+    }
     try {
       const res = await securityDb.declineSecurity(id, feedback);
       if (!res.success) throw new Error("Failed to decline request");
       await loadData();
     } catch (err) {
       console.error(err);
-      alert("Could not decline join request. Please try again.");
+      toast.error("Could not decline join request. Please try again.");
     }
   };
 
-  const handleBlock = async (id: string, feedback: string) => {
+  const handleBlock = async (
+    id: string,
+    feedback: string,
+    estate_id: string,
+  ) => {
+    if (!canChangeStatus) {
+      showAccessDeniedToast();
+      return;
+    }
     try {
-      const res = await securityDb.blockSecurity(id, feedback);
+      const res = await securityDb.blockSecurity(id, feedback, estate_id);
       if (!res.success) throw new Error(res.error || "Failed to block request");
       await loadData();
     } catch (err) {
       console.error(err);
-      alert("Could not block join request. Please try again.");
+      toast.error("Could not block join request. Please try again.");
     }
   };
 
   const onUnblockAction = async (id: string) => {
+    if (!canChangeStatus) {
+      showAccessDeniedToast();
+      return;
+    }
     try {
-      const res = await securityDb.unblockSecurity(id);
+      const res = await securityDb.unblockSecurity(id, contextEstateId!);
       if (!res.success) throw new Error("Failed to unblock user");
       await loadData();
     } catch (err) {
-      alert("Could not unblock user.");
+      toast.error("Could not unblock user.");
     }
   };
 
@@ -102,7 +140,7 @@ export default function SecurityJoinRequestsPage() {
               {pendingRequests.length}
             </span>
           </button>
-          
+
           <button
             onClick={() => setActiveTab("blocked")}
             className={`flex-1 sm:flex-initial px-5 sm:px-6 py-2.5 rounded-lg font-montserrat font-bold text-xs uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-1.5 active:scale-98 ${

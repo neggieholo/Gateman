@@ -7,19 +7,18 @@ import {
   ChevronRight,
   Calendar,
   User,
-  Shield,
   Info,
   ArrowLeft,
   Eye,
   CheckCircle,
-  X,
-  Receipt,
   Gavel,
 } from "lucide-react";
 import { getEstateReports, updateReportStatus } from "../services/apis";
 import { EstateReport, ReportStatus } from "../services/types";
+import { useUser } from "../UserContext";
 
 export default function ServicesReportsView() {
+  const { contextEstateId } = useUser();
   const [reports, setReports] = useState<EstateReport[]>([]);
   const [selectedReport, setSelectedReport] = useState<EstateReport | null>(
     null,
@@ -37,7 +36,7 @@ export default function ServicesReportsView() {
     const fetchReports = async () => {
       setLoading(true);
       try {
-        const res = await getEstateReports();
+        const res = await getEstateReports(contextEstateId!);
 
         if (res.success) {
           // Filter strictly for SECURITY type before updating state
@@ -74,6 +73,7 @@ export default function ServicesReportsView() {
     try {
       const res = await updateReportStatus(
         showFeedbackModal.id,
+        contextEstateId!,
         showFeedbackModal.status,
         adminFeedback,
       );

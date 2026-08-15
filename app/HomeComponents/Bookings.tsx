@@ -1,25 +1,23 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   ChevronRight,
   ArrowLeft,
   CheckCircle,
   XCircle,
   Calendar,
-  Users,
   ExternalLink,
   Loader2,
-  Ticket,
   MapPin,
   Clock,
   LayoutGrid,
   AlertCircle,
   Search,
-  Plus,
   CreditCard,
   FileText,
   Check,
@@ -28,7 +26,7 @@ import {
 import { EstateFacility, LocationBooking, Tenant } from "../services/types";
 import { useSearchParams } from "next/navigation";
 import {
-  approveEvent,
+  approveBooking,
   getAllBookings,
   getAllLocations,
   getBookingStatusBadge,
@@ -38,6 +36,8 @@ import toast from "react-hot-toast";
 import AddBookingFormModal from "./AddBookingForm";
 import { useUser } from "../UserContext";
 import { db } from "../services/database";
+import { showAccessDeniedToast } from "./Users";
+import RestrictedAccessCard from "./RestrictedAccessCard";
 
 const formatToLocalDateString = (dateInput: string) => {
   if (!dateInput) return "";
@@ -50,6 +50,7 @@ const formatToLocalDateString = (dateInput: string) => {
 };
 
 export default function BookingsReviewPage() {
+  const { user, contextEstateId } = useUser();
   const [allbookings, setAllbookings] = useState<LocationBooking[]>([]);
   const [selectedBooking, setSelectedBooking] =
     useState<LocationBooking | null>(null);
@@ -75,28 +76,57 @@ export default function BookingsReviewPage() {
   const searchParams = useSearchParams();
   const targetIdParam = searchParams.get("id");
 
-  const fetchData = async () => {
+  const canView =
+    user?.permissions?.includes("facility_management") ||
+    user?.permissions?.includes("view_facility_bookings") ||
+    user?.permissions?.includes("all-access");
+
+  const canModifyBookingtatus =
+    user?.permissions?.includes("facility_management") ||
+    user?.permissions?.includes("view_facility_bookings") ||
+    user?.permissions?.includes("all-access");
+
+  const canManageFacility =
+    user?.permissions?.includes("facility_management") ||
+    user?.permissions?.includes("view_facility_bookings") ||
+    user?.permissions?.includes("all-access");
+
+  const fetchData = useCallback(async () => {
+    if (!contextEstateId) return;
+
     setLoading(true);
     try {
-      const [bookings, facilityData, tenants] = await Promise.all([
-        getAllBookings(),
-        getAllLocations(),
-        db.getAllTenants(),
+      const [bookingsRes, locationsRes, tenantsRes] = await Promise.allSettled([
+        canView ? getAllBookings(contextEstateId) : Promise.resolve(null),
+        canManageFacility
+          ? getAllLocations(contextEstateId)
+          : Promise.resolve(null),
+        canView ? db.getAllTenants(contextEstateId) : Promise.resolve(null),
       ]);
 
-      if (bookings) setAllbookings(bookings);
-      if (facilityData) setfacilities(facilityData);
-      if (tenants) setTenants(tenants);
+      if (bookingsRes.status === "fulfilled" && bookingsRes.value) {
+        setAllbookings(bookingsRes.value);
+      }
+      if (locationsRes.status === "fulfilled" && locationsRes.value) {
+        setfacilities(locationsRes.value);
+      }
+      if (tenantsRes.status === "fulfilled" && tenantsRes.value) {
+        setTenants(tenantsRes.value);
+      }
     } catch (error) {
       console.error("Error Fetching Data:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [contextEstateId, canView, canManageFacility]);
 
   useEffect(() => {
+    if (!(canView || canManageFacility)) {
+      showAccessDeniedToast();
+      return;
+    }
     fetchData();
-  }, []);
+  }, [canView, fetchData, canManageFacility]);
 
   useEffect(() => {
     if (!targetIdParam || allbookings.length === 0) return;
@@ -141,23 +171,46 @@ export default function BookingsReviewPage() {
 
   const handleUpdateStatus = async (
     id: string,
-    verdict: "approve" | "reject",
+    verdict: "APPROVED" | "PAYMENT_PENDING" | "REJECTED",
   ) => {
-    setLoadingAction(verdict === "approve" ? "approving" : "rejecting");
+    if (!canModifyBookingtatus) {
+      showAccessDeniedToast();
+      return;
+    }
+    setLoadingAction(
+      verdict === "APPROVED" || verdict === "PAYMENT_PENDING"
+        ? "approving"
+        : "rejecting",
+    );
     try {
-      const data = await approveEvent(id, verdict);
+      const data = await approveBooking(id, verdict, contextEstateId!);
 
       if (data.success) {
         setAllbookings((prev) =>
-          prev.map((e) =>
-            e.id === id
-              ? {
-                  ...e,
-                  is_approved: verdict === "approve",
-                  is_rejected: verdict === "reject",
-                }
-              : e,
-          ),
+          prev.map((e) => {
+            if (e.id !== id) return e;
+
+            let newStatus = e.status;
+
+            if (verdict === "REJECTED") {
+              newStatus = "REJECTED";
+            } else if (verdict === "APPROVED") {
+              // 1. Paid booking awaiting initial review -> Send to PAYMENT_PENDING to allow payment
+              if (e.is_paid && e.status === "PENDING_APPROVAL") {
+                newStatus = "PAYMENT_PENDING";
+              }
+              // 2. Paid booking with submitted payment -> Final approval to APPROVED
+              else if (e.is_paid && e.status === "PAYMENT_SUBMITTED") {
+                newStatus = "APPROVED";
+              }
+              // 3. Unpaid / Free booking -> Direct approval to APPROVED
+              else {
+                newStatus = "APPROVED";
+              }
+            }
+
+            return { ...e, status: newStatus };
+          }),
         );
 
         if (data.updatedLocation) {
@@ -195,7 +248,7 @@ export default function BookingsReviewPage() {
         <div className="flex bg-slate-100 p-0.5 rounded-xl border border-slate-200/30 w-full md:w-auto shrink-0 overflow-x-auto">
           {[
             { label: "ALL", value: "ALL" },
-            { label: "PENDING", value: "PENDING_APPROVAL" },
+            { label: "PENDING", value: "PENDING" },
             { label: "PAYMENT PENDING", value: "PAYMENT_PENDING" },
             { label: "PAYMENT SUBMITTED", value: "PAYMENT_SUBMITTED" },
             { label: "APPROVED", value: "APPROVED" },
@@ -307,8 +360,7 @@ export default function BookingsReviewPage() {
   );
 
   const DetailView = ({ booking }: { booking: LocationBooking }) => {
-    const { user } = useUser();
-    const estateId = user?.estate_id;
+    const { contextEstateId } = useUser();
     const [copied, setCopied] = useState(false);
 
     const isMultiDay =
@@ -399,7 +451,18 @@ export default function BookingsReviewPage() {
               {!isApproved && (
                 <button
                   disabled={!!loadingAction}
-                  onClick={() => handleUpdateStatus(booking.id, "approve")}
+                  onClick={() => {
+                    // If paid and pending initial review -> allow payment phase
+                    if (
+                      booking.is_paid &&
+                      booking.status === "PENDING_APPROVAL"
+                    ) {
+                      handleUpdateStatus(booking.id, "PAYMENT_PENDING");
+                    } else {
+                      // Unpaid/free OR paid with submitted payment -> send final approval
+                      handleUpdateStatus(booking.id, "APPROVED");
+                    }
+                  }}
                   className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-5 py-3 bg-blue-600 text-white rounded-xl font-montserrat font-bold text-xs uppercase tracking-wider hover:bg-blue-700 transition-all disabled:opacity-40 shadow-3xs active:scale-98"
                 >
                   {loadingAction === "approving" ? (
@@ -408,9 +471,11 @@ export default function BookingsReviewPage() {
                     <CheckCircle size={14} />
                   )}
                   <span>
-                    {booking.status === "PAYMENT_SUBMITTED"
-                      ? "Verify & Approve"
-                      : "Approve Booking"}
+                    {booking.is_paid && booking.status === "PENDING_APPROVAL"
+                      ? "Allow Payment"
+                      : booking.status === "PAYMENT_SUBMITTED"
+                        ? "Verify & Approve"
+                        : "Approve Booking"}
                   </span>
                 </button>
               )}
@@ -418,7 +483,7 @@ export default function BookingsReviewPage() {
               {!isRejected && (
                 <button
                   disabled={!!loadingAction}
-                  onClick={() => handleUpdateStatus(booking.id, "reject")}
+                  onClick={() => handleUpdateStatus(booking.id, "REJECTED")} 
                   className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-5 py-3 bg-rose-50 text-rose-600 border border-rose-100/60 rounded-xl font-montserrat font-bold text-xs uppercase tracking-wider hover:bg-rose-100 transition-all disabled:opacity-40 shadow-3xs active:scale-98"
                 >
                   {loadingAction === "rejecting" ? (
@@ -434,9 +499,9 @@ export default function BookingsReviewPage() {
             {/* Profile Card */}
             <div className="bg-slate-50/50 rounded-2xl border border-slate-200/50 p-5 flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 min-w-0 shadow-3xs">
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white border border-slate-200 shadow-2xs flex items-center justify-center shrink-0 overflow-hidden text-slate-600 font-montserrat font-black text-xl sm:text-2xl">
-                {estateId && tenantMatch?.avatar?.[estateId] ? (
+                {contextEstateId && tenantMatch?.avatar?.[contextEstateId] ? (
                   <img
-                    src={tenantMatch.avatar[estateId]}
+                    src={tenantMatch.avatar[contextEstateId]}
                     alt="Profile"
                     className="w-full h-full object-cover"
                   />
@@ -708,21 +773,29 @@ export default function BookingsReviewPage() {
 
       <div className="flex-1 overflow-hidden min-w-0">
         {activeViewTab === "bookings" ? (
-          selectedBooking ? (
-            <DetailView booking={selectedBooking} />
+          canView ? (
+            selectedBooking ? (
+              <DetailView booking={selectedBooking} />
+            ) : (
+              <BookingsList />
+            )
           ) : (
-            <BookingsList />
+            <RestrictedAccessCard message="You do not have permission to view facility bookings." />
           )
-        ) : (
-          <LocationsView
-            locations={facilities}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            tenants={tenants}
-            setIsDetailedLocation={setIsDetailedLocation}
-            refreshData={fetchData}
-          />
-        )}
+        ) : activeViewTab === "facility" ? (
+          canManageFacility ? (
+            <LocationsView
+              locations={facilities}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              tenants={tenants}
+              setIsDetailedLocation={setIsDetailedLocation}
+              refreshData={fetchData}
+            />
+          ) : (
+            <RestrictedAccessCard message="You do not have permission to manage facility locations." />
+          )
+        ) : null}
       </div>
     </div>
   );

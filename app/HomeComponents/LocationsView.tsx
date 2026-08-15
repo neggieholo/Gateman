@@ -28,6 +28,8 @@ import {
 } from "../services/apis";
 import { formatDate, formatTime } from "../services/apis";
 import { useUser } from "../UserContext";
+import toast from "react-hot-toast";
+import { showAccessDeniedToast } from "./Users";
 
 interface LocationsViewProps {
   locations: EstateFacility[];
@@ -45,8 +47,7 @@ export default function LocationsView({
   setIsDetailedLocation,
   refreshData,
 }: LocationsViewProps) {
-  const { user } = useUser();
-  const estateId = user?.estate_id;
+  const { user, contextEstateId } = useUser();
   const [selectedLoc, setSelectedLoc] = useState<EstateFacility | null>(null);
   const [selectedDateStr, setSelectedDateStr] = useState<string>("");
 
@@ -81,6 +82,11 @@ export default function LocationsView({
     d.setHours(0, 0, 0, 0);
     return d;
   }, []);
+
+  const canManageFacility =
+    user?.permissions?.includes("facility_management") ||
+    user?.permissions?.includes("view_facility_bookings") ||
+    user?.permissions?.includes("all-access");
 
   const oneYearHenceEnd = useMemo(() => {
     const d = new Date();
@@ -184,6 +190,10 @@ export default function LocationsView({
 
   // Fetch multiple scheduled event profiles and manage pagination reset routines
   useEffect(() => {
+    if (!canManageFacility) {
+      showAccessDeniedToast();
+      return;
+    }
     if (!selectedLoc || !selectedDateStr) return;
 
     const fetchActiveSlotContent = async () => {
@@ -193,6 +203,7 @@ export default function LocationsView({
         const data = await getEventAtLocationDate(
           selectedLoc.id,
           selectedDateStr,
+          contextEstateId!,
         );
         const bookingsList = Array.isArray(data.booking)
           ? data.booking
@@ -209,7 +220,7 @@ export default function LocationsView({
     };
 
     fetchActiveSlotContent();
-  }, [selectedDateStr, selectedLoc]);
+  }, [selectedDateStr, selectedLoc, canManageFacility]);
 
   const currentActiveBooking = useMemo(() => {
     return activeDateBookings[currentBookingIndex] || null;
@@ -281,7 +292,11 @@ export default function LocationsView({
   };
 
   const handleSaveLocation = async () => {
-    if (!formName.trim()) return alert("Location name is required.");
+    if (!canManageFacility) {
+      showAccessDeniedToast();
+      return;
+    }
+    if (!formName.trim()) return toast.error("Location name is required.");
     setIsSubmitting(true);
 
     const numericalCapacity =
@@ -289,6 +304,7 @@ export default function LocationsView({
 
     // --- FORMAT REVENUE PAYLOAD PROPERTIES ---
     const payload = {
+      estate_id: contextEstateId!,
       name: formName,
       location_in_estate: formInEstate || undefined,
       capacity: numericalCapacity,
@@ -302,17 +318,29 @@ export default function LocationsView({
     };
 
     try {
+      let resData: any;
+
       if (showModal === "create") {
-        // --- UPDATED WITH NEW PAYLOAD DATA ---
-        await createLocation(payload);
+        resData = await createLocation(payload);
       } else if (showModal === "edit" && targetLoc) {
-        // --- UPDATED WITH NEW PAYLOAD DATA ---
-        await editLocation(targetLoc.id, payload);
+        resData = await editLocation(targetLoc.id, payload);
       }
-      await refreshData();
+
+      // Explicitly catch backend error objects returned without HTTP throws
+      if (resData?.error) {
+        throw new Error(resData.error);
+      }
+
+      // Success: reset modal state first, then re-sync dashboard list
       setShowModal(null);
+      await refreshData();
     } catch (err: any) {
-      alert(err.message || "Failed to save location.");
+      // Correctly catch thrown backend message string
+      toast.error(
+        typeof err === "string"
+          ? err
+          : err?.message || err?.error || "Failed to save location.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -320,6 +348,10 @@ export default function LocationsView({
 
   const handleDeleteLocation = async (e: React.MouseEvent, id: number) => {
     e.stopPropagation();
+    if (!canManageFacility) {
+      showAccessDeniedToast();
+      return;
+    }
     if (
       !confirm(
         "Are you sure you want to permanently delete this location resource? This cascades across bookings.",
@@ -327,10 +359,10 @@ export default function LocationsView({
     )
       return;
     try {
-      await deleteLocation(id);
+      await deleteLocation(id, contextEstateId!);
       await refreshData();
     } catch (err: any) {
-      alert(err.message || "Failed to purge location asset.");
+      toast.error(err.message || "Failed to purge location asset.");
     }
   };
 
@@ -597,10 +629,10 @@ export default function LocationsView({
                     <div className="flex items-center gap-3.5 bg-slate-50/60 p-3 rounded-xl border border-slate-200/50 min-w-0">
                       <div className="w-14 h-14 rounded-xl bg-white border border-slate-200 shadow-3xs flex items-center justify-center shrink-0 overflow-hidden text-slate-600 font-montserrat font-black text-lg">
                         {user &&
-                        estateId &&
-                        tenantMatch?.avatar?.[String(estateId)] ? (
+                        contextEstateId &&
+                        tenantMatch?.avatar?.[String(contextEstateId)] ? (
                           <img
-                            src={tenantMatch.avatar[String(estateId)]}
+                            src={tenantMatch.avatar[String(contextEstateId)]}
                             alt="Profile"
                             className="w-full h-full object-cover"
                             onError={(e) => {

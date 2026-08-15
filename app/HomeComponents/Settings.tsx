@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
@@ -15,21 +16,46 @@ import {
   Mail,
   CheckCircle2,
   Phone,
-  Loader2,
   User,
   Camera,
   ShieldCheck,
+  Smartphone,
+  ArrowLeft,
 } from "lucide-react";
 import "react-phone-number-input/style.css";
 import PhoneInput, { isValidPhoneNumber } from "react-phone-number-input";
 import { useUser } from "../UserContext";
 import { EmergencyContact } from "../services/types";
-import { getCloudinaryUrl, sendPofileChangeOtpApi } from "../services/apis";
+import { getS3UploadedUrl, sendPofileChangeOtpApi } from "../services/apis";
 import toast from "react-hot-toast";
 import AdminPermissionsViewModal from "./AdminPermissionViewModal";
+import TotpMfaSetupComponent from "./AuthenticatorSetup";
+import { DeletePromptModal } from "./DeletePromptModal";
+import { useRouter } from "next/navigation";
+import { showAccessDeniedToast } from "./Users";
+
+interface MfaSetupProps {
+  onBack: () => void;
+  onSuccess: (secret: string) => void;
+}
+
+function MfaSetupComponent({ onBack, onSuccess }: MfaSetupProps) {
+  return (
+    <div className="bg-white p-5 sm:p-8 rounded-4xl border border-slate-100 shadow-sm space-y-4 animate-in fade-in zoom-in-95 duration-200">
+      <button
+        onClick={onBack}
+        className="flex items-center gap-2 text-xs font-sans font-bold text-slate-500 hover:text-slate-800 transition-colors mb-2"
+      >
+        <ArrowLeft size={16} /> Back to Security Selection
+      </button>
+      <TotpMfaSetupComponent onComplete={onSuccess} />
+    </div>
+  );
+}
 
 export default function Settings() {
   const { user } = useUser();
+  const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState(
     user?.payment_type || "manual",
@@ -59,7 +85,7 @@ export default function Settings() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [verifyingField, setVerifyingField] = useState<
-    "email" | "phone" | null
+    "email" | "phone" | "mfa_email" | null
   >(null);
 
   const [emergencyContacts, setEmergencyContacts] = useState<
@@ -76,16 +102,32 @@ export default function Settings() {
     phone_verified: false,
     email_verified: false,
     avatar: user?.avatar || undefined,
+    mfa_enabled: user?.mfa_enabled || false,
+    mfa_type: user?.mfa_type || null,
+    mfa_secret: "",
   });
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
   const [loadingAction, setLoadingAction] = useState(false);
   const [isPermissionsOpen, setIsPermissionsOpen] = useState(false);
+  const [activeMfaMode, setActiveMfaMode] = useState<
+    "NONE" | "EMAIL" | "TOTP" | "SMS"
+  >(
+    (user?.mfa_type?.toUpperCase() as "NONE" | "EMAIL" | "TOTP" | "SMS") ||
+      "NONE",
+  );
+  const [mfaEmailEnabled, setMfaEmailEnabled] = useState(false);
+  const [mfaTotpEnabled, setMfaTotpEnabled] = useState(false);
+  const [mfaSmsEnabled, setMfaSmsEnabled] = useState(false);
+  const [displayTotpActivator, setDisplayTotpActivator] = useState(false);
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
   const hasChanges =
     profile.adminName !== (user?.name || "") ||
     profile.email !== (user?.email || "") ||
     profile.phone !== (user?.phone_number || "") ||
+    profile.mfa_enabled !== (user?.mfa_enabled || false) ||
+    profile.mfa_type !== (user?.mfa_type || null) ||
+    profile.mfa_secret !== "" ||
     paymentMethod !== (user?.payment_type || "manual") ||
     externalUrl !== (user?.external_api_url || "") ||
     JSON.stringify(emergencyContacts) !==
@@ -96,6 +138,17 @@ export default function Settings() {
 
   useEffect(() => {
     if (user) {
+      const normalizedMfa =
+        (user.mfa_type?.toUpperCase() as "NONE" | "EMAIL" | "TOTP" | "SMS") ||
+        "NONE";
+
+      setActiveMfaMode(normalizedMfa);
+
+      if (user.mfa_enabled) {
+        setMfaEmailEnabled(normalizedMfa === "EMAIL");
+        setMfaTotpEnabled(normalizedMfa === "TOTP");
+        setMfaSmsEnabled(normalizedMfa === "SMS");
+      }
       setProfile({
         estateName: user.estate_name || "Not set",
         estateCode: user.estate_code,
@@ -103,8 +156,11 @@ export default function Settings() {
         email: user.email || (isEditing ? "" : "Not set"),
         phone: user.phone_number || (isEditing ? "" : undefined),
         phone_verified: true,
+        mfa_enabled: user.mfa_enabled,
+        mfa_type: user.mfa_type,
         email_verified: true,
         avatar: user?.avatar || undefined,
+        mfa_secret: "",
       });
 
       setPaymentMethod(user.payment_type || "manual");
@@ -148,11 +204,14 @@ export default function Settings() {
     });
   };
 
-  const handleRequestOtp = async (target: string, type: "email" | "phone") => {
+  const handleRequestOtp = async (
+    target: string,
+    type: "email" | "phone" | "mfa_email",
+  ) => {
     if (type === "phone") {
       if (target) {
         if (!isValidPhoneNumber(target)) {
-          alert(
+          toast.error(
             "Invalid phone number format. Please check the number and country code.",
           );
           return;
@@ -163,7 +222,8 @@ export default function Settings() {
     setOtpLoading(true);
     setError(null);
     try {
-      const otpRes = await sendPofileChangeOtpApi(target, type);
+      const apiType = type === "mfa_email" ? "email" : type;
+      const otpRes = await sendPofileChangeOtpApi(target, apiType);
       if (otpRes.success) {
         setMetadata(otpRes.metadata);
         setShowOtpInput(true);
@@ -204,23 +264,38 @@ export default function Settings() {
   const handleOtpVerify = async (finalOtp: string) => {
     setOtpLoading(true);
     try {
+      const targetValue =
+        verifyingField === "mfa_email" || verifyingField === "email"
+          ? profile.email
+          : profile.phone;
+      const apiType = verifyingField === "mfa_email" ? "email" : verifyingField;
       const res = await fetch(`${baseUrl}/api/admin/verify-otp-only`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           otp: finalOtp,
           metadata: metadata,
-          target: verifyingField === "email" ? profile.email : profile.phone,
-          type: verifyingField === "email" ? "email" : "phone",
+          target: targetValue,
+          type: apiType,
         }),
       });
 
       const data = await res.json();
       if (data.success) {
-        setProfile((prev) => ({
-          ...prev,
-          [`${verifyingField}_verified`]: true,
-        }));
+        if (verifyingField === "mfa_email") {
+          setMfaEmailEnabled(true);
+          setActiveMfaMode("EMAIL");
+          setProfile((prev) => ({
+            ...prev,
+            mfa_enabled: true,
+            mfa_type: "EMAIL",
+          }));
+        } else if (verifyingField) {
+          setProfile((prev) => ({
+            ...prev,
+            [`${verifyingField}_verified`]: true,
+          }));
+        }
         setShowOtpInput(false);
         setOtp(["", "", "", "", "", ""]);
       } else {
@@ -241,14 +316,18 @@ export default function Settings() {
   };
 
   const addEmergencyContact = () => {
+    if (!canEditInfo) {
+      showAccessDeniedToast();
+      return;
+    }
     if (!newContact.name.trim() || !newContact.phone) {
-      alert("Please enter both a name and a phone number.");
+      toast.error("Please enter both a name and a phone number.");
       return;
     }
 
     // 2. Strict E.164 validation
     if (!isValidPhoneNumber(newContact.phone)) {
-      alert(
+      toast.error(
         "Invalid phone number format. Please check the number and country code.",
       );
       return;
@@ -259,7 +338,7 @@ export default function Settings() {
       (c) => c.phone === newContact.phone,
     );
     if (isDuplicate) {
-      alert("This number is already in your emergency contacts.");
+      toast.error("This number is already in your emergency contacts.");
       return;
     }
     setEmergencyContacts([
@@ -270,6 +349,10 @@ export default function Settings() {
   };
 
   const removeContact = (id: number) => {
+    if (!canEditInfo) {
+      showAccessDeniedToast();
+      return;
+    }
     setEmergencyContacts(emergencyContacts.filter((c) => c.id !== id));
   };
 
@@ -305,7 +388,7 @@ export default function Settings() {
 
     setError(null);
     try {
-      const uploadedUrl = await getCloudinaryUrl(file, "image");
+      const uploadedUrl = await getS3UploadedUrl(file, "user-avatars");
 
       if (uploadedUrl) {
         setProfile((prev) => ({
@@ -368,6 +451,9 @@ export default function Settings() {
           account_name: accountName,
         },
         avatar: profile.avatar,
+        mfa_enabled: profile.mfa_enabled,
+        mfa_type: profile.mfa_type,
+        mfa_secret: profile.mfa_secret,
       },
     };
 
@@ -376,6 +462,7 @@ export default function Settings() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
+        credentials: "include",
       });
 
       const data = await res.json();
@@ -383,7 +470,7 @@ export default function Settings() {
       if (data.success) {
         window.location.reload();
         setIsEditing(false);
-        alert("Configuration saved!");
+        toast.success("Configuration saved!");
       } else {
         setError(data.message || "Update failed");
       }
@@ -408,7 +495,10 @@ export default function Settings() {
       phone: user?.phone_number || "Not set",
       phone_verified: false,
       email_verified: false,
+      mfa_enabled: user?.mfa_enabled || false,
+      mfa_type: user?.mfa_type || null,
       avatar: user?.avatar || undefined,
+      mfa_secret: "",
     });
     setIsEditing(false);
     setError(null);
@@ -423,13 +513,13 @@ export default function Settings() {
       });
       const data = await res.json();
       if (data.success) {
-        alert("Account terminated successfully.");
+        toast.success("Account terminated successfully.");
         window.location.href = "/";
       } else {
-        alert(data.message || "Failed to terminate account");
+        toast.error(data.message || "Failed to terminate account");
       }
     } catch (err) {
-      alert("A network error occurred.");
+      toast.error("A network error occurred.");
     } finally {
       setLoadingAction(false);
       setShowDeletePrompt(false);
@@ -453,6 +543,47 @@ export default function Settings() {
     fetchBanks();
   }, []);
 
+  const handleTotpActivationSuccess = (secret: string) => {
+    setMfaTotpEnabled(true);
+    setActiveMfaMode("TOTP");
+    setProfile((prev) => ({
+      ...prev,
+      mfa_enabled: true,
+      mfa_type: "TOTP",
+      mfa_secret: secret,
+    }));
+    setDisplayTotpActivator(false);
+  };
+
+  const canViewInfo =
+    user?.permissions?.includes("estate_administration") ||
+    user?.permissions?.includes("view_estate_profile") ||
+    user?.permissions?.includes("all-access");
+
+  const canEditInfo =
+    user?.permissions?.includes("edit_estate_profile") ||
+    user?.permissions?.includes("delete_notifications") ||
+    user?.permissions?.includes("all-access");
+
+  const canEditPayment =
+    user?.permissions?.includes("manage_bank_details") ||
+    user?.permissions?.includes("delete_notifications") ||
+    user?.permissions?.includes("all-access");
+
+  if (displayTotpActivator) {
+    return (
+      <div className="relative flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 h-[calc(100vh-120px)] bg-slate-50/50 font-sans">
+        <h1 className="text-2xl font-montserrat font-black text-slate-900 tracking-tight">
+          Security Safeguards
+        </h1>
+        <MfaSetupComponent
+          onBack={() => setDisplayTotpActivator(false)}
+          onSuccess={handleTotpActivationSuccess}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="relative flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 sm:space-y-8 h-[calc(100vh-120px)] bg-slate-50/50 font-sans">
       {/* Header */}
@@ -469,7 +600,7 @@ export default function Settings() {
           {isEditing && (
             <button
               onClick={handleCancel}
-              className="flex-1 sm:flex-none px-6 py-2 rounded-xl text-sm font-sans font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all"
+              className="flex-1 sm:flex-none px-6 py-2 rounded-xl text-sm font-sans font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all cursor-pointer"
             >
               Cancel
             </button>
@@ -479,7 +610,7 @@ export default function Settings() {
               isEditing ? handleSaveConfig() : setIsEditing(true)
             }
             disabled={isEditing && (saving || !hasChanges)}
-            className={`flex-1 sm:flex-none px-6 py-2 rounded-xl text-sm font-sans font-bold shadow-sm transition-all ${
+            className={`flex-1 sm:flex-none px-6 py-2 rounded-xl text-sm font-sans font-bold shadow-sm transition-all cursor-pointer ${
               isEditing
                 ? !hasChanges || saving
                   ? "bg-slate-200 text-slate-400 cursor-not-allowed"
@@ -496,175 +627,182 @@ export default function Settings() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          {/* Identity Section */}
-          <div className="bg-white p-5 sm:p-8 rounded-4xl sm:rounded-4xl border border-slate-100 shadow-sm space-y-6">
-            <div className="flex items-center gap-2 mb-2">
-              <Building2 className="text-indigo-600" size={20} />
-              <h2 className="font-montserrat font-bold text-slate-900">
-                Core Identity
-              </h2>
+      {/* Single Vertical Column Layout */}
+      <div className="w-full space-y-6 sm:space-y-8">
+        {/* 1. Identity Section */}
+        <div className="bg-white p-5 sm:p-8 rounded-4xl border border-slate-100 shadow-sm space-y-6 ">
+          <div className="flex items-center gap-2 mb-2">
+            <Building2 className="text-indigo-600" size={20} />
+            <h2 className="font-montserrat font-bold text-slate-900">
+              Core Identity
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
+            <div className="w-full flex flex-col items-center justify-center rounded-3xl shrink-0">
+              <div
+                className="relative w-40 h-40 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-montserrat font-bold text-3xl tracking-wide shadow-inner overflow-hidden group disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {profile.avatar ? (
+                  <img
+                    src={profile.avatar}
+                    crossOrigin="anonymous"
+                    alt="User Profile"
+                    className="w-full h-full object-cover"
+                  />
+                ) : profile.adminName !== "Not set" && profile.adminName ? (
+                  profile.adminName.slice(0, 2).toUpperCase()
+                ) : (
+                  <User size={36} />
+                )}
+
+                {isEditing && (
+                  <label className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex flex-col items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white text-[9px] font-oswald font-black uppercase tracking-wider">
+                    <Camera size={16} />
+                    <span>Upload</span>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      accept="image/*"
+                      onChange={handleAvatarChange}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+
+                <div className="absolute -bottom-1.5 -right-1.5 p-1.5 bg-emerald-500 rounded-xl text-white border-2 border-white shadow-sm z-10">
+                  <ShieldCheck size={14} />
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
-              <div className="w-full flex flex-col items-center justify-center rounded-3xl shrink-0">
-                <div
-                  className="relative w-40 h-40 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-montserrat font-bold text-3xl tracking-wide shadow-inner overflow-hidden group"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {profile.avatar ? (
-                    <img
-                      src={profile.avatar}
-                      crossOrigin="anonymous"
-                      alt="User Profile"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : profile.adminName !== "Not set" && profile.adminName ? (
-                    profile.adminName.slice(0, 2).toUpperCase()
-                  ) : (
-                    <User size={36} />
-                  )}
-
-                  {isEditing && (
-                    <label className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex flex-col items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white text-[9px] font-oswald font-black uppercase tracking-wider">
-                      <Camera size={16} />
-                      <span>Upload</span>
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        accept="image/*"
-                        onChange={handleAvatarChange}
-                        className="hidden"
-                      />
-                    </label>
-                  )}
-
-                  <div className="absolute -bottom-1.5 -right-1.5 p-1.5 bg-emerald-500 rounded-xl text-white border-2 border-white shadow-sm z-10">
-                    <ShieldCheck size={14} />
-                  </div>
-                </div>
+            <div className="space-y-2 flex flex-col justify-end">
+              <label className="text-[10px] font-oswald font-black text-slate-400 uppercase tracking-widest">
+                Estate Name
+              </label>
+              <div className="p-4 bg-slate-100 rounded-2xl font-sans font-bold text-slate-500 flex items-center gap-2 text-sm sm:text-base break-all">
+                <Lock size={14} className="shrink-0" /> {profile.estateName}
               </div>
+            </div>
 
-              <div className="space-y-2 flex flex-col justify-end">
-                <label className="text-[10px] font-oswald font-black text-slate-400 uppercase tracking-widest">
-                  Estate Name
-                </label>
-                <div className="p-4 bg-slate-100 rounded-2xl font-sans font-bold text-slate-500 flex items-center gap-2 text-sm sm:text-base break-all">
-                  <Lock size={14} className="shrink-0" /> {profile.estateName}
-                </div>
-              </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-oswald font-black text-slate-400 uppercase tracking-widest">
+                Name
+              </label>
+              <input
+                type="text"
+                disabled={!isEditing}
+                value={profile.adminName}
+                onChange={(e) => handleFieldChange("adminName", e.target.value)}
+                className="w-full p-4 bg-slate-50 border-none rounded-2xl disabled:opacity-70 disabled:cursor-not-allowed font-sans font-bold text-slate-900 text-sm sm:text-base focus:ring-2 focus:ring-indigo-500 outline-none"
+              />
+            </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-oswald font-black text-slate-400 uppercase tracking-widest">
-                  Name
-                </label>
+            {/* Email with Verification */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-oswald font-black text-slate-400 uppercase tracking-widest">
+                Email
+              </label>
+              <div className="relative flex items-center">
                 <input
-                  type="text"
+                  type="email"
                   disabled={!isEditing}
-                  value={profile.adminName}
-                  onChange={(e) =>
-                    handleFieldChange("adminName", e.target.value)
-                  }
-                  className="w-full p-4 bg-slate-50 border-none rounded-2xl font-sans font-bold text-slate-900 text-sm sm:text-base focus:ring-2 focus:ring-indigo-500 outline-none"
+                  value={profile.email}
+                  onChange={(e) => handleFieldChange("email", e.target.value)}
+                  className="w-full p-4 bg-slate-50 border-none rounded-2xl font-sans font-bold text-slate-900 pr-28 sm:pr-32 disabled:opacity-70 disabled:cursor-not-allowed text-sm sm:text-base focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
-              </div>
-
-              {/* Email with Verification */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-oswald font-black text-slate-400 uppercase tracking-widest">
-                  Email
-                </label>
-                <div className="relative flex items-center">
-                  <input
-                    type="email"
-                    disabled={!isEditing}
-                    value={profile.email}
-                    onChange={(e) => handleFieldChange("email", e.target.value)}
-                    className="w-full p-4 bg-slate-50 border-none rounded-2xl font-sans font-bold text-slate-900 pr-28 sm:pr-32 text-sm sm:text-base focus:ring-2 focus:ring-indigo-500 outline-none"
-                  />
-                  <div className="absolute right-2 top-2 bottom-2 flex items-center z-10">
-                    {profile.email_verified ? (
-                      <div className="flex items-center gap-1 px-2.5 sm:px-3 py-1 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100 animate-in zoom-in">
-                        <CheckCircle2
-                          size={14}
-                          strokeWidth={3}
-                          className="shrink-0"
-                        />
-                        <span className="text-[9px] sm:text-[10px] font-oswald font-black uppercase tracking-tighter">
-                          Verified
-                        </span>
-                      </div>
-                    ) : (
-                      isEditing && (
-                        <button
-                          onClick={() =>
-                            handleRequestOtp(profile.email, "email")
-                          }
-                          className="bg-amber-500 text-white px-3 sm:px-4 py-2 rounded-xl text-[9px] sm:text-[10px] font-oswald font-black uppercase active:scale-95 transition-transform whitespace-nowrap"
-                        >
-                          {otpLoading ? "Sending..." : "Verify"}
-                        </button>
-                      )
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Phone with Verification */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-oswald font-black text-slate-400 uppercase tracking-widest">
-                  Phone Number
-                </label>
-                <div
-                  className={`flex flex-col sm:flex-row items-stretch sm:items-center justify-between w-full p-2.5 sm:p-4 bg-slate-50 rounded-2xl border-2 transition-all gap-2 sm:gap-0 ${isEditing ? "border-transparent focus-within:border-indigo-500 bg-white shadow-sm" : "border-transparent"}`}
-                >
-                  {!isEditing && !profile.phone ? (
-                    <div className="flex-1 p-2 font-sans font-bold text-slate-400 text-sm sm:text-base">
-                      Not set
+                <div className="absolute right-2 top-2 bottom-2 flex items-center z-10">
+                  {profile.email_verified ? (
+                    <div className="flex items-center gap-1 px-2.5 sm:px-3 py-1 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100 animate-in zoom-in">
+                      <CheckCircle2
+                        size={14}
+                        strokeWidth={3}
+                        className="shrink-0"
+                      />
+                      <span className="text-[9px] sm:text-[10px] font-oswald font-black uppercase tracking-tighter">
+                        Verified
+                      </span>
                     </div>
                   ) : (
-                    <PhoneInput
-                      international
-                      defaultCountry="NG"
-                      disabled={!isEditing}
-                      value={
-                        profile.phone === "Not set" ? undefined : profile.phone
-                      }
-                      onChange={handlePhoneChange}
-                      className="flex-1 font-sans font-bold text-slate-900 ml-2 text-sm sm:text-base"
-                    />
+                    isEditing && (
+                      <button
+                        onClick={() => handleRequestOtp(profile.email, "email")}
+                        className="bg-amber-500 text-white px-3 sm:px-4 py-2 rounded-xl text-[9px] sm:text-[10px] font-oswald font-black uppercase active:scale-95 transition-transform whitespace-nowrap cursor-pointer"
+                      >
+                        {otpLoading ? "Sending..." : "Verify"}
+                      </button>
+                    )
                   )}
-
-                  <div className="flex items-center justify-end px-2 sm:px-0">
-                    {profile.phone_verified ? (
-                      <div className="flex items-center gap-1 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100">
-                        <CheckCircle2
-                          size={14}
-                          strokeWidth={3}
-                          className="shrink-0"
-                        />
-                        <span className="text-[9px] sm:text-[10px] font-oswald font-black uppercase tracking-tighter">
-                          Verified
-                        </span>
-                      </div>
-                    ) : (
-                      isEditing &&
-                      profile.phone && (
-                        <button
-                          onClick={() =>
-                            handleRequestOtp(profile.phone!, "phone")
-                          }
-                          className="w-full sm:w-auto bg-amber-500 text-white px-4 py-2 rounded-xl text-[9px] sm:text-[10px] font-oswald font-black uppercase active:scale-95 transition-transform whitespace-nowrap sm:ml-2"
-                        >
-                          {otpLoading ? "Sending..." : "Verify"}
-                        </button>
-                      )
-                    )}
-                  </div>
                 </div>
               </div>
+            </div>
 
+            {/* Phone with Verification */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-oswald font-black text-slate-400 uppercase tracking-widest">
+                Phone Number
+              </label>
+              <div
+                className={`flex flex-col sm:flex-row items-stretch sm:items-center justify-between w-full p-2.5 sm:p-4 bg-slate-50 rounded-2xl border-2 transition-all gap-2 sm:gap-0 ${
+                  isEditing
+                    ? "border-transparent focus-within:border-indigo-500 bg-white shadow-sm"
+                    : "border-transparent"
+                }`}
+              >
+                {!isEditing && !profile.phone ? (
+                  <div className="flex-1 p-2 font-sans font-bold text-slate-400 text-sm sm:text-base">
+                    Not set
+                  </div>
+                ) : (
+                  <PhoneInput
+                    international
+                    defaultCountry="NG"
+                    disabled={!isEditing}
+                    value={
+                      profile.phone === "Not set" ? undefined : profile.phone
+                    }
+                    onChange={handlePhoneChange}
+                    className="flex-1 font-sans font-bold text-slate-900 ml-2 text-sm sm:text-base 
+                    disabled:opacity-70 disabled:cursor-not-allowed
+                    [&_input]:bg-transparent 
+                    [&_input:disabled]:text-slate-400 
+                    [&_input:disabled]:cursor-not-allowed 
+                    [&_select:disabled]:opacity-70 
+                    [&_select:disabled]:cursor-not-allowed"
+                  />
+                )}
+
+                <div className="flex items-center justify-end px-2 sm:px-0">
+                  {profile.phone_verified ? (
+                    <div className="flex items-center gap-1 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100">
+                      <CheckCircle2
+                        size={14}
+                        strokeWidth={3}
+                        className="shrink-0"
+                      />
+                      <span className="text-[9px] sm:text-[10px] font-oswald font-black uppercase tracking-tighter">
+                        Verified
+                      </span>
+                    </div>
+                  ) : (
+                    isEditing &&
+                    profile.phone && (
+                      <button
+                        onClick={() =>
+                          handleRequestOtp(profile.phone!, "phone")
+                        }
+                        className="w-full sm:w-auto bg-amber-500 text-white px-4 py-2 rounded-xl text-[9px] sm:text-[10px] font-oswald font-black uppercase active:scale-95 transition-transform whitespace-nowrap sm:ml-2 cursor-pointer"
+                      >
+                        {otpLoading ? "Sending..." : "Verify"}
+                      </button>
+                    )
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {canViewInfo && (
               <div className="space-y-2">
                 <label className="text-[10px] font-oswald font-black text-slate-400 uppercase tracking-widest">
                   Public Estate ID
@@ -673,11 +811,27 @@ export default function Settings() {
                   <code>{profile.estateCode}</code>
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
-          {/* Payment Section */}
-          <div className="bg-white p-5 sm:p-8 rounded-4xl sm:rounded-4xl border border-slate-100 shadow-sm space-y-6">
+          <button
+            className="w-full flex items-center justify-between p-4 hover:bg-emerald-50 rounded-2xl transition-colors group cursor-pointer"
+            onClick={() => setIsPermissionsOpen(true)}
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg group-hover:scale-110 transition-transform">
+                <ShieldCheck size={18} />
+              </div>
+              <span className="font-sans font-bold text-slate-700 text-sm">
+                View Permissions
+              </span>
+            </div>
+          </button>
+        </div>
+
+        {/* 3. Payment Routing Section */}
+        {canEditPayment && (
+          <div className="bg-white p-5 sm:p-8 rounded-4xl border border-slate-100 shadow-sm space-y-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
               <div className="flex items-center gap-2">
                 <CreditCard className="text-emerald-600" size={20} />
@@ -691,7 +845,7 @@ export default function Settings() {
                     key={type}
                     disabled={!isEditing}
                     onClick={() => setPaymentMethod(type)}
-                    className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-sans font-bold transition-all ${
+                    className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-sans font-bold transition-all cursor-pointer ${
                       paymentMethod === type
                         ? "bg-white shadow-sm text-slate-900"
                         : "text-slate-400"
@@ -727,7 +881,7 @@ export default function Settings() {
                       ))}
                     </select>
                   ) : (
-                    <p className="p-4 bg-white border-none rounded-2xl font-sans font-bold text-slate-900 shadow-sm text-sm sm:text-base">
+                    <p className="p-4 bg-white border-none rounded-2xl font-sans font-bold text-slate-900 disabled:opacity-70 disabled:cursor-not-allowed shadow-sm text-sm sm:text-base">
                       {bankName}
                     </p>
                   )}
@@ -744,18 +898,18 @@ export default function Settings() {
                       />
                       <button
                         onClick={resolveAccount}
-                        className="bg-emerald-600 text-white px-4 rounded-2xl hover:bg-emerald-700 transition-colors shrink-0"
+                        className="bg-emerald-600 text-white px-4 rounded-2xl hover:bg-emerald-700 transition-colors shrink-0 cursor-pointer"
                       >
                         <Search size={18} />
                       </button>
                     </div>
                   ) : (
-                    <p className="flex-1 p-4 bg-white border-none rounded-2xl font-sans font-bold text-slate-900 shadow-sm text-sm sm:text-base">
+                    <p className="flex-1 p-4 bg-white border-none rounded-2xl font-sans font-bold text-slate-900 disabled:opacity-70 disabled:cursor-not-allowed shadow-sm text-sm sm:text-base">
                       {accountNumber}
                     </p>
                   )}
                 </div>
-                <div className="px-4 py-2 bg-emerald-100/50 rounded-xl text-[10px] font-oswald font-black text-emerald-800 uppercase tracking-widest">
+                <div className="px-4 py-2 bg-emerald-100/50 rounded-xl text-[10px] font-oswald font-black text-emerald-800 disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-widest">
                   {isEditing && isResolving
                     ? "Verifying..."
                     : accountName || "No account Name"}
@@ -772,23 +926,22 @@ export default function Settings() {
                   value={externalUrl}
                   onChange={(e) => setExternalUrl(e.target.value)}
                   placeholder="https://your-legacy-portal.com"
-                  className="w-full p-4 bg-white border-none rounded-2xl font-sans font-bold text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
+                  className="w-full p-4 bg-white border-none rounded-2xl font-sans font-bold text-slate-900 disabled:opacity-70 disabled:cursor-not-allowed shadow-sm outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
                 />
               </div>
             )}
           </div>
-        </div>
+        )}
 
-        {/* Sidebar: Emergency Contacts */}
-        <div className="space-y-6">
-          <div className="bg-slate-900 p-5 sm:p-6 rounded-4xl sm:rounded-4xl text-white flex flex-col h-110 sm:h-100 shadow-xl">
+        {/* 4. Emergency Contacts Section */}
+        {canViewInfo && (
+          <div className="bg-slate-900 p-5 sm:p-6 rounded-4xl text-white flex flex-col shadow-xl">
             <div className="flex items-center gap-2 mb-4 shrink-0">
               <ShieldAlert className="text-red-400" size={20} />
               <h2 className="font-montserrat font-bold">Emergency Contacts</h2>
             </div>
 
-            {/* Scrollable Area */}
-            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3">
+            <div className="space-y-3">
               {emergencyContacts.length > 0 ? (
                 emergencyContacts.map((contact) => (
                   <div
@@ -796,7 +949,7 @@ export default function Settings() {
                     className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/10"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-[10px] font-oswald font-black uppercase text-slate-500 mb-1 leading-none truncate">
+                      <p className="text-[10px] font-oswald font-black uppercase text-slate-400 mb-1 leading-none truncate">
                         {contact.name}
                       </p>
                       <div className="flex items-center">
@@ -813,7 +966,7 @@ export default function Settings() {
                     {isEditing && (
                       <button
                         onClick={() => removeContact(contact.id)}
-                        className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors shrink-0"
+                        className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors shrink-0 cursor-pointer"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -827,7 +980,7 @@ export default function Settings() {
               )}
             </div>
 
-            {/* Fixed Bottom Section */}
+            {/* Form to add contact */}
             {isEditing && (
               <div className="pt-4 mt-4 border-t border-white/10 space-y-2 shrink-0">
                 <input
@@ -855,7 +1008,7 @@ export default function Settings() {
                   <button
                     onClick={addEmergencyContact}
                     disabled={!newContact.name || !newContact.phone}
-                    className={`w-full sm:w-auto px-4 py-2.5 sm:py-0 rounded-xl font-oswald font-black text-[10px] uppercase flex items-center justify-center gap-1 transition-all ${
+                    className={`w-full sm:w-auto px-4 py-2.5 sm:py-0 rounded-xl font-oswald font-black text-[10px] uppercase flex items-center justify-center gap-1 transition-all cursor-pointer ${
                       newContact.name && newContact.phone
                         ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 active:scale-95"
                         : "bg-slate-800 text-slate-500 cursor-not-allowed"
@@ -867,40 +1020,166 @@ export default function Settings() {
               </div>
             )}
           </div>
+        )}
 
-          {/* Security Actions */}
-          <div className="bg-white p-5 sm:p-6 rounded-4xl sm:rounded-4xl border border-slate-100 shadow-sm space-y-2">
-            <button
-              className="w-full flex items-center justify-between p-4 hover:bg-red-50 rounded-2xl transition-colors group"
-              // onClick={() => setShowDeletePrompt(true)}
-              onClick={() => setIsPermissionsOpen(true)}
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg group-hover:scale-110 transition-transform">
-                  <ShieldCheck size={18} />
-                </div>
-                <span className="font-sans font-bold text-slate-700 text-sm">
-                  View Permissions
-                </span>
+        {/* 5. Security Actions Section */}
+        <div className="space-y-2 flex flex-col justify-end">
+          <label className="text-[10px] font-oswald font-black text-slate-400 uppercase tracking-widest">
+            Security
+          </label>
+          <button
+            onClick={() => router.push("/home/settings/change-password")}
+            className="w-full p-4 bg-slate-50 hover:bg-slate-100 transition-colors rounded-2xl font-sans font-bold text-slate-800 flex items-center shadow-md justify-between text-sm sm:text-base cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              <Lock size={16} className="text-indigo-600 shrink-0" />
+              <span>Change Password</span>
+            </div>
+            <ChevronRight size={18} className="text-slate-400" />
+          </button>
+          {/* 2. Multi-Factor Gateway Layout */}
+          <div className="bg-white p-5 sm:p-8 rounded-4xl border border-slate-100 shadow-sm space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-50 pb-4">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="text-indigo-600" size={20} />
+                <h2 className="font-montserrat font-bold text-slate-900">
+                  Multi-Factor Gateway Layout
+                </h2>
               </div>
-            </button>
-            <button
-              onClick={() =>
-                (window.location.href = "/home/settings/change-password")
-              }
-              className="w-full flex items-center justify-between p-4 hover:bg-slate-50 rounded-2xl transition-colors group"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg group-hover:scale-110 transition-transform">
-                  <Lock size={18} />
+              <span className="px-3 py-1 rounded-xl text-[9px] font-oswald font-black uppercase tracking-wider bg-slate-100 text-slate-600">
+                {activeMfaMode === "NONE"
+                  ? "Protection Disabled"
+                  : `${activeMfaMode} Guard Active`}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Option 1: Email Code */}
+              <button
+                type="button"
+                disabled={mfaEmailEnabled || !isEditing}
+                onClick={() => {
+                  if (!profile.email_verified) {
+                    toast.error("Please verify your email first.");
+                  } else {
+                    handleRequestOtp(profile.email, "mfa_email");
+                  }
+                }}
+                className={`p-4 text-left border rounded-2xl transition-all flex flex-col justify-between h-36 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer ${
+                  mfaEmailEnabled
+                    ? "border-indigo-600 bg-indigo-50/30 ring-2 ring-indigo-600/10"
+                    : "border-slate-200 hover:border-slate-300 bg-white"
+                }`}
+              >
+                <div className="flex justify-between items-start w-full">
+                  <Mail
+                    className={
+                      mfaEmailEnabled ? "text-indigo-600" : "text-slate-400"
+                    }
+                    size={22}
+                  />
+                  {mfaEmailEnabled && (
+                    <span className="bg-emerald-100 text-emerald-800 text-[8px] font-oswald font-black uppercase tracking-tight px-1.5 py-0.5 rounded-md">
+                      Enabled
+                    </span>
+                  )}
                 </div>
-                <span className="font-sans font-bold text-slate-700 text-sm">
-                  More Configuration
-                </span>
-              </div>
-              <ChevronRight size={16} className="text-slate-300" />
-            </button>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-800 font-sans">
+                    Email Verification
+                  </h4>
+                  <p className="text-[10px] text-slate-400 mt-0.5 leading-tight font-sans">
+                    Requires 6-digit email OTP confirmation on sensitive
+                    operations.
+                  </p>
+                </div>
+              </button>
+
+              {/* Option 2: TOTP Application */}
+              <button
+                type="button"
+                disabled={mfaTotpEnabled || !isEditing}
+                onClick={() => setDisplayTotpActivator(true)}
+                className={`p-4 text-left border rounded-2xl transition-all flex flex-col justify-between h-36 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer ${
+                  mfaTotpEnabled
+                    ? "border-indigo-600 bg-indigo-50/30 ring-2 ring-indigo-600/10"
+                    : "border-slate-200 hover:border-slate-300 bg-white"
+                }`}
+              >
+                <div className="flex justify-between items-start w-full">
+                  <Smartphone
+                    className={
+                      mfaTotpEnabled ? "text-indigo-600" : "text-slate-400"
+                    }
+                    size={22}
+                  />
+                  {mfaTotpEnabled && (
+                    <span className="bg-emerald-100 text-emerald-800 text-[8px] font-oswald font-black uppercase tracking-tight px-1.5 py-0.5 rounded-md">
+                      Enabled
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-800 font-sans">
+                    Authenticator App
+                  </h4>
+                  <p className="text-[10px] text-slate-400 mt-0.5 leading-tight font-sans">
+                    Use apps like Google Authenticator or Authy for 2FA.
+                  </p>
+                </div>
+              </button>
+
+              {/* Option 3: SMS Option */}
+              <button
+                type="button"
+                disabled={mfaSmsEnabled || !isEditing}
+                onClick={() => setActiveMfaMode("SMS")}
+                className={`p-4 text-left border rounded-2xl transition-all flex flex-col justify-between h-36 border-dashed opacity-75 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer ${
+                  mfaSmsEnabled
+                    ? "border-indigo-600 bg-indigo-50/30"
+                    : "border-slate-200 hover:border-slate-300 bg-white"
+                }`}
+              >
+                <div className="flex justify-between items-start w-full">
+                  <Phone
+                    className={
+                      mfaSmsEnabled ? "text-indigo-600" : "text-slate-400"
+                    }
+                    size={22}
+                  />
+                  {mfaSmsEnabled && (
+                    <span className="bg-emerald-100 text-emerald-800 text-[8px] font-oswald font-black uppercase tracking-tight px-1.5 py-0.5 rounded-md">
+                      Enabled
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-800 font-sans">
+                    SMS Verification
+                  </h4>
+                  <p className="text-[10px] text-slate-400 mt-0.5 leading-tight font-sans">
+                    Receive passcode standard SMS text directly to mobile
+                    device.
+                  </p>
+                </div>
+              </button>
+            </div>
           </div>
+        </div>
+        <div className="flex justify-end w-full bg-blue">
+          <button
+            className="p-4 hover:bg-red-50 rounded-2xl transition-colors group"
+            onClick={() => setShowDeletePrompt(true)}
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-50 text-red-600 rounded-lg group-hover:scale-110 transition-transform">
+                <Trash2 size={18} />
+              </div>
+              <span className="font-bold text-red-600 text-sm">
+                Terminate Account
+              </span>
+            </div>
+          </button>
         </div>
       </div>
 
@@ -948,7 +1227,7 @@ export default function Settings() {
             <div className="space-y-4">
               <button
                 disabled={otpLoading || otp.some((d) => !d)}
-                className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-sans font-bold text-base sm:text-lg shadow-lg shadow-indigo-200 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center"
+                className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-sans font-bold text-base sm:text-lg shadow-lg shadow-indigo-200 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center cursor-pointer"
               >
                 {otpLoading ? (
                   <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -958,7 +1237,7 @@ export default function Settings() {
               </button>
               <button
                 onClick={handleCancelOtp}
-                className="w-full py-2 text-slate-400 font-oswald font-bold uppercase text-[10px] tracking-widest hover:text-slate-600 transition-colors"
+                className="w-full py-2 text-slate-400 font-oswald font-bold uppercase text-[10px] tracking-widest hover:text-slate-600 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
@@ -974,49 +1253,15 @@ export default function Settings() {
         </div>
       )}
 
-      {/* TERMINATION MODAL */}
-      {showDeletePrompt && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-60 animate-in fade-in duration-200">
-          <div className="bg-white rounded-4xl sm:rounded-4xl p-6 sm:p-8 w-full max-w-md shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-200">
-            <div className="w-16 h-16 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mb-6">
-              <ShieldAlert size={32} />
-            </div>
+      <DeletePromptModal
+        isOpen={showDeletePrompt}
+        onClose={() => setShowDeletePrompt(false)}
+        onConfirm={confirmAction}
+        loading={loadingAction}
+        title="Terminate Estate?"
+        message="By terminating your account, you will permanently delete this estate, all resident data, payment histories, and access for all associated users."
+      />
 
-            <h3 className="text-xl sm:text-2xl font-montserrat font-black text-slate-900 mb-2">
-              Terminate Estate?
-            </h3>
-            <p className="text-slate-500 font-sans text-sm leading-relaxed mb-8">
-              This action is{" "}
-              <span className="font-bold text-slate-900 underline">
-                irreversible
-              </span>
-              . By terminating your account, you will permanently delete this
-              estate, all resident data, payment histories, and access for all
-              associated users.
-            </p>
-
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={confirmAction}
-                disabled={loadingAction}
-                className="w-full py-4 bg-red-600 text-white rounded-2xl font-sans font-bold text-base sm:text-lg shadow-lg shadow-red-200 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
-              >
-                {loadingAction ? (
-                  <Loader2 className="animate-spin" size={20} />
-                ) : (
-                  "Yes, Terminate Everything"
-                )}
-              </button>
-              <button
-                onClick={() => setShowDeletePrompt(false)}
-                className="w-full py-3 text-slate-400 font-oswald font-bold uppercase text-[10px] tracking-widest hover:text-slate-600 transition-colors"
-              >
-                Cancel and Go Back
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       <AdminPermissionsViewModal
         user={user}
         isOpen={isPermissionsOpen}

@@ -16,6 +16,24 @@ const TAB_PERMISSIONS = {
   my_logs: "self", // Self logs are readable by any authenticated user
 };
 
+export const showAccessDeniedToast = () => {
+  toast.error(
+    `Access Denied. You do not hold the authorized credentials required to view the USERS panel workspace.`,
+    {
+      id: "unauthorized-users-page-lock", 
+      duration: 5000,
+      position: "top-center",
+      style: {
+        fontWeight: "bold",
+        borderRadius: "12px",
+        background: "#1E293B",
+        color: "#FFFFFF",
+        maxWidth: "450px",
+      },
+    },
+  );
+};
+
 export default function UsersPage() {
   const [activeTab, setActiveTab] = useState<
     "users" | "add" | "logs" | "my_logs"
@@ -32,21 +50,7 @@ export default function UsersPage() {
 
     // If they land on the page and have neither all_access nor view_users permission
     if (!hasAllAccess && !hasInitialAccess) {
-      toast.error(
-        `Access Denied. You do not hold the authorized credentials required to view the USERS panel workspace.`,
-        {
-          id: "unauthorized-users-page-lock", // 🚀 Fixed ID stops duplicate toast stacking
-          duration: Infinity,
-          position: "top-center",
-          style: {
-            fontWeight: "bold",
-            borderRadius: "12px",
-            background: "#1E293B",
-            color: "#FFFFFF",
-            maxWidth: "450px",
-          },
-        },
-      );
+      showAccessDeniedToast();
     }
 
     // 🧼 THE CLEANUP FUNCTION: Runs automatically when the user leaves this page component
@@ -73,21 +77,7 @@ export default function UsersPage() {
     toast.dismiss("unauthorized-users-page-lock");
 
     if (!hasAllAccess && !hasRequiredPermission) {
-      toast.error(
-        `Access Denied. You do not hold the authorized credentials required to view the ${targetTab.replace("_", " ").toUpperCase()} panel workspace.`,
-        {
-          id: "unauthorized-users-page-lock",
-          duration: Infinity,
-          position: "top-center",
-          style: {
-            fontWeight: "bold",
-            borderRadius: "12px",
-            background: "#1E293B",
-            color: "#FFFFFF",
-            maxWidth: "450px",
-          },
-        },
-      );
+      showAccessDeniedToast();
       return;
     }
 

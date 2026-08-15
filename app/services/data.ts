@@ -29,6 +29,11 @@ export const ESTATE_PERMISSIONS: PermissionNode[] = [
     parent_permission: "residents_management",
   },
   {
+    id: "manage_join_requests",
+    name: "Accept, Decline, or Block Join Requests",
+    parent_permission: "residents_management",
+  },
+  {
     id: "modify_resident_status",
     name: "Suspend & Enable Residents",
     parent_permission: "residents_management",
@@ -49,12 +54,12 @@ export const ESTATE_PERMISSIONS: PermissionNode[] = [
   },
   {
     id: "view_guards",
-    name: "View Security Guards List",
+    name: "View Security Guards and Requests",
     parent_permission: "security_management",
   },
   {
-    id: "add_guard",
-    name: "Register New Security Guard",
+    id: "manage_guard_requests",
+    name: "Accept, Decline, or Block Security Guard Requests",
     parent_permission: "security_management",
   },
   {
@@ -78,7 +83,7 @@ export const ESTATE_PERMISSIONS: PermissionNode[] = [
   },
   {
     id: "view_checkins",
-    name: "View Live Visitor Logs",
+    name: "View Guests' Invitations and Check-In Records",
     parent_permission: "visitor_operations",
   },
   {
@@ -96,29 +101,44 @@ export const ESTATE_PERMISSIONS: PermissionNode[] = [
   // ESTATE SETTINGS, CONFIGURATIONS & PAYMENTS
   // ==========================================
   {
-    id: "estate_settings",
-    name: "Estate Settings & Configurations",
+    id: "estate_administration",
+    name: "Estate Administration & Configurations",
     parent_permission: null,
   },
   {
     id: "view_estate_profile",
-    name: "View Estate Details & Financials",
-    parent_permission: "estate_settings",
+    name: "View Estate Profile & Core Information",
+    parent_permission: "estate_administration",
   },
   {
-    id: "edit_estate_details",
-    name: "Edit Estate Info (Name, Address, Rules)",
-    parent_permission: "estate_settings",
+    id: "edit_estate_profile",
+    name: "Edit Estate Profile & Emergency Contacts",
+    parent_permission: "estate_administration",
   },
   {
-    id: "configure_kyc_rules",
-    name: "Configure Tenant KYC Requirements",
-    parent_permission: "estate_settings",
+    id: "view_estate_records",
+    name: "View Estate Records (Payments, Services & Reports)",
+    parent_permission: "estate_administration",
+  },
+  {
+    id: "view_estate_reports",
+    name: "View Estate Reports",
+    parent_permission: "estate_administration",
   },
   {
     id: "manage_bank_details",
-    name: "Configure Bank Payout Details",
-    parent_permission: "estate_settings",
+    name: "Manage Bank Payout & Settlement Details",
+    parent_permission: "estate_administration",
+  },
+  {
+    id: "modify_report_status",
+    name: "Modify Report & Incident Statuses",
+    parent_permission: "estate_administration",
+  },
+  {
+    id: "modify_records_status",
+    name: "Modify Record & Payment Statuses",
+    parent_permission: "estate_administration",
   },
 
   // ==========================================
@@ -130,13 +150,97 @@ export const ESTATE_PERMISSIONS: PermissionNode[] = [
     parent_permission: null,
   },
   {
-    id: "view_audit_logs",
-    name: "View Admin Activity & Security Audits",
+    id: "view_security_logs",
+    name: "View Security Guard Activity Logs",
     parent_permission: "logs_management",
   },
   {
-    id: "export_visitor_reports",
-    name: "Export & Download Visitor Reports",
+    id: "view_resident_logs",
+    name: "View Resident Access & Activity Logs",
     parent_permission: "logs_management",
+  },
+  {
+    id: "view_admin_logs",
+    name: "View Admin Activity & Audit Logs",
+    parent_permission: "logs_management",
+  },
+  // ==========================================
+  // NOTIFICATIONS MANAGEMENT
+  // ==========================================
+  {
+    id: "notifications_management",
+    name: "Notifications Management (Root)",
+    parent_permission: null,
+  },
+  {
+    id: "read_notifications",
+    name: "View & Read System Notifications",
+    parent_permission: "notifications_management",
+  },
+  {
+    id: "send_notifications",
+    name: "Dispatch & Broadcast Notifications",
+    parent_permission: "notifications_management",
+  },
+  {
+    id: "delete_notifications",
+    name: "Purge & Delete Notifications",
+    parent_permission: "notifications_management",
+  },
+  {
+    id: "export_logs",
+    name: "Export & Download System Audit Logs",
+    parent_permission: "logs_management",
+  },
+  // ==========================================
+  // COMMUNITY MANAGEMENT
+  // ==========================================
+  {
+    id: "community_management",
+    name: "Community Feed & Posts Management",
+    parent_permission: null,
+  },
+  {
+    id: "view_community_posts",
+    name: "View Community Posts & Feed",
+    parent_permission: "community_management",
+  },
+  {
+    id: "create_community_posts",
+    name: "Create Posts, Comment & Like Community Feed",
+    parent_permission: "community_management",
+  },
+  {
+    id: "moderate_community_posts",
+    name: "Moderate Posts (Delete or Archive)",
+    parent_permission: "community_management",
+  },
+  // ==========================================
+  // FACILITY MANAGEMENT
+  // ==========================================
+  {
+    id: "facility_management",
+    name: "Facility & Amenity Management",
+    parent_permission: null,
+  },
+  {
+    id: "view_facility_bookings",
+    name: "View Facilities & Booking Calendar",
+    parent_permission: "facility_management",
+  },
+  // {
+  //   id: "create_facility_booking",
+  //   name: "Book Facilities & Reserve Amenities",
+  //   parent_permission: "facility_management",
+  // },
+  {
+    id: "manage_facility_bookings",
+    name: "Approve, Decline & Cancel Bookings",
+    parent_permission: "facility_management",
+  },
+  {
+    id: "configure_facilities",
+    name: "Manage Facility Settings, Slots & Pricing",
+    parent_permission: "facility_management",
   },
 ];

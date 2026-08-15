@@ -31,6 +31,8 @@ interface UnifiedUserContextType extends UserContextType {
   socket: Socket | null;
   plan: string | null;
   setPlan: (plan: string | null) => void;
+  contextEstateId: string | null;
+  setContextEstateId: (value: string) => void;
 }
 
 const UserContext = createContext<UnifiedUserContextType | undefined>(
@@ -43,6 +45,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [notifications, setNotifications] = useState<notification[]>([]);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [contextEstateId, setContextEstateId] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const baseUrl = "http://localhost:3003";
   const [isConnected, setIsConnected] = useState(false);
@@ -140,6 +143,8 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         loadingNotifications,
         plan,
         setPlan,
+        contextEstateId,
+        setContextEstateId,
       }}
     >
       {children}

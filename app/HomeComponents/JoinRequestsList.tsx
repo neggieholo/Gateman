@@ -228,11 +228,11 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
           </div>
         </div>
         {/* Action Row Buttons */}
-        <div className="flex flex-row flex-wrap gap-2 sm:gap-3 mt-4 sm:mt-10 pt-4 sm:pt-6 border-t border-slate-100 shrink-0">
+        <div className="flex flex-wrap gap-3 items-center p-4 bg-slate-50/60 border-t border-slate-100">
           <button
             onClick={() => handleApprove(req.id)}
             disabled={loadingApproveAction}
-            className="flex-1 min-w-[5.5rem] flex items-center justify-center gap-1.5 bg-green-600 text-white py-2.5 sm:py-3 rounded-lg font-montserrat font-bold text-xs uppercase tracking-wider hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50"
+            className="flex-1 sm:flex-initial min-w-30 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 px-4 rounded-xl font-montserrat font-bold text-xs uppercase tracking-wider transition-all shadow-2xs shadow-emerald-100 active:scale-98"
           >
             {loadingApproveAction ? (
               <Loader2 className="animate-spin" size={14} />
@@ -244,15 +244,15 @@ const JoinRequestsList: React.FC<JoinRequestsListProps> = ({
           </button>
           <button
             onClick={() => setShowPrompt({ id: req.id, type: "decline" })}
-            className="flex-1 min-w-22 flex items-center justify-center gap-1.5 bg-amber-500 text-white py-2.5 sm:py-3 rounded-lg font-montserrat font-bold text-xs uppercase tracking-wider hover:bg-amber-600 transition-colors shadow-sm"
+            className="flex-1 sm:flex-initial min-w-30 flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white py-2.5 px-4 rounded-xl font-montserrat font-bold text-xs uppercase tracking-wider transition-all shadow-2xs shadow-amber-100 active:scale-98"
           >
-            <X size={16} /> <span>Decline</span>
+            <X size={14} /> Decline
           </button>
           <button
             onClick={() => setShowPrompt({ id: req.id, type: "block" })}
-            className="flex-1 min-w-22 flex items-center justify-center gap-1.5 bg-red-600 text-white py-2.5 sm:py-3 rounded-lg font-montserrat font-bold text-xs uppercase tracking-wider hover:bg-red-700 transition-colors shadow-sm"
+            className="flex-1 sm:flex-initial min-w-30 flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white py-2.5 px-4 rounded-xl font-montserrat font-bold text-xs uppercase tracking-wider transition-all shadow-2xs shadow-rose-100 active:scale-98"
           >
-            <Ban size={16} /> <span>Block</span>
+            <Ban size={14} /> Block
           </button>
         </div>
       </div>

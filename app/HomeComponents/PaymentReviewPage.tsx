@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   ChevronRight,
   Wallet,
@@ -20,40 +20,85 @@ import {
 } from "lucide-react";
 import { ResidentPayment } from "../services/types";
 import PaymentDisputesPage from "./PaymentsDisputesPage";
+import { useUser } from "../UserContext";
+import { showAccessDeniedToast } from "./Users";
+import toast from "react-hot-toast";
+import { useSearchParams } from "next/navigation";
+
+type StatusFilter = "ALL" | "pending" | "verified" | "rejected";
+
+const STATUS_FILTERS: StatusFilter[] = [
+  "ALL",
+  "pending",
+  "verified",
+  "rejected",
+];
 
 export default function PaymentReviewPage() {
+  const { user, contextEstateId } = useUser();
   const [activeMainTab, setActiveMainTab] = useState<"PAYMENTS" | "DISPUTES">(
     "PAYMENTS",
   );
   const [allPayments, setAllPayments] = useState<ResidentPayment[]>([]);
   const [selectedPayment, setSelectedPayment] =
     useState<ResidentPayment | null>(null);
-  const [statusFilter, setStatusFilter] = useState("pending");
+   const [statusFilter, setStatusFilter] = useState<
+     "ALL" | "pending" | "verified" | "rejected"
+   >("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [errorPrompt, setErrorPrompt] = useState<string | null>(null);
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+  const searchParams = useSearchParams();
+  const residentName = searchParams.get("resident_name");
 
-  const fetchPayments = async () => {
+  const canView =
+    user?.permissions?.includes("estate_administration") ||
+    user?.permissions?.includes("view_estate_records") ||
+    user?.permissions?.includes("all-access");
+
+  const canEditStatus =
+    user?.permissions?.includes("estate_administration") ||
+    user?.permissions?.includes("modify_records_status") ||
+    user?.permissions?.includes("all-access");
+
+  const fetchPayments = useCallback(async () => {
+    if (!contextEstateId) return;
+    const id = contextEstateId;
+
     setLoading(true);
     try {
-      const response = await fetch(`${baseUrl}/api/payment/all-payments`, {
-        method: "GET",
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${baseUrl}/api/payment/all-payments/${id}`,
+        {
+          method: "GET",
+          credentials: "include",
+        },
+      );
       const res = await response.json();
       if (res.success) setAllPayments(res.payments);
+
+      if (residentName) {
+        setSearchQuery(residentName);
+
+        const newUrl = window.location.pathname;
+        window.history.replaceState({ ...window.history.state }, "", newUrl);
+      }
     } catch (error) {
       console.error("Fetch error:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [contextEstateId, baseUrl, residentName]);
 
   useEffect(() => {
+    if (!canView) {
+      showAccessDeniedToast();
+      return;
+    }
     fetchPayments();
-  }, []);
+  }, [canView, contextEstateId, fetchPayments]);
 
   const filteredPayments = useMemo(() => {
     return allPayments.filter((p) => {
@@ -71,6 +116,10 @@ export default function PaymentReviewPage() {
     id: string,
     newStatus: "verified" | "rejected",
   ) => {
+    if (!canEditStatus) {
+      showAccessDeniedToast();
+      return;
+    }
     setLoadingAction(newStatus);
     setErrorPrompt(null);
 
@@ -78,8 +127,8 @@ export default function PaymentReviewPage() {
       const res = await fetch(`${baseUrl}/api/payment/verify/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-        credentials: 'include'
+        body: JSON.stringify({ status: newStatus, estate_id: contextEstateId }),
+        credentials: "include",
       });
 
       const data = await res.json();
@@ -90,11 +139,11 @@ export default function PaymentReviewPage() {
         );
         setSelectedPayment(null);
       } else {
-        alert(data.error || "Update failed");
+        toast.error(data.error || "Update failed");
         setErrorPrompt(data.error || "Update failed");
       }
     } catch (error) {
-      alert("Connection error.");
+      toast.error("Connection error.");
     } finally {
       setLoadingAction(null);
     }
@@ -114,7 +163,7 @@ export default function PaymentReviewPage() {
         </div>
 
         <div className="flex flex-wrap gap-1 p-1 bg-slate-100 rounded-2xl w-full lg:w-auto justify-start sm:justify-center">
-          {["ALL", "pending", "verified", "rejected"].map((s) => (
+          {STATUS_FILTERS.map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
@@ -372,17 +421,32 @@ export default function PaymentReviewPage() {
       </div>
 
       {/* Dynamic Main App Workspace */}
-      <div className="flex-1 overflow-hidden">
-        {activeMainTab === "PAYMENTS" ? (
-          selectedPayment ? (
-            <DetailView payment={selectedPayment} />
+      {canView ? (
+        <div className="flex-1 overflow-hidden">
+          {activeMainTab === "PAYMENTS" ? (
+            selectedPayment ? (
+              <DetailView payment={selectedPayment} />
+            ) : (
+              <PaymentList />
+            )
           ) : (
-            <PaymentList />
-          )
-        ) : (
-          <PaymentDisputesPage />
-        )}
-      </div>
+            <PaymentDisputesPage />
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center p-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200/80 max-w-xl mx-auto my-8">
+          <div className="p-3 bg-red-50 text-red-600 rounded-full mb-4">
+            <ShieldAlert size={28} />
+          </div>
+          <h3 className="text-sm font-montserrat font-black text-slate-800 uppercase tracking-wide mb-1">
+            Workspace Access Restricted
+          </h3>
+          <p className="text-xs text-slate-400 max-w-xs leading-relaxed font-medium">
+            You do not currently hold the authorized digital credentials or
+            clear operational rights needed to view this interface panel.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

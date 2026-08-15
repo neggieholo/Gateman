@@ -11,14 +11,15 @@ import {
   ArrowLeft,
   Eye,
   CheckCircle,
-  X,
   Receipt,
   Loader2,
 } from "lucide-react";
 import { getEstateReports, updateReportStatus } from "../services/apis";
 import { EstateReport, ReportStatus } from "../services/types";
+import { useUser } from "../UserContext";
 
 export default function ResidentsSuggestionsView() {
+  const { contextEstateId } = useUser();
   const [reports, setReports] = useState<EstateReport[]>([]);
   const [selectedReport, setSelectedReport] = useState<EstateReport | null>(
     null,
@@ -36,7 +37,7 @@ export default function ResidentsSuggestionsView() {
     const fetchReports = async () => {
       setLoading(true);
       try {
-        const res = await getEstateReports();
+        const res = await getEstateReports(contextEstateId!);
         if (res.success) {
           // Filter strictly for GENERAL type before updating state
           const securityOnly = res.reports.filter(
@@ -52,7 +53,7 @@ export default function ResidentsSuggestionsView() {
     };
 
     fetchReports();
-  }, []);
+  }, [contextEstateId]);
 
   const handleViewDetails = (report: EstateReport) => {
     setSelectedReport(report);
@@ -70,6 +71,7 @@ export default function ResidentsSuggestionsView() {
     try {
       const res = await updateReportStatus(
         showFeedbackModal.id,
+        contextEstateId!,
         showFeedbackModal.status,
         adminFeedback,
       );
@@ -131,7 +133,7 @@ export default function ResidentsSuggestionsView() {
                 {new Date(selectedReport.created_at).toLocaleDateString()}
               </span>
             </div>
-            <h2 className="text-base sm:text-lg font-montserrat font-black text-slate-800 tracking-tight break-words w-full">
+            <h2 className="text-base sm:text-lg font-montserrat font-black text-slate-800 tracking-tight wrap-break-word w-full">
               {selectedReport.subject}
             </h2>
             <div className="flex items-center gap-1.5 text-slate-600 font-medium text-xs bg-slate-50 border border-slate-200/40 px-2.5 py-1 rounded-lg w-fit mt-2">
@@ -176,7 +178,7 @@ export default function ResidentsSuggestionsView() {
             Report Description
           </h4>
           <div className="flex-1 overflow-y-auto pr-0.5 bg-slate-50/50 border border-slate-200/30 rounded-xl p-4 custom-scrollbar min-w-0">
-            <p className="text-slate-700 leading-relaxed text-xs sm:text-sm font-medium whitespace-pre-wrap font-sans break-words w-full">
+            <p className="text-slate-700 leading-relaxed text-xs sm:text-sm font-medium whitespace-pre-wrap font-sans wrap-break-word w-full">
               {selectedReport.description}
             </p>
           </div>
@@ -313,7 +315,7 @@ export default function ResidentsSuggestionsView() {
 
               <div className="flex items-center gap-4 shrink-0">
                 <div className="text-right hidden md:block min-w-0">
-                  <p className="text-xs font-sans font-semibold text-slate-700 truncate max-w-[8rem]">
+                  <p className="text-xs font-sans font-semibold text-slate-700 truncate max-w-32">
                     {report.reporter_name}
                   </p>
                   <p className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-wide mt-0.5">

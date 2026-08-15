@@ -43,7 +43,6 @@ export default function AddAdmin() {
   // Account Identification Fields State
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
 
   // Strategic System Guard Flags
@@ -202,7 +201,6 @@ export default function AddAdmin() {
       const payload = {
         name: fullName,
         email: email,
-        password: password,
         phone_number: phoneNumber || null,
         require_password_change: requirePasswordChange,
         permissions: selectedPermissions,
@@ -214,7 +212,6 @@ export default function AddAdmin() {
         toast.success(`Onboarding Profile built for ${fullName}.`);
         setFullName("");
         setEmail("");
-        setPassword("");
         setPhoneNumber("");
         setSelectedPermissions([]);
       } else {
@@ -293,28 +290,6 @@ export default function AddAdmin() {
                 placeholder="name@gateman.com"
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl font-bold text-slate-800 text-xs outline-none focus:ring-2 focus:ring-blue-500 transition-all"
               />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-oswald font-bold text-slate-400 uppercase tracking-wider">
-                Password
-              </label>
-              <div className="flex relative">
-                <input
-                  type={show ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="*********"
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl font-bold text-slate-800 text-xs outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShow(!show)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gm-gold hover:text-slate-600 transition-colors"
-                >
-                  {show ? <Eye size={18} /> : <EyeClosed size={18} />}
-                </button>
-              </div>
             </div>
 
             <div className="space-y-1.5">

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @next/next/no-img-element */
 "use client";
@@ -13,12 +14,14 @@ import {
   ExternalLink,
   Loader2,
 } from "lucide-react";
+import { useUser } from "../UserContext";
+import toast from "react-hot-toast";
 
 interface SecurityJoinRequestsListProps {
   requests: SecurityJoinRequest[];
   onApprove: (id: string) => Promise<void>;
   onDecline: (id: string, feedback: string) => Promise<void>;
-  onBlock: (id: string, feedback: string) => Promise<void>;
+  onBlock: (id: string, feedback: string, estate_id: string) => Promise<void>;
   loading?: boolean;
   hideTabs: (hide: boolean) => void;
 }
@@ -34,6 +37,7 @@ const SecurityJoinRequestsList: React.FC<SecurityJoinRequestsListProps> = ({
   const [selectedRequest, setSelectedRequest] =
     useState<SecurityJoinRequest | null>(null);
   const [feedback, setFeedback] = useState("");
+  const { contextEstateId } = useUser();
   const [showPrompt, setShowPrompt] = useState<{
     id: string;
     type: "decline" | "block";
@@ -49,14 +53,14 @@ const SecurityJoinRequestsList: React.FC<SecurityJoinRequestsListProps> = ({
     try {
       await (showPrompt.type === "decline"
         ? onDecline(showPrompt.id, feedback)
-        : onBlock(showPrompt.id, feedback));
+        : onBlock(showPrompt.id, feedback, contextEstateId!));
 
       setFeedback("");
       setShowPrompt(null);
       setSelectedRequest(null);
     } catch (err: any) {
       console.error(`Failed to ${showPrompt.type}:`, err);
-      alert(
+      toast.error(
         err.message || `An error occurred while trying to ${showPrompt.type}.`,
       );
     } finally {
@@ -70,7 +74,7 @@ const SecurityJoinRequestsList: React.FC<SecurityJoinRequestsListProps> = ({
       await onApprove(id);
       setSelectedRequest(null);
     } catch (err) {
-      alert("Failed to approve request");
+      toast.error("Failed to approve request");
     } finally {
       setLoadingApproveAction(false);
     }
@@ -134,7 +138,7 @@ const SecurityJoinRequestsList: React.FC<SecurityJoinRequestsListProps> = ({
       <div className="flex flex-wrap gap-3 items-center p-4 bg-slate-50/60 border-t border-slate-100">
         <button
           onClick={() => handleApprove(req.id)}
-          className="flex-1 sm:flex-initial min-w-[120px] flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 px-4 rounded-xl font-montserrat font-bold text-xs uppercase tracking-wider transition-all shadow-2xs shadow-emerald-100 active:scale-98"
+          className="flex-1 sm:flex-initial min-w-30 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 px-4 rounded-xl font-montserrat font-bold text-xs uppercase tracking-wider transition-all shadow-2xs shadow-emerald-100 active:scale-98"
         >
           {loadingApproveAction && req.id === selectedRequest?.id ? (
             <>
@@ -148,13 +152,13 @@ const SecurityJoinRequestsList: React.FC<SecurityJoinRequestsListProps> = ({
         </button>
         <button
           onClick={() => setShowPrompt({ id: req.id, type: "decline" })}
-          className="flex-1 sm:flex-initial min-w-[120px] flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white py-2.5 px-4 rounded-xl font-montserrat font-bold text-xs uppercase tracking-wider transition-all shadow-2xs shadow-amber-100 active:scale-98"
+          className="flex-1 sm:flex-initial min-w-30 flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white py-2.5 px-4 rounded-xl font-montserrat font-bold text-xs uppercase tracking-wider transition-all shadow-2xs shadow-amber-100 active:scale-98"
         >
           <X size={14} /> Decline
         </button>
         <button
           onClick={() => setShowPrompt({ id: req.id, type: "block" })}
-          className="flex-1 sm:flex-initial min-w-[120px] flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white py-2.5 px-4 rounded-xl font-montserrat font-bold text-xs uppercase tracking-wider transition-all shadow-2xs shadow-rose-100 active:scale-98"
+          className="flex-1 sm:flex-initial min-w-30 flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white py-2.5 px-4 rounded-xl font-montserrat font-bold text-xs uppercase tracking-wider transition-all shadow-2xs shadow-rose-100 active:scale-98"
         >
           <Ban size={14} /> Block
         </button>

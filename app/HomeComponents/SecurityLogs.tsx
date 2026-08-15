@@ -9,11 +9,19 @@ import {
   Loader2,
   FileText,
 } from "lucide-react";
+import { useUser } from "../UserContext";
+import { showAccessDeniedToast } from "./Users";
 
 export default function SecurityLogsPage() {
+  const { user } = useUser();
   const [logs, setLogs] = useState<SecurityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+
+  const canView =
+    user?.permissions?.includes("logs_management") ||
+    user?.permissions?.includes("view_security_logs") ||
+    user?.permissions?.includes("all-access");
 
   const fetchLogs = async () => {
     try {
@@ -27,8 +35,13 @@ export default function SecurityLogsPage() {
   };
 
   useEffect(() => {
+    if (!canView) {
+      showAccessDeniedToast();
+      return;
+    }
+
     fetchLogs();
-  }, []);
+  }, [canView]);
 
   const filteredLogs = logs.filter(
     (log) =>

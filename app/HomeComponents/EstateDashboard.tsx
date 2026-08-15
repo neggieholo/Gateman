@@ -17,82 +17,82 @@ import { DashboardStats } from "../services/types";
 import { fetchDashboardStats } from "../services/apis";
 import toast from "react-hot-toast";
 
-export default function Dashboard() {
-  const { user } = useUser();
+export default function EstateDashboard() {
+  const { user, contextEstateId } = useUser();
   const router = useRouter();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-   useEffect(() => {
-     const hasPassWarn = localStorage.getItem("DASHBOARD_PASS_WARN") === "true";
-     const hasMfaWarn = localStorage.getItem("DASHBOARD_MFA_WARN") === "true";
+  useEffect(() => {
+    const hasPassWarn = localStorage.getItem("DASHBOARD_PASS_WARN") === "true";
+    const hasMfaWarn = localStorage.getItem("DASHBOARD_MFA_WARN") === "true";
 
-     // Short circuit if neither warning is flagged
-     if (!hasPassWarn && !hasMfaWarn) return;
+    // Short circuit if neither warning is flagged
+    if (!hasPassWarn && !hasMfaWarn) return;
 
-     toast(
-       (t) => (
-         <div className="flex flex-col gap-2.5 p-1 max-w-sm">
-           <p className="font-sans font-black text-slate-900 text-sm tracking-tight">
-             ⚠️ Security Profile Configuration Required
-           </p>
+    toast(
+      (t) => (
+        <div className="flex flex-col gap-2.5 p-1 max-w-sm">
+          <p className="font-sans font-black text-slate-900 text-sm tracking-tight">
+            ⚠️ Security Profile Configuration Required
+          </p>
 
-           <div className="flex flex-col gap-2 text-xs text-slate-600 font-medium leading-relaxed">
-             {hasPassWarn && (
-               <p>
-                 • You are currently using a <strong>temporary password</strong>
-                 . For maximum system protection, please configure a new master
-                 credential.
-               </p>
-             )}
-             {hasMfaWarn && (
-               <p>
-                 • Administrative security policies{" "}
-                 <strong>require Multi-Factor Authentication</strong> for your
-                 account. Please set up MFA before your next session to avoid
-                 access restrictions.
-               </p>
-             )}
-           </div>
+          <div className="flex flex-col gap-2 text-xs text-slate-600 font-medium leading-relaxed">
+            {hasPassWarn && (
+              <p>
+                • You are currently using a <strong>temporary password</strong>.
+                For maximum system protection, please configure a new master
+                credential.
+              </p>
+            )}
+            {hasMfaWarn && (
+              <p>
+                • Administrative security policies{" "}
+                <strong>require Multi-Factor Authentication</strong> for your
+                account. Please set up MFA before your next session to avoid
+                access restrictions.
+              </p>
+            )}
+          </div>
 
-           <div className="flex gap-2 justify-end mt-1.5 border-t border-slate-100 pt-2">
-             <button
-               onClick={() => {
-                 toast.dismiss(t.id);
-                 localStorage.removeItem("DASHBOARD_PASS_WARN");
-                 localStorage.removeItem("DASHBOARD_MFA_WARN");
-               }}
-               className="px-3 py-1.5 text-[10px] font-oswald font-black text-slate-400 hover:text-slate-600 uppercase tracking-wider transition-colors"
-             >
-               Acknowledge Later
-             </button>
+          <div className="flex gap-2 justify-end mt-1.5 border-t border-slate-100 pt-2">
+            <button
+              onClick={() => {
+                toast.dismiss(t.id);
+                localStorage.removeItem("DASHBOARD_PASS_WARN");
+                localStorage.removeItem("DASHBOARD_MFA_WARN");
+              }}
+              className="px-3 py-1.5 text-[10px] font-oswald font-black text-slate-400 hover:text-slate-600 uppercase tracking-wider transition-colors"
+            >
+              Acknowledge Later
+            </button>
 
-             <button
-               onClick={() => {
-                 toast.dismiss(t.id);
-                 localStorage.removeItem("DASHBOARD_PASS_WARN");
-                 localStorage.removeItem("DASHBOARD_MFA_WARN"); // Fixed typo
+            <button
+              onClick={() => {
+                toast.dismiss(t.id);
+                localStorage.removeItem("DASHBOARD_PASS_WARN");
+                localStorage.removeItem("DASHBOARD_MFA_WARN"); // Fixed typo
 
-                 // Smart routing path selection
-                 window.location.href = hasMfaWarn
-                   ? "/home/settings"
-                   : "/home/change-password";
-               }}
-               className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-oswald font-black uppercase tracking-wider shadow-sm transition-colors"
-             >
-               Configure Profile
-             </button>
-           </div>
-         </div>
-       ),
-       {
-         id: "admin-onboarding-security-alert",
-         duration: Infinity,
-         position: "top-center",
-       },
-     );
-   }, []);
+                // Smart routing path selection
+                window.location.href = hasMfaWarn
+                  ? "/home/settings"
+                  : "/home/settings/change-password";
+              }}
+              className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-oswald font-black uppercase tracking-wider shadow-sm transition-colors"
+            >
+              Configure Profile
+            </button>
+          </div>
+        </div>
+      ),
+      {
+        id: "admin-onboarding-security-alert",
+        duration: Infinity,
+        position: "top-center",
+      },
+    );
+  }, []);
 
   useEffect(() => {
     const getDashboardData = async () => {
@@ -100,7 +100,7 @@ export default function Dashboard() {
         setLoading(true);
         setError(null);
 
-        const data = await fetchDashboardStats();
+        const data = await fetchDashboardStats(contextEstateId!);
         setStats(data);
       } catch (err: any) {
         console.error("Dashboard fetch error:", err);
@@ -113,7 +113,7 @@ export default function Dashboard() {
     if (user) {
       getDashboardData();
     }
-  }, [user]);
+  }, [user, contextEstateId]);
 
   const currentDate = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -176,7 +176,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="relative space-y-6 w-full min-h-screen overflow-y-auto p-4 sm:p-6 bg-slate-50/50 pb-safe font-sans">
+    <div className="relative space-y-6 w-full h-full overflow-y-auto p-4 sm:p-6 bg-slate-50/50 pb-20 font-sans">
       {/* Header - Compact & Mobile Friendly */}
       <div className="flex justify-between items-center border-b border-slate-100 pb-3">
         <div>
@@ -264,14 +264,24 @@ export default function Dashboard() {
             {
               label: "Upcoming",
               value:
-                stats.events.upcoming.title === "None"
+                stats.events.upcoming.venue_name === "None"
                   ? "None"
-                  : `${stats.events.upcoming.title} (${new Date(stats.events.upcoming.date!).toLocaleDateString()})`,
+                  : `${stats.events.upcoming.venue_name} (${new Date(stats.events.upcoming.date!).toLocaleDateString()})`,
               color: "text-purple-600",
             },
             {
               label: "Pending",
-              value: stats.events.pending,
+              value: stats.events.pending || 0,
+              color: "text-amber-500",
+            },
+            {
+              label: "Payment Pending",
+              value: stats.events.payment_pending_bookings || 0,
+              color: "text-amber-500",
+            },
+            {
+              label: "Payment Submitted",
+              value: stats.events.payment_submitted_bookings || 0,
               color: "text-amber-500",
             },
           ]}
@@ -312,7 +322,7 @@ export default function Dashboard() {
 
         <div
           className="p-5 sm:p-6 bg-slate-50/20 cursor-pointer"
-          onClick={() => router.push("/home/joinrequestpage")}
+          onClick={() => router.push("/home/tenantmanagement?requests=true")}
         >
           <div className="flex items-center gap-2 mb-3">
             <PlusCircle size={14} className="text-blue-600" />
@@ -321,7 +331,7 @@ export default function Dashboard() {
             </h4>
           </div>
 
-          <div className="bg-white px-5 py-3 rounded-2xl border border-slate-100 inline-block min-w-[120px] shadow-2xs">
+          <div className="bg-white px-5 py-3 rounded-2xl border border-slate-100 inline-block min-w-30 shadow-2xs">
             <span className="text-2xl font-montserrat font-black text-slate-900">
               {stats.residents.pendingRequests}
             </span>

@@ -27,8 +27,11 @@ import {
   Briefcase,
 } from "lucide-react";
 import InvitationDetailModal from "./InvitationDetail";
+import { useUser } from "../UserContext";
+import { showAccessDeniedToast } from "./ManageUsersPage";
 
 export default function GatePassesView() {
+  const { user, contextEstateId } = useUser();
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -36,20 +39,34 @@ export default function GatePassesView() {
   const [selectedInvite, setSelectedInvite] = useState<Invitation | null>(null);
   const [updatingInvite, setUpdatingInvite] = useState<string | null>(null);
 
+  const canView =
+    user?.permissions?.includes("visitor_operations") ||
+    user?.permissions?.includes("view_checkins") ||
+    user?.permissions?.includes("all-access");
+
+  const canEditStatus =
+    user?.permissions?.includes("visitor_operations") ||
+    user?.permissions?.includes("override_entry_code") ||
+    user?.permissions?.includes("all-access");
+
   const loadData = async () => {
     setLoading(true);
-    const data = await fetchGatePasses();
+    const data = await fetchGatePasses(contextEstateId!);
     setInvitations(data);
     setLoading(false);
   };
 
   useEffect(() => {
+    if (!canView) {
+      showAccessDeniedToast();
+      return;
+    }
     const loadPassData = async () => {
       await loadData();
     };
 
     loadPassData();
-  }, []);
+  }, [canView]);
 
   const toggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
@@ -274,6 +291,11 @@ export default function GatePassesView() {
   };
 
   const handleLogActivity = async (inviteId: string, currentLabel: string) => {
+    if (!canEditStatus) {
+      showAccessDeniedToast();
+      return;
+    }
+
     setUpdatingInvite(inviteId);
     const invite = invitations.find((i) => i.id === inviteId);
     if (!invite) return;
@@ -320,7 +342,7 @@ export default function GatePassesView() {
     }
 
     try {
-      const result = await logActivityApi(inviteId, action);
+      const result = await logActivityApi(inviteId, action, contextEstateId!);
 
       if (!result.success) {
         alert(result.error);

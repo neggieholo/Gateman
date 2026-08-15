@@ -9,6 +9,7 @@ import {
   FetchNotificationsResponse,
   Invitation,
   LocationBooking,
+  SecurityDashboardStats,
   sessionResponse,
 } from "./types";
 import { parseISO, formatDistanceToNow } from "date-fns";
@@ -50,6 +51,7 @@ export const sendPofileChangeOtpApi = async (target: string, type: string) => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ target, type }),
+      credentials: "include",
     });
     return await res.json();
   } catch (err) {
@@ -57,9 +59,11 @@ export const sendPofileChangeOtpApi = async (target: string, type: string) => {
   }
 };
 
-export const fetchGatePasses = async (): Promise<Invitation[]> => {
+export const fetchGatePasses = async (
+  estate_id: string,
+): Promise<Invitation[]> => {
   try {
-    const res = await fetch(`${baseUrl}/api/invitations`, {
+    const res = await fetch(`${baseUrl}/api/invitations/${estate_id}`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -82,10 +86,11 @@ export const fetchGatePasses = async (): Promise<Invitation[]> => {
 export const logActivityApi = async (
   inviteId: string,
   action: "check_in" | "check_out",
+  estate_id: string,
 ): Promise<{ success: boolean; invitation?: Invitation; error?: string }> => {
   try {
     const res = await fetch(
-      `${baseUrl}/api/invitations/log-activity/${inviteId}`,
+      `${baseUrl}/api/invitations/admin/log-activity/${inviteId}?estate_id=${estate_id}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -403,6 +408,7 @@ export const communityApi = {
     message: string;
     targets: { residents: boolean; security: boolean };
     type: string;
+    estate_id: string;
   }) => {
     try {
       const response = await fetch(
@@ -433,68 +439,10 @@ export const getRelativeTime = (timestamp: string) => {
   }
 };
 
-export const getCloudinaryUrl = async (
-  file: File, // Pass the native Browser File object directly here instead of a string URI
-  selectionType: "image" | "audio" | "video" | "document",
-) => {
-  console.log("uploading into cloudinary");
-  try {
-    if (!file) {
-      console.error("No file provided for upload.");
-      return null;
-    }
-    console.log("uploading into cloudinary:", file);
-
-    const fileSize = file.size;
-    const MAX_SIZE = 50 * 1024 * 1024;
-
-    if (fileSize > MAX_SIZE) {
-      alert("File too large. Max limit is 50MB.");
-      return null;
-    }
-
-    const formData = new FormData();
-
-    // 2. Resource Type Logic
-    let cloudinaryType = "image";
-
-    if (selectionType === "audio" || selectionType === "video") {
-      cloudinaryType = "video"; // Cloudinary treats audio as a video resource type
-    } else if (selectionType === "document") {
-      cloudinaryType = "raw";
-    }
-
-    // Standard web browsers natively know how to read and stream the File object via FormData
-    formData.append("file", file);
-    formData.append("upload_preset", "gateman uploads");
-
-    const res = await fetch(
-      `https://api.cloudinary.com/v1_1/diubaoqcr/${cloudinaryType}/upload`,
-      {
-        method: "POST",
-        body: formData,
-      },
-    );
-
-    const data = await res.json();
-
-    if (data.error) {
-      console.error("Cloudinary Error:", data.error.message);
-      return null;
-    }
-    console.log("Cloudinary Url", data.secure_url);
-
-    return data.secure_url;
-  } catch (err) {
-    console.error("Upload Logic Error:", err);
-    return null;
-  }
-};
-
 // Get all report for the estate (Admin only)
-export const getEstateReports = async () => {
+export const getEstateReports = async (estate_id: string) => {
   try {
-    const res = await fetch(`${baseUrl}/api/security/report`, {
+    const res = await fetch(`${baseUrl}/api/security/report/${estate_id}`, {
       method: "GET",
       credentials: "include",
     });
@@ -506,13 +454,14 @@ export const getEstateReports = async () => {
 
 export const updateReportStatus = async (
   id: string,
+  estate_id: string,
   status: "REVIEWED" | "RESOLVED",
   adminFeedback: string,
 ) => {
   const res = await fetch(`${baseUrl}/api/security/report/status/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status, admin_response: adminFeedback }),
+    body: JSON.stringify({ status, admin_response: adminFeedback, estate_id }),
     credentials: "include",
   });
   return await res.json();
@@ -528,13 +477,20 @@ export const updateReportStatus = async (
 const handleResponse = async (response: Response) => {
   const data = await response.json();
   if (!response.ok) {
-    throw data.error || "Something went wrong";
+    throw (
+      data.error ||
+      data?.message ||
+      response.statusText ||
+      "Something went wrong"
+    );
   }
   return data;
 };
 
-export const getAllBookings = async (): Promise<LocationBooking[]> => {
-  const response = await fetch(`${baseUrl}/api/event/all`, {
+export const getAllBookings = async (
+  estate_id: string,
+): Promise<LocationBooking[]> => {
+  const response = await fetch(`${baseUrl}/api/event/all/${estate_id}`, {
     credentials: "include",
   });
   return await handleResponse(response);
@@ -564,14 +520,15 @@ export const getEventById = async (id: string): Promise<LocationBooking> => {
 //   return await response.json();
 // };
 
-export const approveEvent = async (
+export const approveBooking = async (
   booking_id: string,
   verdict: string,
+  estate_id: string,
 ): Promise<ApproveRequest> => {
   const response = await fetch(`${baseUrl}/api/event/approve/${booking_id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ verdict }),
+    body: JSON.stringify({ verdict, estate_id }),
     credentials: "include",
   });
 
@@ -580,17 +537,28 @@ export const approveEvent = async (
   return data;
 };
 
-export const getAllLocations = async (): Promise<EstateFacility[]> => {
-  const response = await fetch(`${baseUrl}/api/event/locations/all`, {
-    credentials: "include",
-  });
+export const getAllLocations = async (
+  estate_id: string,
+): Promise<EstateFacility[]> => {
+  const response = await fetch(
+    `${baseUrl}/api/event/locations/all/${estate_id}`,
+    {
+      credentials: "include",
+    },
+  );
   return await handleResponse(response);
 };
 
-export const getLocationById = async (id: number): Promise<EstateFacility> => {
-  const response = await fetch(`${baseUrl}/api/event/locations/${id}`, {
-    credentials: "include",
-  });
+export const getLocationById = async (
+  id: number,
+  estate_id: string,
+): Promise<EstateFacility> => {
+  const response = await fetch(
+    `${baseUrl}/api/event/locations/${id}?estate_id=${estate_id}`,
+    {
+      credentials: "include",
+    },
+  );
   return await handleResponse(response);
 };
 
@@ -608,33 +576,41 @@ export const createLocation = async (
 
 export const editLocation = async (
   id: number,
-  locData: Partial<EstateFacility>,
+  locData: Partial<EstateFacility>
 ): Promise<{ message: string; location: EstateFacility }> => {
-  const response = await fetch(`${baseUrl}/api/event/locations/edit/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(locData),
-    credentials: "include",
-  });
+  const response = await fetch(
+    `${baseUrl}/api/event/locations/edit/${id}}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(locData),
+      credentials: "include",
+    },
+  );
   return await handleResponse(response);
 };
 
 export const deleteLocation = async (
   id: number,
+  estate_id: string,
 ): Promise<{ message: string }> => {
-  const response = await fetch(`${baseUrl}/api/event/locations/delete/${id}`, {
-    method: "DELETE",
-    credentials: "include",
-  });
+  const response = await fetch(
+    `${baseUrl}/api/event/locations/delete/${id}?estate_id=${estate_id}`,
+    {
+      method: "DELETE",
+      credentials: "include",
+    },
+  );
   return await handleResponse(response);
 };
 
 export const getEventAtLocationDate = async (
   locationId: number,
   dateStr: string,
+  estate_id: string,
 ): Promise<{ booking: LocationBooking | null }> => {
   const response = await fetch(
-    `${baseUrl}/api/event/locations/${locationId}/event-at-date?date=${dateStr}`,
+    `${baseUrl}/api/event/locations/${locationId}/event-at-date?date=${dateStr}&estate_id=${estate_id}`,
     {
       credentials: "include",
     },
@@ -648,9 +624,11 @@ export const getEventAtLocationDate = async (
   return await response.json();
 };
 
-export const fetchDashboardStats = async (): Promise<DashboardStats> => {
+export const fetchDashboardStats = async (
+  id: string,
+): Promise<DashboardStats> => {
   try {
-    const response = await fetch(`${baseUrl}/api/dashboard/admin-stats`, {
+    const response = await fetch(`${baseUrl}/api/dashboard/admin-stats/${id}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -813,6 +791,25 @@ export const formatDate = (dateStr: string) => {
   return `${day}-${month}-${year}`;
 };
 
+export const formatCheckInTime = (timeStrOrIso: string) => {
+  if (!timeStrOrIso) return "N/A";
+
+  // Handle full ISO/Postgres strings or plain time strings (18:06:59)
+  const date =
+    timeStrOrIso.includes("-") || timeStrOrIso.includes("T")
+      ? new Date(timeStrOrIso)
+      : new Date(`1970-01-01T${timeStrOrIso}`);
+
+  if (isNaN(date.getTime())) return "N/A";
+
+  let hours = date.getHours();
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12 || 12;
+
+  return `${hours}:${minutes} ${ampm}`;
+};
+
 export const fetchSystemPermissionsApi = async () => {
   console.log("Fetching system permissions matrix...");
   try {
@@ -895,21 +892,14 @@ export const createAdminUserWorkspaceApi = async (payload: {
   }
 };
 
-export const fetchUserLogsApi = async (filters?: {
-  action_type?: string;
-  target_resource?: string;
-}) => {
+export const fetchUserLogsApi = async (estate_id: string, role: string) => {
   try {
-    let url = `${baseUrl}/api/estate-users/user-logs`;
-    if (filters) {
-      const params = new URLSearchParams(filters as any);
-      url += `?${params.toString()}`;
-    }
+    const url = `${baseUrl}/api/estate-users/user-logs`;
 
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ role, estate_id }),
       credentials: "include",
     });
     return await res.json();
@@ -1126,3 +1116,136 @@ export const getBookingStatusBadge = (status: BookingStatus) => {
       };
   }
 };
+
+export const fetchSecurityStats = async (
+  id: string,
+): Promise<SecurityDashboardStats> => {
+  try {
+    const res = await fetch(`${baseUrl}/api/dashboard/security-stats/${id}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
+    }
+
+    const json = await res.json();
+    return json.data;
+  } catch (error: any) {
+    console.error("Failed to fetch security stats:", error);
+    throw new Error(
+      error.message ||
+        "An unexpected error occurred while fetching security stats.",
+    );
+  }
+};
+
+export const formatDisplayTime = (
+  dateInput: string | Date | null | undefined,
+) => {
+  if (!dateInput) return "N/A";
+
+  // Replace space with 'T' if coming as raw SQL string to force strict ISO 8601 parsing
+  const isoString =
+    typeof dateInput === "string" ? dateInput.replace(" ", "T") : dateInput;
+
+  const date = new Date(isoString);
+
+  if (isNaN(date.getTime())) return "Invalid Time";
+
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+};
+
+export async function getS3UploadedUrl(
+  file: File,
+  folder: string = "uploads",
+): Promise<string> {
+  // 1. Extract file extension and MIME type directly from the browser File object
+  const fileExtension = file.name.split(".").pop()?.toLowerCase() || "";
+  const mimeType = file.type || getFallbackMimeType(fileExtension);
+  const fileName = `upload_${Date.now()}.${fileExtension || "bin"}`;
+
+  // 2. FETCH #1: Request presigned URL from backend
+  const urlResponse = await fetch(`${baseUrl}/api/get-upload-url`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      fileName,
+      fileType: mimeType,
+      folder,
+    }),
+  });
+
+  if (!urlResponse.ok) {
+    throw new Error(
+      `Failed to get presigned URL from backend: ${urlResponse.status}`,
+    );
+  }
+
+  const { uploadUrl, fileUrl } = await urlResponse.json();
+
+  // 3. FETCH #2: Upload binary directly to AWS S3 (file is already a Blob)
+  const s3Response = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: {
+      "Content-Type": mimeType,
+    },
+    body: file,
+  });
+
+  if (!s3Response.ok) {
+    throw new Error(
+      `Direct S3 binary upload failed with status ${s3Response.status}`,
+    );
+  }
+
+  // 4. Return public S3 URL for backend/database storage
+  return fileUrl;
+}
+
+/**
+ * Fallback MIME type mapper in case file.type is empty string
+ */
+function getFallbackMimeType(ext: string): string {
+  const mimeMap: Record<string, string> = {
+    // Images
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    gif: "image/gif",
+    webp: "image/webp",
+    heic: "image/heic",
+
+    // Videos
+    mp4: "video/mp4",
+    mov: "video/quicktime",
+    avi: "video/x-msvideo",
+    mkv: "video/x-matroska",
+    webm: "video/webm",
+
+    // Documents
+    pdf: "application/pdf",
+    doc: "application/msword",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    xls: "application/vnd.ms-excel",
+    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ppt: "application/vnd.ms-powerpoint",
+    pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    txt: "text/plain",
+    csv: "text/csv",
+    json: "application/json",
+  };
+
+  return mimeMap[ext] || "application/octet-stream";
+}

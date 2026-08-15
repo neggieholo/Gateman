@@ -1,3 +1,5 @@
+"use client";
+
 /* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
@@ -13,21 +15,28 @@ import {
   Eye,
   EyeClosed,
   MapPin,
+  Sparkles,
+  ShieldCheck,
+  Home,
+  X,
+  Smartphone,
 } from "lucide-react";
 import { useUser } from "../UserContext";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { checkSession, sendOtpApi } from "../services/apis";
 import { states_lgas } from "../utils/states_lgas";
+import toast from "react-hot-toast";
 
-export default function MobileAuth() {
+export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [isForgot, setIsForgot] = useState(false);
   const [loading, setLoading] = useState(false);
   const [requestingOtp, setRequestingOtp] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { setUser } = useUser();
+  const { setUser, setPlan, setContextEstateId } = useUser();
   const router = useRouter();
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
   // Form State
   const [email, setEmail] = useState("");
@@ -35,7 +44,15 @@ export default function MobileAuth() {
   const [name, setName] = useState("");
   const [state, setState] = useState("");
   const [lga, setLga] = useState("");
+  const [adminName, setAdminName] = useState("");
+  const [selectedPlan, setSelectedPlan] = useState<
+    "estate_management" | "security_only" | "combo" | null
+  >(null);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  // const [town, setTown] = useState('');
   const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]);
+  const [mfaType, setMfaType] = useState<"EMAIL" | "TOTP" | "NONE">("NONE");
+  const [otpLoading, setOtpLoading] = useState(false);
   const [metadata, setMetadata] = useState("");
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
@@ -65,10 +82,10 @@ export default function MobileAuth() {
 
       try {
         const res = await checkSession();
-        if (res.success) {
+        if (res.success && res?.user?.role == "ADMIN") {
           setUser(res.user);
           window.location.replace("/home/dashboard");
-        } else {
+        } else if (!res.success || res?.user?.role !== "ADMIN") {
           setSessionLoading(false);
         }
       } catch (err) {
@@ -83,19 +100,32 @@ export default function MobileAuth() {
   const validateEmail = (text: string) => {
     const cleanedEmail = text.trim();
     const reg = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return reg.test(cleanedEmail);
+
+    if (reg.test(cleanedEmail)) {
+      return true;
+    }
+    return false;
   };
 
   const handleRequestOtp = async () => {
-    const trimmedEmail = email.trim();
-    if (!validateEmail(trimmedEmail)) {
-      alert("Invalid Email. Check your email format.");
-      setLoading(false);
+    if (!isLogin && !selectedPlan) {
+      setError("Please choose a subscription plan to continue.");
+      setShowPlanModal(true);
       return;
     }
 
-    setError("");
-    setRequestingOtp(true);
+    const trimmedEmail = email.trim();
+
+    if (!isLogin) {
+      if (!validateEmail(trimmedEmail)) {
+        toast.error("Invalid Email. Check your email format.");
+        setLoading(false);
+        return;
+      }
+
+      setError("");
+      setRequestingOtp(true);
+    }
 
     try {
       const otpRes = await sendOtpApi(trimmedEmail);
@@ -113,31 +143,38 @@ export default function MobileAuth() {
   };
 
   const handleOtpChange = (value: string, index: number) => {
-    const cleanValue = value.replace(/[^0-9]/g, "").slice(-1);
+    const cleanValue = value.replace(/[^0-9]/g, "").slice(-1); // Only last char
     const newOtp = [...otp];
     newOtp[index] = cleanValue;
     setOtp(newOtp);
 
+    // Move focus forward
     if (cleanValue && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
 
     const finalOtpString = newOtp.join("");
     if (finalOtpString.length === 6) {
-      handleRegister(finalOtpString);
+      if (!isLogin) {
+        handleRegister(finalOtpString);
+      } else {
+        handleOtpVerify(finalOtpString);
+      }
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
+    // Move focus back on backspace if current field is empty
     if (e.key === "Backspace" && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
   };
 
+  // Inside your component
   const handleCancelOtp = () => {
-    setOtp(["", "", "", "", "", ""]);
-    setError("");
-    setShowOtpInput(false);
+    setOtp(["", "", "", "", "", ""]); // Reset the 6 boxes
+    setError(""); // Clear any previous "Invalid Code" errors
+    setShowOtpInput(false); // Close the modal
   };
 
   const handleRegister = async (enteredOtp: string) => {
@@ -145,6 +182,11 @@ export default function MobileAuth() {
 
     if (enteredOtp.length !== 6) {
       setError("Please enter the 6-digit code sent to your email.");
+      return;
+    }
+
+    if (!selectedPlan) {
+      alert("Please select a plan");
       return;
     }
 
@@ -160,6 +202,8 @@ export default function MobileAuth() {
         lga,
         enteredOtp,
         metadata,
+        adminName,
+        selectedPlan,
       );
 
       setShowOtpInput(false);
@@ -171,98 +215,299 @@ export default function MobileAuth() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-      e.preventDefault();
-      setLoading(true);
-      setError(null);
-  
-      try {
-        if (isForgot) {
-          const res = await db.forgotPassword(email, "admin");
-  
-          if (res.success) {
-            alert("A reset link has been sent to your email!");
-            setIsForgot(false); // Send them back to login
-            setIsLogin(true);
-          } else {
-            throw new Error(res.message || "Failed to send reset link");
-          }
-        } else if (isLogin) {
-          let coordinates = null;
-  
-          if (navigator.geolocation) {
-            try {
-              // 🎯 Explicitly define the Promise return signature as GeolocationPosition
-              const position = await new Promise<GeolocationPosition>(
-                (resolve, reject) => {
-                  navigator.geolocation.getCurrentPosition(resolve, reject, {
-                    enableHighAccuracy: true,
-                    timeout: 7000,
-                  });
-                },
-              );
-  
-              coordinates = {
-                latitude: position.coords.latitude,
-                longitude: position.coords.longitude,
-              };
-            } catch (geoError: any) {
-              if (geoError.code === geoError.PERMISSION_DENIED) {
-                setError(
-                  "Access Denied: Administrative security policy requires location verification.",
-                );
-                setLoading(false);
-                return;
-              }
-  
-              console.warn(
-                "Hardware position unavailable. Falling back safely to IP anchoring.",
-              );
-            }
-          } else {
-            console.warn(
-              "Browser environment does not support geolocation metrics.",
-            );
-          }
-  
-          const data = await db.authenticate(
-            email,
-            password,
-            rememberMe,
-            coordinates,
+  const handleOtpVerify = async (finalOtp: string) => {
+    setOtpLoading(true);
+    setError(null);
+
+    try {
+      let coordinates = null;
+
+      if (navigator.geolocation) {
+        try {
+          // 🎯 Explicitly define the Promise return signature as GeolocationPosition
+          const position = await new Promise<GeolocationPosition>(
+            (resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: true,
+                timeout: 7000,
+              });
+            },
           );
-          if (
-            !data ||
-            (typeof data === "string" && data.includes("<!DOCTYPE html>"))
-          ) {
-            setError("Server error. Please try again later.");
+
+          coordinates = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          };
+        } catch (geoError: any) {
+          if (geoError.code === geoError.PERMISSION_DENIED) {
+            setError(
+              "Access Denied: Administrative security policy requires location verification.",
+            );
+            setLoading(false);
             return;
           }
-          if (data.success) {
-            setUser(data.user);
-            router.push("/home/dashboard");
-          } else {
-            const errorMessage =
-              data.error || data.message || "Authentication failed";
-  
-            if (
-              errorMessage.includes("Unexpected token") ||
-              errorMessage.includes("fetch")
-            ) {
-              setError("Server is currently restarting. Please wait a moment.");
-            } else {
-              setError(errorMessage);
+
+          console.warn(
+            "Hardware position unavailable. Falling back safely to IP anchoring.",
+          );
+        }
+      } else {
+        console.warn(
+          "Browser environment does not support geolocation metrics.",
+        );
+      }
+      const response = await fetch(
+        `${baseUrl}/api/estate-users/verify-login-otp`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            otp: finalOtp,
+            target: email,
+            type: mfaType === "TOTP" ? "totp" : "email",
+            metadata: mfaType === "EMAIL" ? metadata : undefined,
+            rememberMe: rememberMe,
+            coordinates,
+          }),
+          credentials: "include",
+        },
+      );
+
+      const data = await response.json();
+
+      if (data.success) {
+        setUser(data.user);
+        if (data.user?.estate_ids && data.user.estate_ids.length > 0) {
+          setContextEstateId(data.user.estate_ids[0]);
+          setPlan(data.user.estate_ids[0].plan);
+        }
+        router.push("/home/dashboard");
+        setShowOtpInput(false);
+        setOtp(["", "", "", "", "", ""]);
+      } else {
+        setError(data.message || "Verification failed. Please try again.");
+        setOtp(["", "", "", "", "", ""]);
+        inputRefs.current[0]?.focus();
+      }
+    } catch (err) {
+      setError("Connection to verification engine failed. Please try again.");
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isLogin && !isForgot) {
+      if (!adminName || !adminName.trim()) {
+        setError("Please enter your full name.");
+        return;
+      }
+
+      if (!selectedPlan) {
+        setError("Please choose a subscription plan to continue.");
+        setShowPlanModal(true);
+        return;
+      }
+    }
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (isForgot) {
+        const res = await db.forgotPassword(email, "admin");
+
+        if (res.success) {
+          alert("A reset link has been sent to your email!");
+          setIsForgot(false); // Send them back to login
+          setIsLogin(true);
+        } else {
+          throw new Error(res.message || "Failed to send reset link");
+        }
+      } else if (isLogin) {
+        let coordinates = null;
+
+        if (navigator.geolocation) {
+          try {
+            // 🎯 Explicitly define the Promise return signature as GeolocationPosition
+            const position = await new Promise<GeolocationPosition>(
+              (resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject, {
+                  enableHighAccuracy: true,
+                  timeout: 7000,
+                });
+              },
+            );
+
+            coordinates = {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            };
+          } catch (geoError: any) {
+            if (geoError.code === geoError.PERMISSION_DENIED) {
+              setError(
+                "Access Denied: Administrative security policy requires location verification.",
+              );
+              setLoading(false);
+              return;
             }
+
+            console.warn(
+              "Hardware position unavailable. Falling back safely to IP anchoring.",
+            );
           }
         } else {
-          handleRequestOtp();
+          console.warn(
+            "Browser environment does not support geolocation metrics.",
+          );
         }
-      } catch (err: any) {
-        setError(err.message || "An error occurred");
-      } finally {
-        setLoading(false);
+
+        const data = await db.authenticate(
+          email,
+          password,
+          rememberMe,
+          coordinates,
+        );
+        if (
+          !data ||
+          (typeof data === "string" && data.includes("<!DOCTYPE html>"))
+        ) {
+          setError("Server error. Please try again later.");
+          return;
+        }
+        console.log("Auth Data:", data);
+
+        if (data.status === "PASSWORD_RESET_REQUIRED") {
+          setLoading(false);
+
+          toast.error(
+            (t) => (
+              <div className="flex flex-col gap-1.5 p-1">
+                <p className="font-sans font-black text-slate-900 text-sm tracking-tight">
+                  Administrative Account Lock
+                </p>
+                <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                  An administrative password reset has been triggered for your
+                  security profile. Please contact the{" "}
+                  <strong>System Registrar</strong> to authorize and assign your
+                  new login credentials.
+                </p>
+                <div className="flex justify-end mt-1">
+                  <button
+                    onClick={() => toast.dismiss(t.id)}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[10px] font-oswald font-black uppercase tracking-wider transition-colors shadow-sm"
+                  >
+                    Acknowledge
+                  </button>
+                </div>
+              </div>
+            ),
+            {
+              duration: Infinity,
+              position: "top-center",
+            },
+          );
+          return;
+        }
+
+        if (data.status === "MFA_DEADLINE_MISSED") {
+          setLoading(false);
+
+          toast.error(
+            (t) => (
+              <div className="flex flex-col gap-1.5 p-1">
+                <p className="font-sans font-black text-slate-900 text-sm tracking-tight">
+                  Administrative Account Lock
+                </p>
+                <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                  An administrative block has been triggered due to failure to
+                  set MFA. Please contact the <strong>System Registrar</strong>{" "}
+                  to reslove the issue.
+                </p>
+                <div className="flex justify-end mt-1">
+                  <button
+                    onClick={() => toast.dismiss(t.id)}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[10px] font-oswald font-black uppercase tracking-wider transition-colors shadow-sm"
+                  >
+                    Acknowledge
+                  </button>
+                </div>
+              </div>
+            ),
+            {
+              duration: Infinity,
+              position: "top-center",
+            },
+          );
+          return;
+        }
+
+        if (data.success && data.user && !data.user.email_verified) {
+          setUser(data.user);
+          setMfaType("EMAIL");
+          setLoading(false);
+
+          await handleRequestOtp();
+          return;
+        }
+
+        // CATCH EMAIL MFA INTERRUPTION
+        if (data.status === "EMAIL_MFA_REQUIRED") {
+          setUser(data.user);
+          setMfaType("EMAIL");
+          setLoading(false);
+
+          // Fire off your native frontend OTP generator method automatically!
+          await handleRequestOtp();
+          return;
+        }
+
+        // CATCH TOTP AUTHENTICATOR APP INTERRUPTION
+        if (data.status === "TOTP_MFA_REQUIRED") {
+          setUser(data.user);
+          setMfaType("TOTP");
+          setShowOtpInput(true); // Open the entry boxes directly (no delivery cycle needed)
+          setLoading(false);
+          return;
+        }
+
+        if (data.success) {
+          setUser(data.user);
+          if (data.user?.estate_ids && data.user.estate_ids.length > 0) {
+            setContextEstateId(data.user.estate_ids[0]);
+            setPlan(data.user.estate_ids[0].plan);
+          }
+          if (data.onboarding?.showPasswordWarningPopup) {
+            localStorage.setItem("DASHBOARD_PASS_WARN", "true");
+          }
+
+          if (data.onboarding?.showMfaSetupOnboarding) {
+            localStorage.setItem("DASHBOARD_MFA_WARN", "true");
+          }
+          router.push("/home/dashboard");
+        } else {
+          const errorMessage =
+            data.error || data.message || "Authentication failed";
+
+          if (
+            errorMessage.includes("Unexpected token") ||
+            errorMessage.includes("fetch")
+          ) {
+            setError("The core server is rebooting. Stand by.");
+          } else {
+            setError(errorMessage);
+          }
+        }
+      } else {
+        setMfaType("EMAIL");
+        handleRequestOtp();
       }
-    };
+    } catch (err: any) {
+      setError(err.message || "An error occurred");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (sessionLoading)
     return (
@@ -282,14 +527,15 @@ export default function MobileAuth() {
     );
 
   return (
-    <div className="min-h-screen flex bg-[linear-gradient(to_bottom,#0A1F44_50%,#f1f5f9_50%)] font-sans">
+    <div className="min-h-[100dvh] flex flex-col lg:flex-row bg-slate-100 lg:bg-[linear-gradient(to_bottom,#0A1F44_50%,#f1f5f9_50%)] overflow-x-hidden">
+      {/* Left Side - Desktop Branding Panel */}
       <div
-        className="hidden lg:flex lg:w-2/3 bg-gm-navy relative overflow-hidden"
+        className="hidden lg:flex lg:w-2/3 bg-gm-navy relative overflow-hidden min-h-screen"
         style={{ borderRadius: "0px 0px 120px 0px" }}
       >
         <div className="absolute inset-0 mix-blend-multiply z-10" />
         <div className="relative z-20 flex flex-col justify-between items-start h-full p-16 text-white">
-          <div className="relative w-full h-50 flex items-center overflow-hidden self-start">
+          <div className="relative w-full h-20 flex items-center overflow-hidden self-start">
             <Image
               src="/gmadminlogo.jpg"
               alt="GateMan Logo"
@@ -345,23 +591,31 @@ export default function MobileAuth() {
         </div>
       </div>
 
-      {/* Auth UI Viewport Wrapper */}
-      <div
-        className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 bg-slate-100"
-        style={{
-          borderRadius: "120px 0px 0px 0px",
-        }}
-      >
-        <div className="w-full max-w-md space-y-8 bg-white p-6 sm:p-8 md:p-12 rounded-4xl sm:rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-white my-auto">
+      {/* Right Side - Mobile & Desktop Auth Form Container */}
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 bg-slate-100 min-h-[100dvh]">
+        {/* Mobile-Only Header Brand Logo */}
+        <div className="lg:hidden w-full max-w-md flex justify-center items-center py-4 mb-2">
+          <div className="relative w-40 h-12">
+            <Image
+              src="/gmadminlogo.jpg"
+              alt="GateMan Logo"
+              fill
+              priority
+              className="object-contain"
+            />
+          </div>
+        </div>
+
+        <div className="w-full max-w-md space-y-6 my-auto bg-white p-6 sm:p-8 md:p-12 rounded-3xl lg:rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-white">
           <div className="text-center">
-            <h2 className="text-2xl sm:text-3xl font-montserrat font-black text-slate-900 tracking-tight mb-2">
+            <h2 className="text-2xl sm:text-3xl font-montserrat text-slate-900 tracking-tight mb-2">
               {isLogin
                 ? "Welcome back"
                 : isForgot
                   ? "Forgot Password"
                   : "Create an account"}
             </h2>
-            <p className="text-slate-500 font-sans text-sm sm:text-base font-medium">
+            <p className="text-slate-500 font-sans text-xs sm:text-sm">
               {isLogin
                 ? "Enter your details to access your account"
                 : isForgot
@@ -370,57 +624,100 @@ export default function MobileAuth() {
             </p>
           </div>
 
-          <div
-            className={`${error ? "bg-rose-50" : "bg-white"} text-rose-600 p-2 h-12 rounded-xl flex items-center gap-3 text-sm font-sans font-bold ${error && "border border-rose-100"} animate-shake`}
-          >
-            {error && !showOtpInput && (
-              <>
-                <AlertCircle size={18} />
-                <span className="truncate">{error}</span>
-              </>
-            )}
-          </div>
+          {error && !showOtpInput && (
+            <div className="bg-rose-50 text-rose-600 p-3 min-h-12 rounded-xl flex items-center gap-3 text-sm font-bold border border-rose-100 animate-shake">
+              <AlertCircle size={18} className="shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
             {!isLogin && !isForgot && (
               <>
                 <div>
-                  <label className="block text-xs font-oswald font-black text-slate-700 uppercase tracking-wider mb-1.5 ml-1">
+                  <label className="block text-xs sm:text-sm font-oswald text-slate-700 mb-1 ml-1">
+                    Your Full Name
+                  </label>
+                  <div className="relative">
+                    <UserIcon
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                      size={18}
+                    />
+                    <input
+                      type="text"
+                      required
+                      value={adminName}
+                      onChange={(e) => setAdminName(e.target.value)}
+                      className="w-full pl-11 pr-4 py-3 sm:py-3.5 bg-slate-50 border border-slate-100 text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-medium"
+                      placeholder="John Doe"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs sm:text-sm font-oswald text-slate-700 mb-1 ml-1">
                     Estate Name
                   </label>
                   <div className="relative">
                     <UserIcon
                       className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                      size={20}
+                      size={18}
                     />
                     <input
                       type="text"
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full pl-11 pr-4 py-3 sm:py-3.5 bg-slate-50 border border-slate-100 text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-sans font-bold"
+                      className="w-full pl-11 pr-4 py-3 sm:py-3.5 bg-slate-50 border border-slate-100 text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-medium"
                       placeholder="Platinum Estate"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs sm:text-sm font-oswald text-slate-700 mb-1 ml-1">
+                    Subscription Tier
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPlanModal(true)}
+                    className="w-full flex items-center justify-between px-4 sm:px-5 py-3 sm:py-3.5 bg-indigo-50/50 hover:bg-indigo-50 border border-indigo-100 hover:border-indigo-200 text-left rounded-2xl transition-all group"
+                  >
+                    <div>
+                      <span className="block text-[10px] sm:text-xs font-semibold text-indigo-500 uppercase tracking-wider">
+                        {!selectedPlan ? "No Selection" : "Active Selection"}
+                      </span>
+                      <span className="text-xs sm:text-sm font-bold text-slate-900 capitalize">
+                        {selectedPlan === "estate_management" &&
+                          "Estate Management Plan"}
+                        {selectedPlan === "security_only" &&
+                          "Security Officers Plan"}
+                        {selectedPlan === "combo" && "Combo Master Plan"}
+                      </span>
+                    </div>
+                    <span className="text-[10px] sm:text-xs font-bold text-indigo-600 bg-white px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl border border-indigo-100 shadow-sm shrink-0">
+                      Change Plan
+                    </span>
+                  </button>
                 </div>
               </>
             )}
 
             <div>
-              <label className="block text-xs font-oswald font-black text-slate-700 uppercase tracking-wider mb-1.5 ml-1">
+              <label className="block text-xs sm:text-sm font-oswald text-slate-700 mb-1 ml-1">
                 Email Address
               </label>
               <div className="relative">
                 <Mail
                   className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                  size={20}
+                  size={18}
                 />
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 sm:py-3.5 bg-slate-50 border border-slate-100 text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-sans font-bold"
+                  className="w-full pl-11 pr-4 py-3 sm:py-3.5 bg-slate-50 border border-slate-100 font-sans text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-medium"
                   placeholder="name@company.com"
                 />
               </div>
@@ -428,20 +725,20 @@ export default function MobileAuth() {
 
             {!isForgot && (
               <div>
-                <label className="block text-xs font-oswald font-black text-slate-700 uppercase tracking-wider mb-1.5 ml-1">
+                <label className="block text-xs sm:text-sm font-oswald text-slate-700 mb-1 ml-1">
                   Password
                 </label>
                 <div className="relative">
                   <Lock
                     className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                    size={20}
+                    size={18}
                   />
                   <input
                     type={show ? "text" : "password"}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-11 pr-12 py-3 sm:py-3.5 bg-slate-50 border border-slate-100 text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-sans font-bold"
+                    className="w-full pl-11 pr-12 py-3 sm:py-3.5 bg-slate-50 border border-slate-100 font-sans text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-medium"
                     placeholder="••••••••"
                   />
                   <button
@@ -449,44 +746,62 @@ export default function MobileAuth() {
                     onClick={() => setShow(!show)}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                   >
-                    {show ? <Eye size={20} /> : <EyeClosed size={20} />}
+                    {show ? <Eye size={18} /> : <EyeClosed size={18} />}
                   </button>
                 </div>
               </div>
             )}
 
             {isLogin && !isForgot && (
-              <div className="flex items-center mt-3 sm:mt-4">
-                <input
-                  id="remember_me"
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => {
-                    const isChecked = e.target.checked;
-                    setRememberMe(isChecked);
-                    localStorage.setItem("rememberMe", String(isChecked));
+              <div className="flex items-center justify-between pt-1">
+                <div className="flex items-center">
+                  <input
+                    id="remember_me"
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => {
+                      const isChecked = e.target.checked;
+                      setRememberMe(isChecked);
+                      localStorage.setItem("rememberMe", String(isChecked));
+                    }}
+                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+                  />
+                  <label
+                    htmlFor="remember_me"
+                    className="ml-2 block text-xs sm:text-sm text-gray-700 font-sans select-none"
+                  >
+                    Remember me
+                  </label>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsForgot(true);
+                    setIsLogin(false);
+                    setError(null);
+                    setEmail("");
                   }}
-                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
-                />
-                <label
-                  htmlFor="remember_me"
-                  className="ml-2 block text-sm text-gray-700 font-sans font-medium"
+                  className="text-xs sm:text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors"
                 >
-                  Remember me
-                </label>
+                  <span className="font-oswald text-indigo-600">
+                    Forgot password?
+                  </span>
+                </button>
               </div>
             )}
 
             {!isLogin && !isForgot && (
               <div className="grid grid-cols-1 gap-4">
+                {/* State Select */}
                 <div>
-                  <label className="block text-xs font-oswald font-black text-slate-700 uppercase tracking-wider mb-1.5 ml-1">
+                  <label className="block text-xs sm:text-sm font-oswald text-slate-700 mb-1 ml-1">
                     State
                   </label>
                   <div className="relative">
                     <MapPin
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                      size={20}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                      size={18}
                     />
                     <select
                       required
@@ -495,7 +810,7 @@ export default function MobileAuth() {
                         setState(e.target.value);
                         setLga("");
                       }}
-                      className="w-full pl-11 pr-4 py-3 sm:py-3.5 bg-slate-50 border border-slate-100 font-sans text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block outline-none font-bold appearance-none"
+                      className="w-full pl-11 pr-4 py-3 sm:py-3.5 bg-slate-50 border border-slate-100 font-sans text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block outline-none font-medium appearance-none"
                     >
                       <option value="">Select State</option>
                       {states_lgas.map((s) => (
@@ -507,26 +822,27 @@ export default function MobileAuth() {
                   </div>
                 </div>
 
+                {/* City (LGA) Select */}
                 <div>
-                  <label className="block text-xs font-oswald font-black text-slate-700 uppercase tracking-wider mb-1.5 ml-1">
+                  <label className="block text-xs sm:text-sm font-oswald text-slate-700 mb-1 ml-1">
                     LGA
                   </label>
                   <div className="relative">
                     <MapPin
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                      size={20}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                      size={18}
                     />
                     <select
                       required
                       disabled={!state}
                       value={lga}
                       onChange={(e) => setLga(e.target.value)}
-                      className="w-full pl-11 pr-4 py-3 sm:py-3.5 bg-slate-50 border border-slate-100 font-sans text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block outline-none font-bold appearance-none disabled:opacity-50"
+                      className="w-full pl-11 pr-4 py-3 sm:py-3.5 bg-slate-50 border border-slate-100 font-sans text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block outline-none font-medium appearance-none disabled:opacity-50"
                     >
                       <option value="">Select LGA</option>
-                      {availableLgas.map((lgaItem) => (
-                        <option key={lgaItem} value={lgaItem}>
-                          {lgaItem}
+                      {availableLgas.map((lga) => (
+                        <option key={lga} value={lga}>
+                          {lga}
                         </option>
                       ))}
                     </select>
@@ -535,32 +851,13 @@ export default function MobileAuth() {
               </div>
             )}
 
-            {isLogin && !isForgot && (
-              <div className="flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsForgot(true);
-                    setIsLogin(false);
-                    setError(null);
-                    setEmail("");
-                  }}
-                  className="text-sm font-sans font-medium text-slate-500 hover:text-indigo-600 transition-colors"
-                >
-                  <span className="font-oswald font-black uppercase tracking-wider text-indigo-600">
-                    Forgot password?
-                  </span>
-                </button>
-              </div>
-            )}
-
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center text-white bg-primary/60 hover:bg-primary focus:ring-4 focus:ring-indigo-300 font-montserrat font-black rounded-2xl text-base sm:text-lg px-5 py-3.5 sm:py-4 transition-all shadow-xl shadow-indigo-200 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-wider"
+              className="w-full flex items-center justify-center text-white bg-primary/60 hover:bg-primary focus:ring-4 focus:ring-indigo-300 font-montserrat rounded-2xl text-base sm:text-lg px-5 py-3.5 sm:py-4 transition-all shadow-xl shadow-indigo-200 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed mt-2"
             >
               {loading || requestingOtp ? (
-                <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
                   {isLogin
@@ -568,14 +865,14 @@ export default function MobileAuth() {
                     : isForgot
                       ? "Get Reset Link"
                       : "Create Account"}
-                  <ArrowRight size={20} className="ml-2" />
+                  <ArrowRight size={18} className="ml-2" />
                 </>
               )}
             </button>
           </form>
 
-          <div className="text-center">
-            {!isForgot && (
+          <div className="text-center pt-2">
+            {!isForgot ? (
               <button
                 type="button"
                 onClick={() => {
@@ -586,20 +883,16 @@ export default function MobileAuth() {
                   setLga("");
                   setName("");
                 }}
-                className="text-sm font-sans font-medium text-slate-500 hover:text-indigo-600 transition-colors"
+                className="text-xs sm:text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors"
               >
                 {isLogin
                   ? "Don't have an account? "
                   : "Already have an account? "}
-                <span className="font-oswald font-black text-indigo-600 uppercase tracking-wider">
+                <span className="font-oswald text-indigo-600 underline underline-offset-2">
                   {isLogin ? "Sign up" : "Sign in"}
                 </span>
               </button>
-            )}
-          </div>
-
-          {isForgot && (
-            <div className="text-center">
+            ) : (
               <button
                 type="button"
                 onClick={() => {
@@ -607,33 +900,60 @@ export default function MobileAuth() {
                   setIsLogin(true);
                   setError(null);
                 }}
-                className="text-sm font-sans font-black text-indigo-600 uppercase tracking-wider"
+                className="text-xs sm:text-sm font-medium text-slate-500 hover:text-indigo-600"
               >
-                Back to Login
+                <span className="font-bold text-indigo-600">Back to Login</span>
               </button>
-            </div>
-          )}
+            )}
+          </div>
+        </div>
+
+        {/* Mobile Footer Copyright */}
+        <div className="lg:hidden text-center text-xs text-slate-400 font-oswald mt-6 pb-2">
+          © 2026 Gateman Inc. All rights reserved.
         </div>
       </div>
 
-      {/* OTP MODAL OVERLAY */}
+      {/* OTP MODAL OVERLAY - Optimized for Mobile Screen Constraints */}
       {showOtpInput && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-sm sm:max-w-md rounded-4xl sm:rounded-[2.5rem] p-6 sm:p-10 shadow-2xl scale-in-center border border-slate-100">
-            <div className="text-center space-y-3 sm:space-y-4 mb-6 sm:mb-8">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-2">
-                <Mail size={30} />
+          <div className="bg-white w-full max-w-sm sm:max-w-md rounded-3xl p-6 sm:p-8 shadow-2xl scale-in-center border border-slate-100">
+            <div className="text-center space-y-3 mb-6">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-2">
+                {mfaType === "EMAIL" ? (
+                  <Mail size={24} className="sm:hidden" />
+                ) : (
+                  <Smartphone size={24} className="sm:hidden" />
+                )}
+                {mfaType === "EMAIL" ? (
+                  <Mail size={32} className="hidden sm:block" />
+                ) : (
+                  <Smartphone size={32} className="hidden sm:block" />
+                )}
               </div>
-              <h3 className="text-xl sm:text-2xl font-montserrat font-black text-slate-900">
-                Verify your email
+              <h3 className="text-xl sm:text-2xl font-bold text-slate-900">
+                {mfaType === "EMAIL"
+                  ? "Verify your email"
+                  : "Device Verification"}
               </h3>
-              <p className="text-slate-500 font-sans font-medium text-xs sm:text-sm">
-                We&apos;ve sent a 6-digit code to <br />
-                <span className="font-bold text-slate-900">{email}</span>
+              <p className="text-slate-500 text-xs sm:text-sm">
+                {mfaType === "EMAIL" ? (
+                  <>
+                    We&apos;ve sent a 6-digit code to <br />
+                    <span className="font-semibold text-slate-900 break-all">
+                      {email}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    Enter the changing 6-digit token from your authenticator
+                    app.
+                  </>
+                )}
               </p>
             </div>
 
-            <div className="flex justify-between gap-1.5 sm:gap-2 mb-6 sm:mb-8">
+            <div className="flex justify-between gap-1.5 sm:gap-2 mb-6">
               {otp.map((digit, index) => (
                 <input
                   key={index}
@@ -646,54 +966,155 @@ export default function MobileAuth() {
                   value={digit}
                   onChange={(e) => handleOtpChange(e.target.value, index)}
                   onKeyDown={(e) => handleKeyDown(e, index)}
-                  className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-sans font-black bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 transition-all outline-none"
+                  className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-bold bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 transition-all outline-none"
                 />
               ))}
             </div>
 
-            <div className="space-y-3 sm:space-y-4">
-              <button
-                onClick={() => handleRegister(otp.join(""))}
-                disabled={loading || otp.some((d) => !d)}
-                className="w-full py-3.5 sm:py-4 bg-indigo-600 text-white rounded-2xl font-sans font-black text-base sm:text-lg shadow-lg shadow-indigo-200 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center uppercase tracking-wider"
-              >
-                {loading ? (
-                  <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  "Verify & Register"
-                )}
-              </button>
+            {error && (
+              <div className="mb-4 bg-rose-50 text-rose-600 p-2.5 rounded-xl flex items-center gap-2 text-xs sm:text-sm font-bold">
+                <AlertCircle size={16} className="shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
 
+            <div className="space-y-3">
               <button
                 onClick={handleCancelOtp}
-                className="w-full py-2 text-slate-500 font-oswald font-bold uppercase tracking-wider text-sm hover:text-slate-800 transition-colors"
+                className="w-full py-2 text-xs sm:text-sm text-slate-500 font-medium hover:text-slate-800 transition-colors"
               >
                 Cancel
               </button>
             </div>
 
-            <div
-              className={`mb-4 sm:mb-6 ${error ? "bg-rose-50" : "bg-transparent"} text-rose-600 p-3 min-h-12 rounded-xl flex items-center gap-3 text-sm font-sans font-bold transition-all duration-300`}
-            >
-              {error && (
-                <>
-                  <AlertCircle size={18} className="shrink-0" />
-                  <span className="animate-in slide-in-from-left-1">
-                    {error}
-                  </span>
-                </>
-              )}
-            </div>
-
-            <p className="text-center text-xs text-slate-400 font-sans font-medium mt-6 sm:mt-8">
+            <p className="text-center text-xs text-slate-400 mt-4">
               Didn&apos;t receive the code?{" "}
               <button
                 onClick={handleRequestOtp}
-                className="text-indigo-600 font-bold hover:underline"
+                className="text-indigo-600 font-bold hover:underline ml-1"
               >
                 Resend
               </button>
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* PLAN SELECTOR MODAL OVERLAY */}
+      {showPlanModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-4xl rounded-3xl p-6 sm:p-8 md:p-10 shadow-2xl scale-in-center border border-slate-100 overflow-y-auto max-h-[85vh]">
+            <div
+              className="w-full h-fit flex justify-end cursor-pointer text-slate-400 hover:text-slate-600"
+              onClick={() => setShowPlanModal(false)}
+            >
+              <X size={20} />
+            </div>
+            <div className="text-center space-y-1 mb-6">
+              <h3 className="text-2xl sm:text-3xl font-montserrat text-slate-900 tracking-tight">
+                Select Your Plan
+              </h3>
+              <p className="text-slate-500 font-sans text-xs sm:text-sm">
+                Choose the operational blueprint that fits your estate&apos;s
+                needs
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              {/* Option 1: Estate Management */}
+              <button
+                type="button"
+                onClick={() => setSelectedPlan("estate_management")}
+                className={`flex flex-col text-left p-5 sm:p-6 rounded-2xl border-2 transition-all justify-between ${
+                  selectedPlan === "estate_management"
+                    ? "border-indigo-600 bg-indigo-50/20 shadow-lg shadow-indigo-100"
+                    : "border-slate-100 hover:border-slate-200 bg-slate-50/50"
+                }`}
+              >
+                <div>
+                  <div
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${
+                      selectedPlan === "estate_management"
+                        ? "bg-indigo-600 text-white"
+                        : "bg-slate-200 text-slate-600"
+                    }`}
+                  >
+                    <Home size={18} />
+                  </div>
+                  <h4 className="font-bold text-slate-900 text-sm sm:text-base mb-1">
+                    Estate Management Plan
+                  </h4>
+                  <p className="text-xs text-slate-500 leading-relaxed font-sans">
+                    Full coverage suite to register, manage, and coordinate all
+                    residents, administrative properties, and security stations.
+                  </p>
+                </div>
+                <div className="mt-4 pt-3 border-t border-slate-100/80 w-full">
+                  <span
+                    className={`text-xs font-bold ${
+                      selectedPlan === "estate_management"
+                        ? "text-indigo-600"
+                        : "text-slate-400"
+                    }`}
+                  >
+                    {selectedPlan === "estate_management"
+                      ? "Selected"
+                      : "Choose this Option"}
+                  </span>
+                </div>
+              </button>
+
+              {/* Option 2: Security Only */}
+              <button
+                type="button"
+                onClick={() => setSelectedPlan("security_only")}
+                className={`flex flex-col text-left p-5 sm:p-6 rounded-2xl border-2 transition-all justify-between ${
+                  selectedPlan === "security_only"
+                    ? "border-indigo-600 bg-indigo-50/20 shadow-lg shadow-indigo-100"
+                    : "border-slate-100 hover:border-slate-200 bg-slate-50/50"
+                }`}
+              >
+                <div>
+                  <div
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${
+                      selectedPlan === "security_only"
+                        ? "bg-indigo-600 text-white"
+                        : "bg-slate-200 text-slate-600"
+                    }`}
+                  >
+                    <ShieldCheck size={18} />
+                  </div>
+                  <h4 className="font-bold text-slate-900 text-sm sm:text-base mb-1">
+                    Security Only Plan
+                  </h4>
+                  <p className="text-xs text-slate-500 leading-relaxed font-sans">
+                    Tailored strictly for gate security operations. Track guard
+                    rosters, process gatepass verifications, and monitor queues.
+                  </p>
+                </div>
+                <div className="mt-4 pt-3 border-t border-slate-100/80 w-full">
+                  <span
+                    className={`text-xs font-bold ${
+                      selectedPlan === "security_only"
+                        ? "text-indigo-600"
+                        : "text-slate-400"
+                    }`}
+                  >
+                    {selectedPlan === "security_only"
+                      ? "Selected"
+                      : "Choose this Option"}
+                  </span>
+                </div>
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowPlanModal(false)}
+              className="w-full py-3.5 bg-slate-950 text-white hover:bg-slate-900 rounded-2xl font-bold text-base transition-all"
+            >
+              Confirm Selection
+            </button>
           </div>
         </div>
       )}

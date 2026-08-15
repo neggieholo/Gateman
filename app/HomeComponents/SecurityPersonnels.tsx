@@ -1,24 +1,19 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { securityDb } from "../services/database";
 import { SecurityUser } from "../services/types";
-import {
-  Trash2,
-  Mail,
-  Phone,
-  Search,
-  Clock,
-  Loader2,
-  History,
-  ArrowLeft,
-  ExternalLink,
-} from "lucide-react";
+import { Search, Clock, ArrowLeft, ExternalLink } from "lucide-react";
 import { fetchReadableAddress, formatLastSeen } from "../services/apis";
 import UserLogsPage from "./UsersLogsPage";
+import { useUser } from "../UserContext";
+import { showAccessDeniedToast } from "./Users";
+import toast from "react-hot-toast";
 
 export default function SecurityPersonnelsList() {
+  const { user, contextEstateId } = useUser();
   const [guards, setGuards] = useState<SecurityUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -28,11 +23,22 @@ export default function SecurityPersonnelsList() {
   const [viewLogs, setViewLogs] = useState(false);
   const [lastKnownAddress, setLastKnownAddress] = useState<string>("");
 
+  const canView =
+    user?.permissions?.includes("security_management") ||
+    user?.permissions?.includes("view_guards") ||
+    user?.permissions?.includes("all-access");
 
-  const fetchGuards = async () => {
+  const canDelete =
+    user?.permissions?.includes("security_management") ||
+    user?.permissions?.includes("delete_guard_account") ||
+    user?.permissions?.includes("all-access");
+
+  const fetchGuards = useCallback(async () => {
+    if (!contextEstateId) return;
+
     setError(false);
     try {
-      const data = await securityDb.getAllSecurity();
+      const data = await securityDb.getAllSecurity(contextEstateId);
       setGuards(data);
     } catch (err) {
       setError(true);
@@ -40,11 +46,15 @@ export default function SecurityPersonnelsList() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [contextEstateId]);
 
   useEffect(() => {
+    if (!canView) {
+      showAccessDeniedToast();
+      return;
+    }
     fetchGuards();
-  }, []);
+  }, [canView, fetchGuards]);
 
   const filteredGuards = guards.filter(
     (guard) =>
@@ -53,13 +63,17 @@ export default function SecurityPersonnelsList() {
   );
 
   const handleDelete = async (id: string) => {
+    if (!canDelete) {
+      showAccessDeniedToast();
+      return;
+    }
     if (!confirm("Are you sure you want to remove this personnel?")) return;
     setDeletingId(id);
     try {
-      await securityDb.deleteSecurity(id);
+      await securityDb.deleteSecurity(id, contextEstateId!);
       setGuards(guards.filter((g) => g.id !== id));
     } catch (err) {
-      alert("Failed to delete personnel");
+      toast.error("Failed to delete personnel");
     } finally {
       setDeletingId(null);
     }
@@ -90,6 +104,18 @@ export default function SecurityPersonnelsList() {
       isMounted = false; // Prevent state updates if selectedGuard changes mid-fetch
     };
   }, [selectedGuard?.last_known_location, selectedGuard?.checkin_location]);
+
+  const checkLogPermission = () => {
+    if (
+      user?.permissions?.includes("logs_management") ||
+      user?.permissions?.includes("view_security_logs") ||
+      user?.permissions?.includes("all-access")
+    ) {
+      setViewLogs(true);
+    } else {
+      showAccessDeniedToast();
+    }
+  };
 
   if (viewLogs && selectedGuard) {
     return (
@@ -269,7 +295,7 @@ export default function SecurityPersonnelsList() {
                 <div className="flex flex-col sm:flex-row gap-4 pt-8">
                   <button
                     className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-lg cursor-pointer"
-                    onClick={() => setViewLogs(true)}
+                    onClick={checkLogPermission}
                   >
                     View Logs
                   </button>

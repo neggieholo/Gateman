@@ -32,8 +32,9 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [requestingOtp, setRequestingOtp] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { setUser, setPlan } = useUser();
+  const { setUser, setPlan, setContextEstateId } = useUser();
   const router = useRouter();
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
   // Form State
   const [email, setEmail] = useState("");
@@ -79,10 +80,10 @@ export default function Auth() {
 
       try {
         const res = await checkSession();
-        if (res.success) {
+        if (res.success && res?.user?.role == "ADMIN") {
           setUser(res.user);
           window.location.replace("/home/dashboard");
-        } else {
+        } else if (!res.success || res?.user?.role !== "ADMIN") {
           setSessionLoading(false);
         }
       } catch (err) {
@@ -253,23 +254,31 @@ export default function Auth() {
           "Browser environment does not support geolocation metrics.",
         );
       }
-      const response = await fetch("/api/estate-users/verify-otp-only", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          otp: finalOtp,
-          target: email,
-          type: mfaType === "TOTP" ? "totp" : "email",
-          metadata: mfaType === "EMAIL" ? metadata : undefined,
-          rememberMe: rememberMe,
-          coordinates,
-        }),
-      });
+      const response = await fetch(
+        `${baseUrl}/api/estate-users/verify-login-otp`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            otp: finalOtp,
+            target: email,
+            type: mfaType === "TOTP" ? "totp" : "email",
+            metadata: mfaType === "EMAIL" ? metadata : undefined,
+            rememberMe: rememberMe,
+            coordinates,
+          }),
+          credentials: "include",
+        },
+      );
 
       const data = await response.json();
 
       if (data.success) {
         setUser(data.user);
+        if (data.user?.estate_ids && data.user.estate_ids.length > 0) {
+          setContextEstateId(data.user.estate_ids[0]);
+          setPlan(data.user.estate_ids[0].plan);
+        }
         router.push("/home/dashboard");
         setShowOtpInput(false);
         setOtp(["", "", "", "", "", ""]);
@@ -462,7 +471,10 @@ export default function Auth() {
 
         if (data.success) {
           setUser(data.user);
-          setPlan(data.user.plan);
+          if (data.user?.estate_ids && data.user.estate_ids.length > 0) {
+            setContextEstateId(data.user.estate_ids[0]);
+            setPlan(data.user.estate_ids[0].plan);
+          }
           if (data.onboarding?.showPasswordWarningPopup) {
             localStorage.setItem("DASHBOARD_PASS_WARN", "true");
           }
@@ -982,18 +994,6 @@ export default function Auth() {
 
             <div className="space-y-4">
               <button
-                // onClick={() => handleRegister(otp.join(""))}
-                disabled={loading || otp.some((d) => !d)}
-                className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg shadow-lg shadow-indigo-200 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center"
-              >
-                {loading ? (
-                  <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  "Verify"
-                )}
-              </button>
-
-              <button
                 onClick={handleCancelOtp}
                 className="w-full py-2 text-slate-500 font-medium hover:text-slate-800 transition-colors"
               >
@@ -1046,7 +1046,7 @@ export default function Auth() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
               {/* Option 1: Estate Management */}
               <button
                 type="button"
@@ -1129,53 +1129,6 @@ export default function Auth() {
                     }`}
                   >
                     {selectedPlan === "security_only"
-                      ? "Selected"
-                      : "Choose this Option"}
-                  </span>
-                </div>
-              </button>
-
-              {/* Option 3: Combo Master */}
-              <button
-                type="button"
-                onClick={() => setSelectedPlan("combo")}
-                className={`flex flex-col text-left p-6 rounded-[1.8rem] border-2 transition-all h-full justify-between relative ${
-                  selectedPlan === "combo"
-                    ? "border-indigo-600 bg-indigo-50/20 shadow-lg shadow-indigo-100"
-                    : "border-slate-100 hover:border-slate-200 bg-slate-50/50"
-                }`}
-              >
-                <div className="absolute top-3 right-3 bg-indigo-600 text-[10px] font-bold text-white px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                  Popular
-                </div>
-                <div>
-                  <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${
-                      selectedPlan === "combo"
-                        ? "bg-indigo-600 text-white"
-                        : "bg-slate-200 text-slate-600"
-                    }`}
-                  >
-                    <Sparkles size={20} />
-                  </div>
-                  <h4 className="font-bold text-slate-900 text-base mb-2 leading-snug">
-                    Combo Master Plan
-                  </h4>
-                  <p className="text-xs text-slate-500 leading-relaxed font-sans">
-                    Get both administration management and full active security
-                    system protocols. The ultimate system to synchronize staff,
-                    residents, and gates in real time.
-                  </p>
-                </div>
-                <div className="mt-6 pt-4 border-t border-slate-100/80 w-full">
-                  <span
-                    className={`text-xs font-bold ${
-                      selectedPlan === "combo"
-                        ? "text-indigo-600"
-                        : "text-slate-400"
-                    }`}
-                  >
-                    {selectedPlan === "combo"
                       ? "Selected"
                       : "Choose this Option"}
                   </span>

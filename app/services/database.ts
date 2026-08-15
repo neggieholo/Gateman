@@ -52,7 +52,17 @@ export const db = {
     adminName: string,
     selectedPlan: string,
   ) => {
-    const body = { name, email, password, state, lga, otp: newOtp, metadata, adminName, selectedPlan };
+    const body = {
+      name,
+      email,
+      password,
+      state,
+      lga,
+      otp: newOtp,
+      metadata,
+      adminName,
+      selectedPlan,
+    };
 
     const res = await fetch(`${baseUrl}/api/payment`, {
       method: "POST",
@@ -112,8 +122,8 @@ export const db = {
     return await res.json(); // updated user
   },
 
-  getAllTenants: async (): Promise<Tenant[]> => {
-    const res = await fetch(`${baseUrl}/api/admin/tenants`, {
+  getAllTenants: async (estate_id: string): Promise<Tenant[]> => {
+    const res = await fetch(`${baseUrl}/api/admin/tenants/${estate_id}`, {
       credentials: "include",
     });
     if (!res.ok) {
@@ -125,8 +135,8 @@ export const db = {
   },
 
   // Fetch all join requests (admin-only)
-  getAllRequests: async (): Promise<JoinRequest[]> => {
-    const res = await fetch(`${baseUrl}/api/admin/join-requests`, {
+  getAllRequests: async (estate_id: string): Promise<JoinRequest[]> => {
+    const res = await fetch(`${baseUrl}/api/admin/join-requests/${estate_id}`, {
       credentials: "include",
     });
     if (!res.ok) {
@@ -137,11 +147,14 @@ export const db = {
     return data.joinRequests as JoinRequest[];
   },
 
-  deleteTenant: async (id: string) => {
-    const res = await fetch(`${baseUrl}/api/admin/tenant/${id}`, {
-      method: "DELETE",
-      credentials: "include",
-    });
+  deleteTenant: async (id: string, estate_id: string) => {
+    const res = await fetch(
+      `${baseUrl}/api/admin/tenant/${id}?estate_id=${estate_id}`,
+      {
+        method: "DELETE",
+        credentials: "include",
+      },
+    );
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.error || "Delete failed");
@@ -149,8 +162,8 @@ export const db = {
     return await res.json();
   },
 
-  fetchBlocked: async () => {
-    const res = await fetch(`${baseUrl}/api/admin/blocked-users`, {
+  fetchBlocked: async (estate_id: string) => {
+    const res = await fetch(`${baseUrl}/api/admin/blocked-users/${estate_id}`, {
       credentials: "include",
     });
     if (!res.ok) throw new Error("Failed to fetch blocked users");
@@ -158,12 +171,12 @@ export const db = {
     return data.blockedUsers;
   },
 
-  handleUnblock: async (tempTenantId: string) => {
+  handleUnblock: async (tempTenantId: string, estate_id: string) => {
     const res = await fetch(`${baseUrl}/api/admin/join-request/unblock`, {
       method: "PUT",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tempTenantId }),
+      body: JSON.stringify({ tempTenantId, estate_id }),
     });
     if (!res.ok) throw new Error("Failed to unblock user");
     return await res.json();
@@ -208,10 +221,15 @@ export const db = {
 
 export const securityDb = {
   // 1. Fetch all pending security join requests
-  getSecurityRequests: async (): Promise<SecurityJoinRequest[]> => {
-    const res = await fetch(`${baseUrl}/api/security/join-requests`, {
-      credentials: "include",
-    });
+  getSecurityRequests: async (
+    estate_id: string,
+  ): Promise<SecurityJoinRequest[]> => {
+    const res = await fetch(
+      `${baseUrl}/api/security/join-requests/${estate_id}`,
+      {
+        credentials: "include",
+      },
+    );
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.error || "Could not fetch security requests");
@@ -249,11 +267,11 @@ export const securityDb = {
   },
 
   // 4. Block a security applicant permanently
-  blockSecurity: async (id: string, message: string) => {
+  blockSecurity: async (id: string, message: string, estate_id: string) => {
     const res = await fetch(`${baseUrl}/api/security/join-request/block`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, message }),
+      body: JSON.stringify({ id, message, estate_id }),
       credentials: "include",
     });
     if (!res.ok) {
@@ -264,21 +282,24 @@ export const securityDb = {
   },
 
   // 5. Fetch all blocked security guards
-  fetchBlockedGuards: async () => {
-    const res = await fetch(`${baseUrl}/api/security/blocked-users`, {
-      credentials: "include",
-    });
+  fetchBlockedGuards: async (estate_id: string) => {
+    const res = await fetch(
+      `${baseUrl}/api/security/blocked-users/${estate_id}`,
+      {
+        credentials: "include",
+      },
+    );
     if (!res.ok) throw new Error("Failed to fetch blocked guards");
     const data = await res.json();
     return data.blockedUsers;
   },
 
   // 6. Unblock a security guard
-  unblockSecurity: async (tempSecurityId: string) => {
+  unblockSecurity: async (tempSecurityId: string, estate_id: string) => {
     const res = await fetch(`${baseUrl}/api/security/join-request/unblock`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tempSecurityId }),
+      body: JSON.stringify({ tempSecurityId, estate_id }),
       credentials: "include",
     });
     if (!res.ok) throw new Error("Failed to unblock guard");
@@ -286,8 +307,8 @@ export const securityDb = {
   },
 
   // 7. Fetch all official security guards in the estate
-  getAllSecurity: async (): Promise<SecurityUser[]> => {
-    const res = await fetch(`${baseUrl}/api/security/all`, {
+  getAllSecurity: async (estate_id: string): Promise<SecurityUser[]> => {
+    const res = await fetch(`${baseUrl}/api/security/admin/all/${estate_id}`, {
       credentials: "include",
     });
     if (!res.ok) {
@@ -299,11 +320,14 @@ export const securityDb = {
   },
 
   // 8. Delete/Offboard an official security guard
-  deleteSecurity: async (id: string) => {
-    const res = await fetch(`${baseUrl}/api/security/delete/${id}`, {
-      method: "DELETE",
-      credentials: "include",
-    });
+  deleteSecurity: async (id: string, estate_id: string) => {
+    const res = await fetch(
+      `${baseUrl}/api/security/delete/${id}?estate_id=${estate_id}`,
+      {
+        method: "DELETE",
+        credentials: "include",
+      },
+    );
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.error || "Delete failed");

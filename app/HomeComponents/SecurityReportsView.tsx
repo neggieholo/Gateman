@@ -13,13 +13,17 @@ import {
   Eye,
   CheckCircle,
   X,
+  ShieldAlert,
 } from "lucide-react";
 import { getEstateReports, updateReportStatus } from "../services/apis";
 import { EstateReport, ReportStatus } from "../services/types";
 import { securityDb } from "../services/database";
 import { SecurityUser } from "../services/types";
+import { useUser } from "../UserContext";
+import { showAccessDeniedToast } from "./Users";
 
 export default function SecurityReportsView() {
+  const { user, contextEstateId } = useUser();
   const [reports, setReports] = useState<EstateReport[]>([]);
   const [selectedReport, setSelectedReport] = useState<EstateReport | null>(
     null,
@@ -39,11 +43,25 @@ export default function SecurityReportsView() {
   const [adminFeedback, setAdminFeedback] = useState("");
   const [loadingAction, setLoadingAction] = useState(false);
 
+  const canView =
+    user?.permissions?.includes("estate_administration") ||
+    user?.permissions?.includes("view_estate_reports") ||
+    user?.permissions?.includes("all-access");
+
+  const canEditStatus =
+    user?.permissions?.includes("estate_administration") ||
+    user?.permissions?.includes("modify_report_status") ||
+    user?.permissions?.includes("all-access");
+
   useEffect(() => {
+    if (!canView) {
+      showAccessDeniedToast();
+      return;
+    }
     const fetchReports = async () => {
       setLoading(true);
       try {
-        const res = await getEstateReports();
+        const res = await getEstateReports(contextEstateId!);
 
         if (res.success) {
           const securityOnly = res.reports.filter(
@@ -59,10 +77,10 @@ export default function SecurityReportsView() {
     };
 
     fetchReports();
-  }, []);
+  }, [canView]);
 
   const fetchGuardDetails = async (ids: string[]) => {
-    const res = await securityDb.getAllSecurity();
+    const res = await securityDb.getAllSecurity(contextEstateId!);
     if (res) {
       const filtered = res.filter((g: SecurityUser) => ids.includes(g.id));
       setAssociatedGuards(filtered);
@@ -99,17 +117,26 @@ export default function SecurityReportsView() {
   };
 
   const triggerStatusUpdate = (id: string, status: "REVIEWED" | "RESOLVED") => {
+    if (!canEditStatus) {
+      showAccessDeniedToast();
+      return;
+    }
     setShowFeedbackModal({ id, status });
     setAdminFeedback("");
   };
 
   const confirmStatusUpdate = async () => {
+    if (!canEditStatus) {
+      showAccessDeniedToast();
+      return;
+    }
     if (!showFeedbackModal) return;
 
     setLoadingAction(true);
     try {
       const res = await updateReportStatus(
         showFeedbackModal.id,
+        contextEstateId!,
         showFeedbackModal.status,
         adminFeedback,
       );
@@ -149,6 +176,23 @@ export default function SecurityReportsView() {
       (typeFilter === "ALL" || r.category === typeFilter) &&
       (statusFilter === "ALL" || r.status === statusFilter),
   );
+
+  // if (!canView) {
+  //   return (
+  //     <div className="flex flex-col items-center justify-center p-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200/80 max-w-xl mx-auto my-8">
+  //       <div className="p-3 bg-red-50 text-red-600 rounded-full mb-4">
+  //         <ShieldAlert size={28} />
+  //       </div>
+  //       <h3 className="text-sm font-montserrat font-black text-slate-800 uppercase tracking-wide mb-1">
+  //         Workspace Access Restricted
+  //       </h3>
+  //       <p className="text-xs text-slate-400 max-w-xs leading-relaxed font-medium">
+  //         You do not currently hold the authorized digital credentials or clear
+  //         operational rights needed to view this interface panel.
+  //       </p>
+  //     </div>
+  //   );
+  // }
 
   if (selectedReport) {
     const isReviewed = selectedReport.status === "REVIEWED";

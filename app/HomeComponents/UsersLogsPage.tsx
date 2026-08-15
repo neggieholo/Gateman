@@ -13,6 +13,7 @@ import toast from "react-hot-toast";
 import { UserLogEntry } from "../services/types";
 import { fetchUserLogsApi } from "../services/apis";
 import { useUser } from "../UserContext";
+import { showAccessDeniedToast } from "./Users";
 
 interface UserLogsPageProps {
   isolatedAdminId?: string | null;
@@ -23,9 +24,9 @@ interface UserLogsPageProps {
 export default function UserLogsPage({
   isolatedAdminId = null,
   isolatedAdminName = null,
-  role
+  role,
 }: UserLogsPageProps) {
-  const { user } = useUser();
+  const { user, contextEstateId } = useUser();
   const [logs, setLogs] = useState<UserLogEntry[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -34,18 +35,46 @@ export default function UserLogsPage({
   const [dateFilter, setDateFilter] = useState("");
   const displayedRole = "All " + (role === "TENANT" ? "RESIDENT" : role);
 
-  // 📡 1. Live Data Synchronization Loop
+  // Helper function to check permissions cleanly
+  const hasPermission = (permission: string) =>
+    user?.permissions?.includes("all-access") ||
+    user?.permissions?.includes("logs_management") ||
+    user?.permissions?.includes(permission);
+
+  const canViewResidentLogs = hasPermission("view_resident_logs");
+  const canViewSecurityLogs = hasPermission("view_security_logs");
+  const canViewAdminLogs = hasPermission("view_admin_logs");
+
+
+  // Specific guard for the currently selected sub-filter/role tab
+  const canViewCurrentRoleLogs =
+    role.toUpperCase() === "ADMIN"
+      ? canViewAdminLogs
+      : role.toUpperCase() === "TENANT"
+        ? canViewResidentLogs
+        : canViewSecurityLogs;
+
   useEffect(() => {
+    if (!contextEstateId) return;
+
     const loadLogsData = async () => {
+      if (!canViewCurrentRoleLogs) {
+        showAccessDeniedToast();
+        setLogs([]);
+        return;
+      }
+
       setLoading(true);
       try {
-        const response = await fetchUserLogsApi();
+        const filterRole = role?.toUpperCase();
+        const response = await fetchUserLogsApi(contextEstateId, filterRole);
+
         if (response.success) {
           const specifiedLogs =
             response.logs?.filter(
-              (log: UserLogEntry) => log.user_role === role?.toUpperCase(),
+              (log: UserLogEntry) => log.user_role === filterRole,
             ) ?? [];
-          setLogs(specifiedLogs || []);
+          setLogs(specifiedLogs);
         } else {
           toast.error(response.message || "Failed to sync system user logs.");
         }
@@ -58,7 +87,7 @@ export default function UserLogsPage({
     };
 
     loadLogsData();
-  }, [role]);
+  }, [role, contextEstateId, canViewCurrentRoleLogs]);
 
   // 🧠 2. High-Performance Memoized Local Filtering Matrix
   const filteredLogs = useMemo(() => {
@@ -166,7 +195,8 @@ export default function UserLogsPage({
           </div>
           <div>
             <h1 className="text-base font-montserrat font-black text-slate-800 uppercase tracking-tight leading-none">
-              View {isolatedAdminName ? isolatedAdminName + "'s" : displayedRole}{" "}
+              View{" "}
+              {isolatedAdminName ? isolatedAdminName + "'s" : displayedRole}{" "}
               Activity Logs
             </h1>
             <p className="text-xs text-slate-400 font-medium mt-1">

@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useUser } from "../UserContext";
 import toast from "react-hot-toast";
-import { deleteStaleCloudinaryAsset, getCloudinaryUrl } from "../services/apis";
+import { deleteStaleCloudinaryAsset, getS3UploadedUrl } from "../services/apis";
 import "react-phone-number-input/style.css";
 import PhoneInput, { isValidPhoneNumber } from "react-phone-number-input";
 
@@ -57,8 +57,7 @@ export default function AddResidentForm({
   const [locations, setLocations] = useState<BlockNode[]>([
     { block: "", units: [""] },
   ]);
-  const { user } = useUser();
-  const estateId = user?.estate_id;
+  const { user, contextEstateId } = useUser();
 
   useEffect(() => {
     const list: (ContractFileMeta | null)[] = [];
@@ -71,7 +70,7 @@ export default function AddResidentForm({
       });
     });
     setContractFiles(list);
-  }, [locations]);
+  }, [locations, contractFiles]);
 
   // Nested structural state mechanics
   const updateBlockName = (bIndex: number, text: string) => {
@@ -120,7 +119,7 @@ export default function AddResidentForm({
     setSelfie(localPreviewUrl);
 
     try {
-      const uploadedUrl = await getCloudinaryUrl(file, "image");
+      const uploadedUrl = await getS3UploadedUrl(file, "resident-avatars");
 
       if (uploadedUrl) {
         // 2. Clean up the blob URL ONLY right before swapping to the cloud URL
@@ -153,12 +152,12 @@ export default function AddResidentForm({
   ) => {
     if (!file) return;
     const localPreviewUrl = URL.createObjectURL(file);
-    const rawMimeType = file.type;
+    // const rawMimeType = file.type;
 
-    const type = rawMimeType.includes("pdf") ? "document" : "image";
+    // const type = rawMimeType.includes("pdf") ? "document" : "image";
 
     try {
-      const uploadedUrl = await getCloudinaryUrl(file, type);
+      const uploadedUrl = await getS3UploadedUrl(file, "resident-contracts");
 
       if (uploadedUrl) {
         // Clean up local binary blob memory safely
@@ -211,7 +210,7 @@ export default function AddResidentForm({
     try {
       // 1. Construct a clean, native JSON object directly
       const payload = {
-        estateId: estateId || "",
+        estate_id: contextEstateId || "",
         name: name,
         email: email,
         phone: phone,
@@ -256,6 +255,12 @@ export default function AddResidentForm({
         toast.success(
           "Resident successfully introduced into system directory.",
         );
+        setName("");
+        setEmail("");
+        setSelfie(null);
+        setLocations([{ block: "", units: [""] }]);
+        setContractFiles([]);
+        setIncludeContracts(false);
         onSubmitSuccess();
       } else {
         throw new Error(data.message || "Failed allocating manually.");
@@ -396,7 +401,6 @@ export default function AddResidentForm({
                   value={phone === "Not set" ? undefined : phone}
                   onChange={handlePhoneChange}
                   className="flex items-center w-full react-phone-number-input-custom"
-                  inputClassName="w-full outline-none border-none p-0 text-sm text-slate-700 font-medium bg-transparent focus:ring-0 ml-2"
                 />
                 <Phone
                   size={16}

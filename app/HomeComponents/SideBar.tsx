@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import {
   Home,
-  Zap,
   ShieldCheck,
   MessageSquare,
   Calendar,
@@ -21,6 +20,7 @@ import { useUser } from "../UserContext";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import { postLogout } from "../services/apis";
+import toast from "react-hot-toast";
 
 interface SideBarProps {
   isOpen?: boolean;
@@ -49,6 +49,7 @@ export default function SideBar({
     setUser(null);
     localStorage.removeItem("rememberMe");
     sessionStorage.setItem("loggedOut", "true");
+    toast.dismiss();
     router.push("/");
   };
 
@@ -81,7 +82,7 @@ export default function SideBar({
       id: ViewState.EVENTS,
       label: "Bookings",
       icon: Calendar,
-      url: "/home/events",
+      url: "/home/bookings",
     },
     {
       id: ViewState.RESIDENTS,
@@ -89,12 +90,12 @@ export default function SideBar({
       icon: Users,
       url: "/home/tenantmanagement",
     },
-    {
-      id: ViewState.REQUESTS,
-      label: "Requests",
-      icon: Inbox,
-      url: "/home/joinrequestpage",
-    },
+    // {
+    //   id: ViewState.REQUESTS,
+    //   label: "Requests",
+    //   icon: Inbox,
+    //   url: "/home/joinrequestpage",
+    // },
     {
       id: ViewState.SERVICES,
       label: "Services",

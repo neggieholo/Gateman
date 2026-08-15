@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Bell,
   Megaphone,
@@ -13,25 +13,27 @@ import {
   ArrowLeft,
   ThumbsUp,
   Loader,
-  Trash,
   Loader2,
   ImageIcon,
   X,
   Archive,
   Users,
   Search,
+  ShieldAlert,
 } from "lucide-react";
 import {
   communityApi,
-  getCloudinaryUrl,
+  getS3UploadedUrl,
   getRelativeTime,
 } from "../services/apis";
 import { useUser } from "../UserContext";
 import { Like, Post, Comment } from "../services/types";
 import { useRouter } from "next/navigation";
+import { showAccessDeniedToast } from "./Users";
+import toast from "react-hot-toast";
 
 const AdminAlertManager = () => {
-  const { user } = useUser();
+  const { user, contextEstateId } = useUser();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"communication" | "notifications">(
     "communication",
@@ -63,29 +65,55 @@ const AdminAlertManager = () => {
   const [notificationType, setNotificationType] = useState("announcement");
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
+  const canView =
+    user?.permissions?.includes("community_management") ||
+    user?.permissions?.includes("view_community_posts") ||
+    user?.permissions?.includes("all-access");
+
+  const canDeleteOrArchive =
+    user?.permissions?.includes("community_management") ||
+    user?.permissions?.includes("moderate_community_posts") ||
+    user?.permissions?.includes("all-access");
+
+  const canPost =
+    user?.permissions?.includes("community_management") ||
+    user?.permissions?.includes("create_community_posts") ||
+    user?.permissions?.includes("all-access");
+
+  const canSendNotification =
+    user?.permissions?.includes("notifications_management") ||
+    user?.permissions?.includes("send_notifications") ||
+    user?.permissions?.includes("all-access");
+
   useEffect(() => {
     if (!selectedImage) return;
     const objectUrl = URL.createObjectURL(selectedImage);
     return () => URL.revokeObjectURL(objectUrl);
   }, [selectedImage]);
 
-  const fetchPosts = async () => {
+  const fetchPosts = useCallback(async () => {
+    if (!contextEstateId) return;
+
     setLoading(true);
     try {
-      const data = await communityApi.getPosts(user!.estate_id);
+      const data = await communityApi.getPosts(contextEstateId);
       setPosts(data || []);
     } catch (err) {
-      console.error("Failed to fetch alerts");
+      console.error("Failed to fetch alerts", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [contextEstateId]);
 
   useEffect(() => {
-    if (activeTab === "communication" && user?.estate_id) {
+    if (!canView) {
+      showAccessDeniedToast();
+      return;
+    }
+    if (activeTab === "communication" && contextEstateId) {
       fetchPosts();
     }
-  }, [activeTab, user?.estate_id]);
+  }, [activeTab, contextEstateId, canView, fetchPosts]);
 
   const filteredPosts = posts.filter((post) => {
     const matchesSearch =
@@ -99,18 +127,23 @@ const AdminAlertManager = () => {
   });
 
   const handlePostAlert = async () => {
-    if (!title || !content) return alert("Please fill all fields");
+    if (!canPost) {
+      showAccessDeniedToast();
+      return;
+    }
+    if (!title || !content) return toast.error("Please fill all fields");
     setPublishing(true);
 
     try {
       let uploadedUrl = "";
 
       if (selectedImage) {
-        const url = await getCloudinaryUrl(selectedImage, "image");
+        const url = await getS3UploadedUrl(selectedImage, "post-images");
         if (url) uploadedUrl = url;
       }
 
       await communityApi.createPost({
+        estate_id: contextEstateId,
         author_name: "ADMIN",
         author_role: "admin",
         title: title,
@@ -121,23 +154,27 @@ const AdminAlertManager = () => {
         send_push: alsoNotify,
       });
 
-      alert("Post published successfully!");
+      toast.success("Post published successfully!");
       setTitle("");
       setContent("");
       setSelectedImage(null);
       fetchPosts();
     } catch (err) {
       console.error(err);
-      alert("Failed to post alert");
+      toast.error("Failed to post alert");
     } finally {
       setPublishing(false);
     }
   };
 
   const handleSendNotification = async () => {
-    if (!title || !content) return alert("Content required");
+    if (!canSendNotification) {
+      showAccessDeniedToast();
+      return;
+    }
+    if (!title || !content) return toast.error("Content required");
     if (!targetResidents && !targetSecurity)
-      return alert("Select at least one group");
+      return toast.error("Select at least one group");
 
     setPublishing(true);
     try {
@@ -149,19 +186,24 @@ const AdminAlertManager = () => {
           security: targetSecurity,
         },
         type: notificationType,
+        estate_id: contextEstateId!
       });
 
-      alert("Notifications sent to selected groups!");
+      toast.success("Notifications sent to selected groups!");
       setTitle("");
       setContent("");
     } catch (err) {
-      alert("Failed to send notifications");
+      toast.error("Failed to send notifications");
     } finally {
       setPublishing(false);
     }
   };
 
   const handleLike = async (postId: string) => {
+    if (!canPost) {
+      showAccessDeniedToast();
+      return;
+    }
     if (!user?.id) return;
     const isUnliking = selectedPost?.has_liked;
 
@@ -207,6 +249,10 @@ const AdminAlertManager = () => {
   };
 
   const handleDeleteComment = async (commentId: number) => {
+    if (!canPost) {
+      showAccessDeniedToast();
+      return;
+    }
     if (!window.confirm("Are you sure you want to remove this comment?"))
       return;
 
@@ -233,13 +279,17 @@ const AdminAlertManager = () => {
       if (!response.success) throw new Error("Failed");
     } catch (error) {
       console.error("Delete Comment Error:", error);
-      alert("Could not delete comment. Reverting...");
+      toast.error("Could not delete comment. Reverting...");
       setComments(previousComments);
       fetchPosts();
     }
   };
 
   const handleOpenPost = async (post: Post) => {
+    if (!canView) {
+      showAccessDeniedToast();
+      return;
+    }
     setSelectedPost(post);
 
     if (!post.admin_seen) {
@@ -287,6 +337,10 @@ const AdminAlertManager = () => {
   };
 
   const handleAddComment = async (postId: string) => {
+    if (!canPost) {
+      showAccessDeniedToast();
+      return;
+    }
     if (!newComment.trim()) return;
 
     const commentText = newComment;
@@ -329,7 +383,7 @@ const AdminAlertManager = () => {
       );
     } catch (error) {
       console.error("GateMan Comment Error:", error);
-      alert("Failed to add comment.");
+      toast.error("Failed to add comment.");
       fetchPosts();
     } finally {
       setUploadingComment(false);
@@ -337,6 +391,10 @@ const AdminAlertManager = () => {
   };
 
   const handleCommentSubmit = async () => {
+    if (!canPost) {
+      showAccessDeniedToast();
+      return;
+    }
     if (!newComment.trim() || !selectedPost) return;
 
     await handleAddComment(selectedPost.id);
@@ -347,6 +405,10 @@ const AdminAlertManager = () => {
   };
 
   const handleArchivePost = async (postId: string) => {
+    if (!canDeleteOrArchive) {
+      showAccessDeniedToast();
+      return;
+    }
     const actionLabel = showArchived ? "Unarchive" : "Archive";
     const confirmed = window.confirm(
       `${actionLabel} Post\nAre you sure you want to change this post's visibility status?`,
@@ -357,7 +419,7 @@ const AdminAlertManager = () => {
     try {
       const response = await communityApi.archivePost(postId.toString());
       if (response.success || response) {
-        alert(`Post ${actionLabel.toLowerCase()}d successfully.`);
+        toast.success(`Post ${actionLabel.toLowerCase()}d successfully.`);
 
         setPosts((prevPosts) =>
           prevPosts.map((p) =>
@@ -371,11 +433,15 @@ const AdminAlertManager = () => {
       }
     } catch (err) {
       console.error("Archive UI handler failure:", err);
-      alert("Could not complete archiving action.");
+      toast.error("Could not complete archiving action.");
     }
   };
 
   const handleDelete = async (postId: string) => {
+    if (!canDeleteOrArchive) {
+      showAccessDeniedToast();
+      return;
+    }
     const confirmed = window.confirm(
       "Delete Post\nAre you sure you want to remove this post permanently?",
     );
@@ -385,14 +451,31 @@ const AdminAlertManager = () => {
         const response = await communityApi.deletePost(postId.toString());
         if (response.success || response) {
           setPosts((prevPosts) => prevPosts.filter((p) => p.id !== postId));
-          alert("Post deleted successfully.");
+          toast.success("Post deleted successfully.");
         }
       } catch (error: any) {
         console.error("Delete Error:", error);
-        alert("Could not delete post. Please try again.");
+        toast.error("Could not delete post. Please try again.");
       }
     }
   };
+
+  if (!canView) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200/80 max-w-xl mx-auto my-8">
+        <div className="p-3 bg-red-50 text-red-600 rounded-full mb-4">
+          <ShieldAlert size={28} />
+        </div>
+        <h3 className="text-sm font-montserrat font-black text-slate-800 uppercase tracking-wide mb-1">
+          Workspace Access Restricted
+        </h3>
+        <p className="text-xs text-slate-400 max-w-xs leading-relaxed font-medium">
+          You do not currently hold the authorized digital credentials or clear
+          operational rights needed to view this interface panel.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-8xl mx-auto p-4 sm:p-6 overflow-hidden font-sans">
@@ -435,7 +518,9 @@ const AdminAlertManager = () => {
               <Bell size={16} className="text-blue-600" />
             )}
             Compose{" "}
-            {activeTab === "communication" ? "Public Alert" : "Direct Message"}
+            {activeTab === "communication"
+              ? "Community Post"
+              : "Direct Message"}
           </h2>
 
           <div className="space-y-4 font-sans">
@@ -494,19 +579,7 @@ const AdminAlertManager = () => {
               </div>
             ) : null}
 
-            {activeTab === "communication" ? (
-              <label className="flex items-center gap-3 p-3 bg-blue-50/40 border border-blue-100/20 rounded-xl cursor-pointer group transition-colors hover:bg-blue-50/70">
-                <input
-                  type="checkbox"
-                  checked={alsoNotify}
-                  onChange={(e) => setAlsoNotify(e.target.checked)}
-                  className="w-4 h-4 accent-blue-600 rounded-md"
-                />
-                <span className="text-xs font-montserrat font-bold text-blue-900 uppercase tracking-wide">
-                  Push to Resident&apos;s Devices
-                </span>
-              </label>
-            ) : (
+            {activeTab === "notifications" && (
               <div className="space-y-3 p-3 bg-slate-50/80 border border-slate-100 rounded-xl">
                 <p className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-wider">
                   Target Destination Scope

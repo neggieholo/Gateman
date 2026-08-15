@@ -36,8 +36,7 @@ export default function AddBookingFormModal({
     endTime: "",
     dateInput: "",
   });
-  const { user } = useUser();
-  const estateId = user?.estate_id;
+  const { user, contextEstateId } = useUser();
 
   const [bookedDatesList, setBookedDatesList] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -52,7 +51,7 @@ export default function AddBookingFormModal({
     const fetchData = async () => {
       setLoading(true);
       try {
-        const tenantData = await db.getAllTenants();
+        const tenantData = await db.getAllTenants(contextEstateId!);
         setTenants(tenantData);
       } catch (err) {
         console.error("Fetch error:", err);
@@ -176,7 +175,7 @@ export default function AddBookingFormModal({
     }
 
     const payload = {
-      estate_id: estateId,
+      estate_id: contextEstateId,
       resident_id: formData.tenantId, // <-- Payload matches your backend model key
       venue_id: selectedVenue.id,
       venue_name: selectedVenue.name,

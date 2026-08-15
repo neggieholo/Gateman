@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import {
-  Lock,
   Eye,
   EyeOff,
   ArrowLeft,
@@ -11,6 +10,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { changePassword } from "../services/apis";
+import toast from "react-hot-toast";
 
 export default function ChangePassword() {
   const [showPass, setShowPass] = useState(false);
@@ -37,13 +37,13 @@ export default function ChangePassword() {
       const data = await changePassword(formData.current, formData.new, role);
 
       if (data.success) {
-        alert("Password updated successfully");
+        toast.success("Password updated successfully");
         setFormData({ current: "", new: "", confirm: "" });
       } else {
-        alert(data.message || "Could not update password");
+        toast.error(data.message || "Could not update password");
       }
     } catch (err) {
-      alert("An unexpected error occurred");
+      toast.error("An unexpected error occurred");
     } finally {
       setLoading(false);
     }
@@ -58,7 +58,7 @@ export default function ChangePassword() {
         <ArrowLeft size={16} /> Back to Settings
       </Link>
       <div className="w-full max-w-md space-y-8 mt-6 sm:mt-10">
-        <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[40px] shadow-sm border border-slate-100 space-y-6">
+        <div className="bg-white p-6 sm:p-10 rounded-4xl sm:rounded-[40px] shadow-sm border border-slate-100 space-y-6">
           <div className="space-y-1">
             <h1 className="text-2xl sm:text-3xl font-montserrat font-black text-slate-900 tracking-tight">
               Update Password

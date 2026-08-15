@@ -15,37 +15,44 @@ export interface KYCSelection {
   rent_contract: boolean;
 }
 
+export interface EstateProfile {
+  id: string;
+  estate_name: string;
+  estate_code: string;
+  address: string;
+  state: string;
+  lga: string;
+  town: string;
+  plan: string;
+  bank_name: string | null;
+  bank_code: string | null;
+  bank_account_number: string | null;
+  bank_account_name: string | null;
+  emergency_contacts: EmergencyContact[];
+  payment_type: string | null;
+  external_api_url: string | null;
+  subscription_expiry?: string;
+  created_at: string;
+}
+
 export interface User {
   id: string;
-  estate_id: string;
-  estate_name?: string;
-  estate_code?: string;
+  estate_ids: string[];
+  estates: EstateProfile[];
   name: string;
   email: string;
   phone_number: string;
-  state?: string | null;
-  lga?: string | null;
-  plan: string;
-  role: "admin";
+  role: "ADMIN";
   is_root_admin: boolean;
+  is_first_login: boolean;
   permissions: string[];
   mfa_enabled: boolean;
   mfa_type: "NONE" | "EMAIL" | "TOTP" | "SMS";
-  wallet_balance: number;
   avatar?: string | Blob;
-  subscription_expiry?: string;
   created_at: string;
-  emergency_contacts: EmergencyContact[];
-  payment_type: string;
-  external_api_url: string;
   is_active: boolean;
   phone_verified: boolean;
   email_verified: boolean;
-
-  bank_account_number?: string;
-  bank_code?: string;
-  bank_account_name?: string;
-  bank_name?: string;
 }
 
 export interface Estate {
@@ -321,6 +328,8 @@ export interface SecurityUser {
   checkout_location?: string;
   last_known_location?: string;
   last_location_time?: string;
+  last_known_location_selfie?: string;
+  last_liveness_photo_url?: string;
   role: "SECURITY";
   id_type?: string;
   id_front_url?: string;
@@ -510,17 +519,17 @@ export interface EventRegistration {
   created_at: string;
 }
 
-export type BookingStatus = 
-  | 'PENDING_APPROVAL'
-  | 'PAYMENT_PENDING'
-  | 'PAYMENT_SUBMITTED'
-  | 'APPROVED'
-  | 'REJECTED';
+export type BookingStatus =
+  | "PENDING_APPROVAL"
+  | "PAYMENT_PENDING"
+  | "PAYMENT_SUBMITTED"
+  | "APPROVED"
+  | "REJECTED";
 
 export interface LocationBooking {
   id: string;
   estate_id: string;
-  resident_id: string;  
+  resident_id: string;
   venue_id: string;
   venue_name: string;
 
@@ -538,7 +547,6 @@ export interface LocationBooking {
 
   created_at: string;
 }
-
 
 export interface EstateFacility {
   id: number;
@@ -639,8 +647,12 @@ export interface DashboardStats {
   events: {
     total: number;
     pending: number;
+    payment_pending_bookings: number;
+    payment_submitted_bookings: number;
+    approved_bookings: number;
     upcoming: {
-      title: string;
+      resident_name: string;
+      venue_name: string;
       date: string | null;
     };
   };
@@ -649,6 +661,47 @@ export interface DashboardStats {
     total: number;
     complaints: number;
     pendingRequests: number;
+  };
+}
+
+export interface SecurityDashboardStats {
+  totalGuards: {
+    count: number;
+    mostRecent: {
+      name: string;
+      created_at: string | null;
+    };
+  };
+  onDutyGuards: {
+    count: number;
+    lastCheckedIn: {
+      name: string;
+      time: string | null;
+    };
+    lastCheckedOut: {
+      name: string;
+      time: string | null;
+    };
+  };
+  reports: {
+    total: number;
+    pending: number;
+    review: number;
+    resolved: number;
+  };
+  joinRequests: {
+    total: number;
+    pending: number;
+    approved: number;
+    rejected: number;
+  };
+  latestPing: {
+    officerName: string;
+    location: string;
+    pingTime: string | null;
+    locationTime: string | null;
+    isOnDuty: boolean;
+    hasResponded: boolean;
   };
 }
 
