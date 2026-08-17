@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Plus,
   Wrench,
@@ -18,6 +19,10 @@ import {
 } from "lucide-react";
 import { EstateService, ServiceRequest } from "../services/types";
 import ServicesReportsView from "./ServicesReportsView";
+import { useUser } from "../UserContext";
+import { showAccessDeniedToast } from "./Users";
+import { DeletePromptModal } from "./DeletePromptModal";
+import toast from "react-hot-toast";
 
 interface VendorInput {
   name: string;
@@ -26,6 +31,7 @@ interface VendorInput {
 }
 
 export default function ServicesManagementPage() {
+  const { user, contextEstateId } = useUser();
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
   const [activeTab, setActiveTab] = useState<
     "catalog" | "requests" | "complaints"
@@ -57,20 +63,52 @@ export default function ServicesManagementPage() {
   const [viewVendorsModalOpen, setViewVendorsModalOpen] = useState(false);
   const [activeVendorsList, setActiveVendorsList] = useState<VendorInput[]>([]);
   const [activeServiceNameForView, setActiveServiceNameForView] = useState("");
+  const [serviceDeleteId, setServiceDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const fetchData = async () => {
+  const hasPermission = (permission: string) =>
+    user?.permissions?.includes("all-access") ||
+    user?.permissions?.includes("services_management") ||
+    user?.permissions?.includes(permission);
+
+  const canViewServices = hasPermission("view_services_catalog");
+
+  const canMangeServices = hasPermission("manage_services_catalog");
+
+  const canViewRequests = hasPermission("view_service_requests");
+
+  const canMangeRequests = hasPermission("dispatch_service_requests");
+
+  const canViewReports =
+    user?.permissions?.includes("estate_administration") ||
+    user?.permissions?.includes("view_estate_reports") ||
+    user?.permissions?.includes("all-access");
+
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
+      const estate_id = contextEstateId;
       if (activeTab === "catalog") {
-        const res = await fetch(`${baseUrl}/api/services`, {
+        if (!canViewServices) {
+          showAccessDeniedToast();
+          return;
+        }
+        const res = await fetch(`${baseUrl}/api/services/${estate_id}`, {
           credentials: "include",
         });
         const data = await res.json();
         if (data.success) setServices(data.services);
       } else if (activeTab === "requests") {
-        const res = await fetch(`${baseUrl}/api/services/requests`, {
-          credentials: "include",
-        });
+        if (!canViewRequests) {
+          showAccessDeniedToast();
+          return;
+        }
+        const res = await fetch(
+          `${baseUrl}/api/services/requests/${estate_id}`,
+          {
+            credentials: "include",
+          },
+        );
         const data = await res.json();
         if (data.success) setRequests(data.requests);
       }
@@ -79,11 +117,11 @@ export default function ServicesManagementPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [contextEstateId, activeTab, baseUrl, canViewServices, canViewRequests]);
 
   useEffect(() => {
     fetchData();
-  }, [activeTab]);
+  }, [activeTab, fetchData]);
 
   const addVendorFields = () => {
     setVendorList([...vendorList, { name: "", phone: "", email: "" }]);
@@ -106,6 +144,12 @@ export default function ServicesManagementPage() {
 
   const handleSaveService = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!canMangeServices) {
+      showAccessDeniedToast();
+      return;
+    }
+
     setSubmitting(true);
     const url = editingService
       ? `${baseUrl}/api/services/${editingService.id}`
@@ -120,9 +164,10 @@ export default function ServicesManagementPage() {
           v.phone.trim() !== "" &&
           v.email.trim() !== "",
       ),
+      estate_id: contextEstateId,
     };
 
-    console.log("Service edit Payload:", payload);
+    // console.log("Service edit Payload:", payload);
 
     try {
       const res = await fetch(url, {
@@ -139,23 +184,27 @@ export default function ServicesManagementPage() {
         fetchData();
       }
     } catch (err) {
-      alert("Error parsing network commit profiles.");
+      toast.error("Error parsing network commit profiles.");
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDeleteService = async (id: string) => {
-    if (!confirm("Are you sure you want to remove this service category?"))
-      return;
     try {
-      const res = await fetch(`${baseUrl}/api/services/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+      setIsDeleting(true);
+      const res = await fetch(
+        `${baseUrl}/api/services/${id}?estate_id=${contextEstateId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        },
+      );
       if (res.ok) fetchData();
     } catch (err) {
-      alert("Failed cleaning data mapping.");
+      toast.error("Failed cleaning data mapping.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -176,8 +225,12 @@ export default function ServicesManagementPage() {
 
   const handleCommitDispatch = async () => {
     if (!activeRequest) return;
+    if (!canMangeRequests) {
+      showAccessDeniedToast();
+      return;
+    }
     if (selectedVendorIds.length === 0) {
-      alert("Please select at least one vendor to dispatch.");
+      toast.error("Please select at least one vendor to dispatch.");
       return;
     }
 
@@ -191,6 +244,7 @@ export default function ServicesManagementPage() {
           body: JSON.stringify({
             is_dispatched: true,
             dispatched_vendors: selectedVendorIds,
+            estate_id: contextEstateId,
           }),
         },
       );
@@ -211,7 +265,14 @@ export default function ServicesManagementPage() {
         {["catalog", "requests", "complaints"].map((tab) => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab as any)}
+            onClick={() => {
+              if (tab === "complaints" && !canViewReports) {
+                showAccessDeniedToast();
+                return;
+              }
+
+              setActiveTab(tab as any);
+            }}
             className={`flex-1 sm:flex-initial text-center px-4 sm:px-5 py-2 rounded-lg font-montserrat font-bold text-xs sm:text-sm uppercase tracking-tight transition-all ${activeTab === tab ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
           >
             {tab === "catalog"
@@ -298,7 +359,7 @@ export default function ServicesManagementPage() {
                                 <Edit size={16} />
                               </button>
                               <button
-                                onClick={() => handleDeleteService(svc.id)}
+                                onClick={() => setServiceDeleteId(svc.id)}
                                 className="p-1.5 hover:bg-red-50 rounded-lg text-red-500"
                               >
                                 <Trash2 size={16} />
@@ -693,6 +754,14 @@ export default function ServicesManagementPage() {
           </div>
         </div>
       )}
+      <DeletePromptModal
+        isOpen={serviceDeleteId !== null}
+        onClose={() => setServiceDeleteId(null)}
+        onConfirm={() => handleDeleteService(serviceDeleteId!)}
+        loading={isDeleting}
+        title="Delete this Service?"
+        message="This will permanently remove its vendor list and make it unavailable to residents."
+      />
     </div>
   );
 }

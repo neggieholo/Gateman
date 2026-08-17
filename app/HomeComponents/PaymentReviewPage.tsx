@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
@@ -17,6 +18,9 @@ import {
   ExternalLink,
   ShieldAlert,
   Loader2,
+  Trash2,
+  X,
+  ListPlus,
 } from "lucide-react";
 import { ResidentPayment } from "../services/types";
 import PaymentDisputesPage from "./PaymentsDisputesPage";
@@ -24,6 +28,7 @@ import { useUser } from "../UserContext";
 import { showAccessDeniedToast } from "./Users";
 import toast from "react-hot-toast";
 import { useSearchParams } from "next/navigation";
+import { updatePaymentItems } from "../services/apis";
 
 type StatusFilter = "ALL" | "pending" | "verified" | "rejected";
 
@@ -42,9 +47,9 @@ export default function PaymentReviewPage() {
   const [allPayments, setAllPayments] = useState<ResidentPayment[]>([]);
   const [selectedPayment, setSelectedPayment] =
     useState<ResidentPayment | null>(null);
-   const [statusFilter, setStatusFilter] = useState<
-     "ALL" | "pending" | "verified" | "rejected"
-   >("ALL");
+  const [statusFilter, setStatusFilter] = useState<
+    "ALL" | "pending" | "verified" | "rejected"
+  >("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
@@ -52,6 +57,10 @@ export default function PaymentReviewPage() {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
   const searchParams = useSearchParams();
   const residentName = searchParams.get("resident_name");
+  const [isItemModalOpen, setIsItemModalOpen] = useState(false);
+  const [paymentItems, setPaymentItems] = useState<string[]>([]);
+  const [newItemName, setNewItemName] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const canView =
     user?.permissions?.includes("estate_administration") ||
@@ -98,7 +107,10 @@ export default function PaymentReviewPage() {
       return;
     }
     fetchPayments();
-  }, [canView, contextEstateId, fetchPayments]);
+
+    const currentEstate = user?.estates?.find((e) => e.id === contextEstateId);
+    setPaymentItems(currentEstate?.payment_items || []);
+  }, [canView, contextEstateId, fetchPayments, user]);
 
   const filteredPayments = useMemo(() => {
     return allPayments.filter((p) => {
@@ -149,6 +161,40 @@ export default function PaymentReviewPage() {
     }
   };
 
+  const handleAddItem = () => {
+    const trimmed = newItemName.trim();
+    if (!trimmed) return;
+    if (
+      paymentItems.some((item) => item.toLowerCase() === trimmed.toLowerCase())
+    ) {
+      toast.error("Item already exists in the list.");
+      return;
+    }
+    setPaymentItems((prev) => [...prev, trimmed]);
+    setNewItemName("");
+  };
+
+  const handleDeleteItem = (itemToDelete: string) => {
+    setPaymentItems((prev) => prev.filter((item) => item !== itemToDelete));
+  };
+
+  const handleSavePaymentItems = async () => {
+    if (!contextEstateId) return;
+
+    setIsSaving(true);
+    const response = await updatePaymentItems(contextEstateId, paymentItems);
+    setIsSaving(false);
+
+    if (response.success) {
+      if (response.payment_items) {
+        setPaymentItems(response.payment_items); 
+      }
+      setIsItemModalOpen(false);
+    } else {
+      toast.error(response.error || "Failed to update payment options.");
+    }
+  };
+
   // --- SUB-COMPONENT: LIST VIEW ---
   const PaymentList = () => (
     <div className="space-y-6 flex flex-col h-full animate-in fade-in duration-500 p-1 font-sans">
@@ -177,6 +223,14 @@ export default function PaymentReviewPage() {
             </button>
           ))}
         </div>
+
+        <button
+          onClick={() => setIsItemModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-montserrat font-bold text-xs hover:bg-indigo-100 transition-all"
+        >
+          <ListPlus size={16} />
+          Manage Dropdown Options
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar">
@@ -445,6 +499,98 @@ export default function PaymentReviewPage() {
             You do not currently hold the authorized digital credentials or
             clear operational rights needed to view this interface panel.
           </p>
+        </div>
+      )}
+      {/* Modal Overlay */}
+      {isItemModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+          <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-xl border border-slate-100 animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center mb-5">
+              <div>
+                <h3 className="text-lg font-montserrat font-black text-slate-900">
+                  Payment Options
+                </h3>
+                <p className="text-xs text-slate-400 font-medium mt-0.5">
+                  Configure items residents select when uploading proof.
+                </p>
+              </div>
+              <button
+                disabled={isSaving}
+                onClick={() => setIsItemModalOpen(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-all disabled:opacity-50"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Input Form */}
+            <div className="flex gap-2 mb-6">
+              <input
+                type="text"
+                placeholder="e.g. Electricity"
+                value={newItemName}
+                onChange={(e) => setNewItemName(e.target.value)}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && (e.preventDefault(), handleAddItem())
+                }
+                disabled={isSaving}
+                className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all disabled:opacity-50"
+              />
+              <button
+                onClick={handleAddItem}
+                disabled={isSaving || !newItemName.trim()}
+                className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-montserrat font-bold uppercase tracking-wider hover:bg-indigo-700 transition-all shrink-0 disabled:opacity-50"
+              >
+                Add
+              </button>
+            </div>
+
+            {/* Options List */}
+            <div className="max-h-60 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+              {paymentItems.length === 0 ? (
+                <div className="text-center py-6 text-xs text-slate-400 font-medium border border-dashed border-slate-200 rounded-2xl">
+                  No payment items added yet.
+                </div>
+              ) : (
+                paymentItems.map((item, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-2xl group hover:border-slate-200 transition-all"
+                  >
+                    <span className="text-sm font-montserrat font-bold text-slate-800">
+                      {item.toUpperCase()}
+                    </span>
+                    <button
+                      disabled={isSaving}
+                      onClick={() => handleDeleteItem(item)}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all disabled:opacity-50"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
+              <button
+                disabled={isSaving}
+                onClick={() => setIsItemModalOpen(false)}
+                className="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-xs font-montserrat font-bold uppercase tracking-wider hover:bg-slate-200 transition-all disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={isSaving}
+                onClick={handleSavePaymentItems}
+                className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-montserrat font-bold uppercase tracking-wider hover:bg-indigo-700 transition-all disabled:opacity-50 flex items-center gap-2"
+              >
+                {isSaving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

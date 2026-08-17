@@ -33,9 +33,9 @@ export const DeletePromptModal: React.FC<DeletePromptModalProps> = ({
         <p className="text-slate-500 font-sans text-sm leading-relaxed mb-8">
           This action is{" "}
           <span className="font-bold text-slate-900 underline">
-            irreversible
+            irreversible.
           </span>
-          {message}
+          <span className="block mt-1">{message}</span>
         </p>
 
         <div className="flex flex-col gap-3">

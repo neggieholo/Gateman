@@ -1,4 +1,4 @@
-/* eslint-disable @next/next/no-img-element */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -12,11 +12,7 @@ import {
   Save,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import {
-  PermissionNode,
-  CustomRoleMapping,
-  User,
-} from "../services/types";
+import { PermissionNode, CustomRoleMapping, User } from "../services/types";
 import {
   fetchSystemPermissionsApi,
   fetchCustomRolesApi,
@@ -38,7 +34,7 @@ export default function AdminPermissionsModal({
   onClose,
   onUpdateSuccess,
 }: AdminPermissionsModalProps) {
-  const { user: currentUser } = useUser();
+  const { user: currentUser, contextEstateId } = useUser();
   const myPermissions = currentUser?.permissions || [];
   const iHaveAllAccess = myPermissions.includes("all-access");
 
@@ -61,7 +57,7 @@ export default function AdminPermissionsModal({
       try {
         const [permData, roleData] = await Promise.all([
           fetchSystemPermissionsApi(),
-          fetchCustomRolesApi(),
+          fetchCustomRolesApi(contextEstateId!),
         ]);
 
         if (permData.success) setSystemPermissions(permData.permissions);
@@ -79,7 +75,7 @@ export default function AdminPermissionsModal({
     };
 
     hydrateModalLayout();
-  }, [isOpen, user]);
+  }, [isOpen, user, contextEstateId]);
 
   // Hierarchical structural evaluation loops
   const parentPermissions = useMemo(() => {
@@ -144,7 +140,11 @@ export default function AdminPermissionsModal({
     if (!user) return;
     setIsSaving(true);
     try {
-      const res = await updateAdminPermissionsApi(user.id, selectedPermissions);
+      const res = await updateAdminPermissionsApi(
+        user.id,
+        selectedPermissions,
+        contextEstateId!,
+      );
       if (res.success) {
         toast.success(
           `Security authorization matrix reconfigured for ${user.name}`,

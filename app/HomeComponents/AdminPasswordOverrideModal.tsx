@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -14,6 +13,7 @@ import {
 import toast from "react-hot-toast";
 import { User } from "../services/types";
 import { forceOverrideSubAccountPasswordApi } from "../services/apis";
+import { useUser } from "../UserContext";
 
 interface AdminPasswordOverrideModalProps {
   user: User | null;
@@ -29,6 +29,7 @@ export default function AdminPasswordOverrideModal({
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const { contextEstateId } = useUser();
 
   // Auto-generate a secure token string on initialization
   const generateSecurePassword = () => {
@@ -73,11 +74,9 @@ export default function AdminPasswordOverrideModal({
 
     setIsSubmitting(true);
     try {
-      const res = await forceOverrideSubAccountPasswordApi(user.id, password);
+      const res = await forceOverrideSubAccountPasswordApi(user.id, password, contextEstateId!);
       if (res.success) {
-        toast.success(
-          res.message || `Credentials updated for ${user.name}`,
-        );
+        toast.success(res.message || `Credentials updated for ${user.name}`);
         onClose();
       } else {
         toast.error(res.message || "Credential override mutation rejected.");

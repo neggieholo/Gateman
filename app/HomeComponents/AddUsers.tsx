@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -11,8 +12,8 @@ import {
   Square,
   Info,
   Loader2,
-  Eye,
-  EyeClosed,
+  AlertTriangle,
+  X,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { ESTATE_PERMISSIONS } from "../services/data";
@@ -28,11 +29,12 @@ import { PermissionNode, CustomRoleMapping } from "../services/types";
 import { useUser } from "../UserContext";
 
 export default function AddAdmin() {
-  const { user } = useUser();
+  const { user,contextEstateId } = useUser();
   const myPermissions = user?.permissions || [];
   const iHaveAllAccess = myPermissions.includes("all-access");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   // Core Dictionary & Custom Templates Repositories State
   const [systemPermissions, setSystemPermissions] = useState<PermissionNode[]>(
@@ -62,7 +64,7 @@ export default function AddAdmin() {
         setIsLoading(true);
         const [permData, roleData] = await Promise.all([
           fetchSystemPermissionsApi(),
-          fetchCustomRolesApi(),
+          fetchCustomRolesApi(contextEstateId!),
         ]);
 
         if (permData.success) setSystemPermissions(permData.permissions);
@@ -77,7 +79,7 @@ export default function AddAdmin() {
     };
 
     hydratePageData();
-  }, []);
+  }, [contextEstateId]);
 
   // Handle Multi-level Permission Check Toggles
   const handleTogglePermission = (id: string, isParent: boolean) => {
@@ -173,6 +175,7 @@ export default function AddAdmin() {
         customRoleName.trim(),
         "Custom Role Preset",
         selectedPermissions,
+        contextEstateId!
       );
 
       if (res.success) {
@@ -191,14 +194,24 @@ export default function AddAdmin() {
     }
   };
 
-  const handleCreateUserWorkspace = async (e: React.FormEvent) => {
+  const handlePreSubmitCheck = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName || !email)
+    if (!fullName || !email) {
       return toast.error("Satisfy full name and email routing fields.");
+    }
+    if (selectedPermissions.length === 0) {
+      return toast.error(
+        "Please assign at least one permission before continuing.",
+      );
+    }
+    setIsConfirmOpen(true);
+  };
 
+  const handleConfirmAndCreateUser = async () => {
     try {
       setIsSubmitting(true);
       const payload = {
+        estate_id: contextEstateId,
         name: fullName,
         email: email,
         phone_number: phoneNumber || null,
@@ -225,6 +238,7 @@ export default function AddAdmin() {
       );
     } finally {
       setIsSubmitting(false);
+      setIsConfirmOpen(false);
     }
   };
 
@@ -244,7 +258,7 @@ export default function AddAdmin() {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 font-sans antialiased text-slate-700 max-h-[85vh] h-[85vh] overflow-hidden min-w-0">
       {/* LEFT TWO COLUMNS: CORE ACCOUNT CREATION FORM MATRIX */}
       <form
-        onSubmit={handleCreateUserWorkspace}
+        onSubmit={handlePreSubmitCheck}
         className="lg:col-span-2 flex flex-col h-full gap-6 overflow-hidden"
       >
         {/* Core Identity Panel Card Frame (Keeps its natural height) */}
@@ -548,6 +562,103 @@ export default function AddAdmin() {
           </div>
         </div>
       </div>
+      {/* SENSITIVE PERMISSIONS SECURITY WARNING MODAL */}
+      {isConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="p-5 bg-amber-50 border-b border-amber-100 flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-amber-500 rounded-xl text-white shrink-0">
+                  <AlertTriangle size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-montserrat font-black text-slate-800 uppercase tracking-tight">
+                    Confirm Access Privileges
+                  </h3>
+                  <p className="text-xs text-amber-800 font-medium">
+                    Review administrative scope before committing credentials.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsConfirmOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Body & Selected Permissions Chips */}
+            <div className="p-5 space-y-4">
+              <div className="text-xs text-slate-600 space-y-1">
+                <p>
+                  You are creating an account for{" "}
+                  <strong className="text-slate-900">{fullName}</strong> (
+                  <span className="font-mono text-slate-700">{email}</span>).
+                </p>
+                <p className="text-[11px] text-amber-700 font-medium">
+                  Granting elevated access gives this user control over system
+                  features. Verify that selected scopes comply with security
+                  guidelines.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-wider">
+                  Granted Scopes ({selectedPermissions.length})
+                </span>
+                <div className="max-h-40 overflow-y-auto p-3 bg-slate-50 border border-slate-200/60 rounded-xl flex flex-wrap gap-1.5 custom-scrollbar">
+                  {selectedPermissions.map((pId) => {
+                    const node = systemPermissions.find((p) => p.id === pId);
+                    const isAllAccess =
+                      pId === "all-access" || pId === "all_access";
+                    return (
+                      <span
+                        key={pId}
+                        className={`px-2 py-1 rounded-md text-[10px] font-bold ${
+                          isAllAccess
+                            ? "bg-red-100 text-red-800 border border-red-200"
+                            : "bg-white text-slate-700 border border-slate-200"
+                        }`}
+                      >
+                        {node?.name || pId}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsConfirmOpen(false)}
+                disabled={isSubmitting}
+                className="px-4 py-2.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-oswald font-bold uppercase tracking-wider rounded-xl transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmAndCreateUser}
+                disabled={isSubmitting}
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-oswald font-bold uppercase tracking-widest rounded-xl transition-all flex items-center gap-2 shadow-3xs disabled:opacity-50"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />{" "}
+                    Provisioning...
+                  </>
+                ) : (
+                  "Confirm & Provision Account"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

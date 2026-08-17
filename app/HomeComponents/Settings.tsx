@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Building2,
   Lock,
@@ -54,11 +54,18 @@ function MfaSetupComponent({ onBack, onSuccess }: MfaSetupProps) {
 }
 
 export default function Settings() {
-  const { user } = useUser();
+  const { user, contextEstateId } = useUser();
+  const activeEstate = useMemo(() => {
+    if (!user?.estates) return null;
+    return contextEstateId
+      ? user.estates.find((e) => e.id === contextEstateId)
+      : user.estates[0];
+  }, [user?.estates, contextEstateId]);
+
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState(
-    user?.payment_type || "manual",
+    activeEstate?.payment_type || "manual",
   );
   const [banks, setBanks] = useState<{ name: string; code: string }[]>([]);
   const [selectedBank, setSelectedBank] = useState<{
@@ -66,16 +73,22 @@ export default function Settings() {
     code: string;
   }>({ name: "", code: "" });
   const [accountNumber, setAccountNumber] = useState(
-    user?.bank_account_number ? user.bank_account_number : "Not set",
+    activeEstate?.bank_account_number
+      ? activeEstate.bank_account_number
+      : "Not set",
   );
   const [accountName, setAccountName] = useState(
-    user?.bank_account_name ? user.bank_account_name : "Not set",
+    activeEstate?.bank_account_name
+      ? activeEstate.bank_account_name
+      : "Not set",
   );
   const [bankName, setBankName] = useState(
-    user?.bank_name ? user.bank_name : "Not set",
+    activeEstate?.bank_name ? activeEstate.bank_name : "Not set",
   );
   const [isResolving, setIsResolving] = useState(false);
-  const [externalUrl, setExternalUrl] = useState(user?.external_api_url || "");
+  const [externalUrl, setExternalUrl] = useState(
+    activeEstate?.external_api_url || "",
+  );
   const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]);
   const [metadata, setMetadata] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
@@ -90,12 +103,12 @@ export default function Settings() {
 
   const [emergencyContacts, setEmergencyContacts] = useState<
     EmergencyContact[]
-  >(user?.emergency_contacts || []);
+  >(activeEstate?.emergency_contacts || []);
   const [newContact, setNewContact] = useState({ name: "", phone: "" });
 
   const [profile, setProfile] = useState({
-    estateName: user?.estate_name || "Not set",
-    estateCode: user?.estate_code,
+    estateName: activeEstate?.estate_name || "Not set",
+    estateCode: activeEstate?.estate_code,
     adminName: user?.name || "Not set",
     email: user?.email || "Not set",
     phone: user?.phone_number || undefined,
@@ -128,16 +141,17 @@ export default function Settings() {
     profile.mfa_enabled !== (user?.mfa_enabled || false) ||
     profile.mfa_type !== (user?.mfa_type || null) ||
     profile.mfa_secret !== "" ||
-    paymentMethod !== (user?.payment_type || "manual") ||
-    externalUrl !== (user?.external_api_url || "") ||
+    paymentMethod !== (activeEstate?.payment_type || "manual") ||
+    externalUrl !== (activeEstate?.external_api_url || "") ||
     JSON.stringify(emergencyContacts) !==
-      JSON.stringify(user?.emergency_contacts || []) ||
-    accountNumber !== (user?.bank_account_number || "") ||
+      JSON.stringify(activeEstate?.emergency_contacts || []) ||
+    accountNumber !== (activeEstate?.bank_account_number || "") ||
     profile.avatar !== (user?.avatar || "") ||
-    selectedBank.code !== (user?.bank_code || "");
+    selectedBank.code !== (activeEstate?.bank_code || "");
 
+  
   useEffect(() => {
-    if (user) {
+    if (user && activeEstate) {
       const normalizedMfa =
         (user.mfa_type?.toUpperCase() as "NONE" | "EMAIL" | "TOTP" | "SMS") ||
         "NONE";
@@ -150,8 +164,8 @@ export default function Settings() {
         setMfaSmsEnabled(normalizedMfa === "SMS");
       }
       setProfile({
-        estateName: user.estate_name || "Not set",
-        estateCode: user.estate_code,
+        estateName: activeEstate.estate_name || "Not set",
+        estateCode: activeEstate.estate_code,
         adminName: user.name || (isEditing ? "" : "Not set"),
         email: user.email || (isEditing ? "" : "Not set"),
         phone: user.phone_number || (isEditing ? "" : undefined),
@@ -163,17 +177,14 @@ export default function Settings() {
         mfa_secret: "",
       });
 
-      setPaymentMethod(user.payment_type || "manual");
-      setAccountNumber(
-        user.bank_account_number || (isEditing ? "" : "Not set"),
-      );
-
-      setAccountName(user.bank_account_name || "Not set");
-      setBankName(user.bank_name || "Not set");
-      setExternalUrl(user.external_api_url || "");
-      setEmergencyContacts(user.emergency_contacts || []);
+      setPaymentMethod(activeEstate?.payment_type || "manual");
+      setAccountNumber(activeEstate?.bank_account_number || "Not set");
+      setAccountName(activeEstate?.bank_account_name || "Not set");
+      setBankName(activeEstate?.bank_name || "Not set");
+      setExternalUrl(activeEstate?.external_api_url || "");
+      setEmergencyContacts(activeEstate.emergency_contacts || []);
     }
-  }, [user, isEditing]);
+  }, [user, activeEstate, isEditing]);
 
   const handleFieldChange = (field: "email" | "adminName", value: string) => {
     setProfile((prev) => {
@@ -482,14 +493,14 @@ export default function Settings() {
   };
 
   const handleCancel = () => {
-    setAccountName(user?.bank_account_name || "Not set");
-    setAccountNumber(user?.bank_account_number || "Not set");
-    setBankName(user?.bank_name || "Not set");
-    setExternalUrl(user?.external_api_url || "");
-    setEmergencyContacts(user?.emergency_contacts || []);
+    setAccountName(activeEstate?.bank_account_name || "Not set");
+    setAccountNumber(activeEstate?.bank_account_number || "Not set");
+    setBankName(activeEstate?.bank_name || "Not set");
+    setExternalUrl(activeEstate?.external_api_url || "");
+    setEmergencyContacts(activeEstate?.emergency_contacts || []);
     setProfile({
-      estateName: user?.estate_name || "Not set",
-      estateCode: user?.estate_code,
+      estateName: activeEstate?.estate_name || "Not set",
+      estateCode: activeEstate?.estate_code,
       adminName: user?.name || "Not set",
       email: user?.email || "Not set",
       phone: user?.phone_number || "Not set",

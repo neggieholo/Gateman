@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   UserPlus,
   Search,
@@ -48,13 +48,14 @@ export const showAccessDeniedToast = () => {
 };
 
 export default function ManageUsersPage() {
-  const { user } = useUser();
+  const { user, contextEstateId } = useUser();
   const [searchQuery, setSearchQuery] = useState("");
   const [adminCount, setAdminCount] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
-  const [selectedProfileUser, setSelectedProfileUser] =
-    useState<User | null>(null);
+  const [selectedProfileUser, setSelectedProfileUser] = useState<User | null>(
+    null,
+  );
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLogsOpen, setIsLogsOpen] = useState(false);
   const [logsId, setLogsId] = useState("");
@@ -63,8 +64,9 @@ export default function ManageUsersPage() {
   const [selectedPermissionsUser, setSelectedPermissionsUser] =
     useState<User | null>(null);
   const [isOverrideOpen, setIsOverrideOpen] = useState(false);
-  const [selectedOverrideUser, setSelectedOverrideUser] =
-    useState<User | null>(null);
+  const [selectedOverrideUser, setSelectedOverrideUser] = useState<User | null>(
+    null,
+  );
   const [isWarningOpen, setIsWarningOpen] = useState(false);
   const [warningConfig, setWarningConfig] = useState<{
     title: string;
@@ -80,10 +82,12 @@ export default function ManageUsersPage() {
     onConfirm: () => {},
   });
 
-  const fetchAdmins = async () => {
+  const fetchAdmins = useCallback(async () => {
+    if (!contextEstateId) return;
+
     setLoading(true);
     try {
-      const data = await fetchAllAdminsApi();
+      const data = await fetchAllAdminsApi(contextEstateId);
       if (data.success) {
         setUsers(data.users ?? []);
         setAdminCount(data.count ?? 0);
@@ -96,11 +100,11 @@ export default function ManageUsersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [contextEstateId]);
 
   useEffect(() => {
     fetchAdmins();
-  }, []);
+  }, [fetchAdmins]);
 
   const handleOpenProfile = (user: User) => {
     setSelectedProfileUser(user);
@@ -162,9 +166,8 @@ export default function ManageUsersPage() {
       return;
     }
 
-
     toast.promise(
-      updateAdminMfaPolicyApi(id, currentMfa),
+      updateAdminMfaPolicyApi(id, currentMfa, contextEstateId!),
       {
         loading: "Synchronizing remote MFA security matrix fields...",
         success: (res) => {
@@ -198,7 +201,7 @@ export default function ManageUsersPage() {
     }
 
     toast.promise(
-      toggleAdminStatusApi(id, status),
+      toggleAdminStatusApi(id, status, contextEstateId!),
       {
         loading: "Updating system status parameters...",
         success: (res) => {
@@ -228,7 +231,7 @@ export default function ManageUsersPage() {
     }
 
     toast.promise(
-      deleteAdminProfileApi(id),
+      deleteAdminProfileApi(id, contextEstateId!),
       {
         loading: "Purging security database structures...",
         success: (res) => {

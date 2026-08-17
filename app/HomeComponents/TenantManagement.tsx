@@ -14,6 +14,8 @@ import {
   FileText,
   Home,
   Plus,
+  Send,
+  X,
 } from "lucide-react";
 import { db } from "../services/database";
 import { Tenant, LocationPair } from "../services/types";
@@ -24,6 +26,8 @@ import UserLogsPage from "./UsersLogsPage";
 import AddResidentForm from "./AddResidentForm";
 import { showAccessDeniedToast } from "./Users";
 import JoinRequestsPage from "./JoinRequestPage";
+import { sendResidentNotification } from "../services/apis";
+import toast from "react-hot-toast";
 
 export default function UnifiedResidentPortal() {
   const router = useRouter();
@@ -33,6 +37,10 @@ export default function UnifiedResidentPortal() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
   const [viewIndividualLogs, setViewIndividualLogs] = useState(false);
+  const [openMessagePortal, setOpenMessagePortal] = useState(false);
+  const [msgTitle, setMsgTitle] = useState("");
+  const [msgBody, setMsgBody] = useState("");
+  const [isSendingMsg, setIsSendingMsg] = useState(false);
 
   // 🌟 Navigation Stack tracking previous sub-account profiles
   const [historyStack, setHistoryStack] = useState<Tenant[]>([]);
@@ -64,10 +72,10 @@ export default function UnifiedResidentPortal() {
     user?.permissions?.includes("delete_resident_account") ||
     user?.permissions?.includes("all-access");
 
-  const canEditStatus =
-    user?.permissions?.includes("residents_management") ||
-    user?.permissions?.includes("modify_resident_status") ||
-    user?.permissions?.includes("all-access");
+  // const canEditStatus =
+  //   user?.permissions?.includes("residents_management") ||
+  //   user?.permissions?.includes("modify_resident_status") ||
+  //   user?.permissions?.includes("all-access");
 
   const canViewLogs =
     user?.permissions?.includes("residents_management") ||
@@ -79,9 +87,14 @@ export default function UnifiedResidentPortal() {
   //   user?.permissions?.includes("view_community_posts") ||
   //   user?.permissions?.includes("all-access");
 
-  const canViewReports =
+  const canViewRecords =
     user?.permissions?.includes("estate_administration") ||
-    user?.permissions?.includes("view_estate_reports") ||
+    user?.permissions?.includes("view_estate_records") ||
+    user?.permissions?.includes("all-access");
+
+  const canSendNotification =
+    user?.permissions?.includes("notifications_management") ||
+    user?.permissions?.includes("send_notifications") ||
     user?.permissions?.includes("all-access");
 
   // const canViewRecords =
@@ -180,6 +193,42 @@ export default function UnifiedResidentPortal() {
     }
   };
 
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (
+      !msgTitle.trim() ||
+      !msgBody.trim() ||
+      !selectedTenant ||
+      !contextEstateId
+    ) {
+      return;
+    }
+
+    setIsSendingMsg(true);
+    try {
+      const data = await sendResidentNotification(
+        contextEstateId,
+        selectedTenant.id,
+        msgTitle.trim(),
+        msgBody.trim(),
+      );
+
+      if (data.success) {
+        toast.success("Notification sent successfully!");
+        setMsgTitle("");
+        setMsgBody("");
+        setOpenMessagePortal(false);
+      } else {
+        toast.error(data.error || "Failed to send notification");
+      }
+    } catch (error) {
+      console.error("Failed to send notification:", error);
+      toast.error("An unexpected error occurred");
+    } finally {
+      setIsSendingMsg(false);
+    }
+  };
+
   // 🌟 Fixed: Secure, functional useMemo implementation with safe JSON parsing fallback
   const locations = useMemo(() => {
     if (!selectedTenant?.contract_urls || !contextEstateId) return [];
@@ -206,7 +255,7 @@ export default function UnifiedResidentPortal() {
       }
       setSelectedTenant(parentTenant);
     } else {
-      alert(
+      toast.error(
         "Parent account record data entry could not be found in active rosters.",
       );
     }
@@ -268,7 +317,7 @@ export default function UnifiedResidentPortal() {
           </button>
           <button
             onClick={() => {
-              if (!canViewReports) {
+              if (!canViewRecords) {
                 showAccessDeniedToast();
                 return;
               }
@@ -525,12 +574,29 @@ export default function UnifiedResidentPortal() {
                         type="button"
                         className="py-3.5 px-4 bg-emerald-600 text-white rounded-2xl font-montserrat font-black text-[11px] uppercase tracking-wider hover:bg-emerald-700 transition-all active:scale-95 shadow-sm text-center"
                         onClick={() => {
+                          if (!canViewRecords) {
+                            showAccessDeniedToast();
+                            return;
+                          }
                           router.push(
                             `/home/payments?resident_=${selectedTenant.name}`,
                           );
                         }}
                       >
                         Payment History
+                      </button>
+                      <button
+                        type="button"
+                        className="py-3.5 px-4 bg-indigo-600 text-white rounded-2xl font-montserrat font-black text-[11px] uppercase tracking-wider hover:bg-indigo-700 transition-all active:scale-95 shadow-sm text-center"
+                        onClick={() => {
+                          if (!canSendNotification) {
+                            showAccessDeniedToast();
+                            return;
+                          }
+                          setOpenMessagePortal(true);
+                        }}
+                      >
+                        Notify
                       </button>
 
                       {/* 5. Remove Resident */}
@@ -620,6 +686,91 @@ export default function UnifiedResidentPortal() {
           </div>
         )}
       </div>
+      {openMessagePortal && selectedTenant && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div
+            className="bg-white w-full max-w-lg rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-100 flex flex-col gap-6 animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-xl font-montserrat font-black text-slate-900">
+                  Notify Resident
+                </h3>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  Sending to:{" "}
+                  <span className="text-indigo-600 font-bold">
+                    {selectedTenant.name}
+                  </span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOpenMessagePortal(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Message Form */}
+            <form onSubmit={handleSendMessage} className="flex flex-col gap-4">
+              <div>
+                <label className="block text-[10px] font-oswald font-bold uppercase tracking-widest text-slate-500 mb-1.5">
+                  Notice Title
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Utility Maintenance Notice"
+                  value={msgTitle}
+                  onChange={(e) => setMsgTitle(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-oswald font-bold uppercase tracking-widest text-slate-500 mb-1.5">
+                  Message Body
+                </label>
+                <textarea
+                  required
+                  rows={5}
+                  placeholder="Type your message here..."
+                  value={msgBody}
+                  onChange={(e) => setMsgBody(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all resize-none"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setOpenMessagePortal(false)}
+                  className="px-5 py-3 text-xs font-montserrat font-bold text-slate-500 hover:bg-slate-100 rounded-2xl transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSendingMsg}
+                  className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-montserrat font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-md disabled:opacity-50"
+                >
+                  {isSendingMsg ? (
+                    "Sending..."
+                  ) : (
+                    <>
+                      <Send size={14} /> Send Message
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

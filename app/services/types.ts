@@ -24,6 +24,7 @@ export interface EstateProfile {
   lga: string;
   town: string;
   plan: string;
+  payment_items: string[];
   bank_name: string | null;
   bank_code: string | null;
   bank_account_number: string | null;

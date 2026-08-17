@@ -576,17 +576,14 @@ export const createLocation = async (
 
 export const editLocation = async (
   id: number,
-  locData: Partial<EstateFacility>
+  locData: Partial<EstateFacility>,
 ): Promise<{ message: string; location: EstateFacility }> => {
-  const response = await fetch(
-    `${baseUrl}/api/event/locations/edit/${id}}`,
-    {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(locData),
-      credentials: "include",
-    },
-  );
+  const response = await fetch(`${baseUrl}/api/event/locations/edit/${id}}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(locData),
+    credentials: "include",
+  });
   return await handleResponse(response);
 };
 
@@ -828,13 +825,16 @@ export const fetchSystemPermissionsApi = async () => {
   }
 };
 
-export const fetchCustomRolesApi = async () => {
+export const fetchCustomRolesApi = async (estate_id: string) => {
   try {
-    const res = await fetch(`${baseUrl}/api/estate-users/custom-roles`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-    });
+    const res = await fetch(
+      `${baseUrl}/api/estate-users/custom-roles/${estate_id}`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      },
+    );
     return await res.json();
   } catch (err) {
     console.error("API Error fetching custom roles lists:", err);
@@ -846,6 +846,7 @@ export const createCustomRoleApi = async (
   roleName: string,
   description: string,
   permissionIds: string[],
+  estate_id: string,
 ) => {
   try {
     const res = await fetch(`${baseUrl}/api/estate-users/custom-roles`, {
@@ -855,6 +856,7 @@ export const createCustomRoleApi = async (
         role_name: roleName,
         description,
         permission_ids: permissionIds,
+        estate_id,
       }),
       credentials: "include",
     });
@@ -909,15 +911,20 @@ export const fetchUserLogsApi = async (estate_id: string, role: string) => {
   }
 };
 
-export const fetchAllAdminsApi = async (): Promise<FetchAdminsResponse> => {
+export const fetchAllAdminsApi = async (
+  estate_id: string,
+): Promise<FetchAdminsResponse> => {
   try {
-    const response = await fetch(`${baseUrl}/api/estate-users/admins`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
+    const response = await fetch(
+      `${baseUrl}/api/estate-users/admins/${estate_id}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
       },
-      credentials: "include",
-    });
+    );
 
     const data = await response.json();
     console.log("Fetched Admins Data:", data);
@@ -935,6 +942,7 @@ export const fetchAllAdminsApi = async (): Promise<FetchAdminsResponse> => {
 export async function updateAdminMfaPolicyApi(
   userId: string,
   enforceMfa: boolean,
+  estate_id: string,
 ) {
   try {
     const response = await fetch(
@@ -944,7 +952,7 @@ export async function updateAdminMfaPolicyApi(
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ mfa_enabled: enforceMfa }),
+        body: JSON.stringify({ mfa_enabled: enforceMfa, estate_id }),
         credentials: "include",
       },
     );
@@ -961,6 +969,7 @@ export async function updateAdminMfaPolicyApi(
 export async function toggleAdminStatusApi(
   userId: string,
   targetActiveState: boolean,
+  estate_id: string,
 ) {
   try {
     const response = await fetch(
@@ -968,7 +977,7 @@ export async function toggleAdminStatusApi(
       {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ is_active: targetActiveState }),
+        body: JSON.stringify({ is_active: targetActiveState, estate_id }),
         credentials: "include",
       },
     );
@@ -981,13 +990,16 @@ export async function toggleAdminStatusApi(
   }
 }
 
-export async function deleteAdminProfileApi(userId: string) {
+export async function deleteAdminProfileApi(userId: string, estate_id: string) {
   try {
-    const response = await fetch(`${baseUrl}/api/estate-users/${userId}`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-    });
+    const response = await fetch(
+      `${baseUrl}/api/estate-users/${userId}?estate_id=${estate_id}`,
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      },
+    );
     return await response.json();
   } catch (err) {
     return {
@@ -1000,6 +1012,7 @@ export async function deleteAdminProfileApi(userId: string) {
 export async function updateAdminPermissionsApi(
   userId: string,
   permissions: string[],
+  estate_id: string,
 ) {
   try {
     const response = await fetch(
@@ -1009,7 +1022,7 @@ export async function updateAdminPermissionsApi(
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ permissions }),
+        body: JSON.stringify({ permissions, estate_id }),
         credentials: "include",
       },
     );
@@ -1026,6 +1039,7 @@ export async function updateAdminPermissionsApi(
 export async function forceOverrideSubAccountPasswordApi(
   subAccountId: string,
   newPassword: string,
+  estate_id: string,
 ) {
   try {
     const response = await fetch(
@@ -1035,7 +1049,7 @@ export async function forceOverrideSubAccountPasswordApi(
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ newPassword }),
+        body: JSON.stringify({ newPassword, estate_id }),
         credentials: "include",
       },
     );
@@ -1249,3 +1263,47 @@ function getFallbackMimeType(ext: string): string {
 
   return mimeMap[ext] || "application/octet-stream";
 }
+
+export const sendResidentNotification = async (
+  estate_id: string,
+  resident_id: string,
+  title: string,
+  message: string,
+) => {
+  try {
+    const url = `${baseUrl}/api/admin/notify-resident`;
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estate_id, resident_id, title, message }),
+      credentials: "include",
+    });
+
+    return await res.json();
+  } catch (err) {
+    console.error("API Error sending resident notification:", err);
+    return { success: false, error: "Network error sending notification" };
+  }
+};
+
+export const updatePaymentItems = async (
+  estate_id: string,
+  payment_items: string[],
+) => {
+  try {
+    const url = `${baseUrl}/api/admin/update-payment-items`;
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estate_id, payment_items }),
+      credentials: "include",
+    });
+
+    return await res.json();
+  } catch (err) {
+    console.error("API Error updating payment items:", err);
+    return { success: false, error: "Network error updating payment items" };
+  }
+};

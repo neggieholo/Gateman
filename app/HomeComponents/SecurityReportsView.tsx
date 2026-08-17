@@ -450,7 +450,7 @@ export default function SecurityReportsView() {
                     {report.subject}
                   </h3>
                   <div className="flex items-center gap-2 mt-1 md:hidden">
-                    <span className="text-[10px] font-sans font-bold text-slate-700 truncate max-w-[100px]">
+                    <span className="text-[10px] font-sans font-bold text-slate-700 truncate max-w-25">
                       {report.reporter_name}
                     </span>
                     <span className="w-1 h-1 rounded-full bg-slate-300" />
@@ -461,7 +461,7 @@ export default function SecurityReportsView() {
                 </div>
               </div>
               <div className="flex items-center gap-4 shrink-0">
-                <div className="text-right hidden md:block min-w-[100px]">
+                <div className="text-right hidden md:block min-w-25">
                   <p className="text-xs font-montserrat font-bold text-slate-800 truncate">
                     {report.reporter_name}
                   </p>

@@ -126,6 +126,11 @@ export const ESTATE_PERMISSIONS: PermissionNode[] = [
     parent_permission: "estate_administration",
   },
   {
+    id: "manage_payment_items", 
+    name: "Manage Payment Items & Estate Dues (Security, Electricity, Maintenance)",
+    parent_permission: "estate_administration",
+  },
+  {
     id: "manage_bank_details",
     name: "Manage Bank Payout & Settlement Details",
     parent_permission: "estate_administration",
@@ -242,5 +247,33 @@ export const ESTATE_PERMISSIONS: PermissionNode[] = [
     id: "configure_facilities",
     name: "Manage Facility Settings, Slots & Pricing",
     parent_permission: "facility_management",
+  },
+  // ==========================================
+  // SERVICES & REQUESTS
+  // ==========================================
+  {
+    id: "services_management",
+    name: "Services & Vendors Management",
+    parent_permission: null,
+  },
+  {
+    id: "view_services_catalog",
+    name: "View Service Categories & Vendors",
+    parent_permission: "services_management",
+  },
+  {
+    id: "manage_services_catalog",
+    name: "Add, Edit & Delete Service Categories & Vendors",
+    parent_permission: "services_management",
+  },
+  {
+    id: "view_service_requests",
+    name: "View Maintenance & Service Requests",
+    parent_permission: "services_management",
+  },
+  {
+    id: "dispatch_service_requests",
+    name: "Dispatch Vendors & Update Request Statuses",
+    parent_permission: "services_management",
   },
 ];
