@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   X,
   LayoutDashboard,
   Users,
   Check,
   Gift,
+  UserCheck,
 } from "lucide-react";
 import { ADDON_MODULES } from "../services/data";
 import { PlanSelectionData } from "../services/types";
@@ -31,8 +32,14 @@ const BASELINE_MODULES = [
       "Internal team management, sub-accounts, roles, and permissions.",
     icon: Users,
   },
+  {
+    id: "resident_management",
+    name: "Resident Management",
+    description:
+      "Resident onboarding approvals, directory, and activity audit logs.",
+    icon: UserCheck,
+  },
 ];
-
 
 export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({
   isOpen,
@@ -42,7 +49,6 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({
   const [selectedAddOns, setSelectedAddOns] = useState<string[]>([]);
   const [isTrial, setIsTrial] = useState<boolean>(false);
   const [validationError, setValidationError] = useState<string | null>(null);
-
 
   if (!isOpen) return null;
 
@@ -74,7 +80,7 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-white w-full max-w-4xl rounded-[2.5rem] p-6 md:p-8 shadow-2xl scale-in-center border border-slate-100 overflow-y-auto max-h-[90vh] flex flex-col">
+      <div className="bg-white w-full max-w-6xl lg:max-w-7xl rounded-[2.5rem] p-6 md:p-8 shadow-2xl scale-in-center border border-slate-100 overflow-y-auto max-h-[90vh] flex flex-col no-scrollbar">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
@@ -106,7 +112,7 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             {BASELINE_MODULES.map((module) => {
               const Icon = module.icon;
               return (
@@ -145,7 +151,7 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             {ADDON_MODULES.map((module) => {
               const Icon = module.icon;
               const isSelected = selectedAddOns.includes(module.id);

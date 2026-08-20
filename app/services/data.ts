@@ -1,4 +1,10 @@
-import { Calendar, CreditCard, MessageSquare, ShieldCheck, UserCheck, Wrench } from "lucide-react";
+import {
+  Calendar,
+  CreditCard,
+  MessageSquare,
+  ShieldCheck,
+  Wrench,
+} from "lucide-react";
 import { PermissionNode } from "./types";
 
 export const ESTATE_PERMISSIONS: PermissionNode[] = [
@@ -127,7 +133,7 @@ export const ESTATE_PERMISSIONS: PermissionNode[] = [
     parent_permission: "estate_administration",
   },
   {
-    id: "manage_payment_items", 
+    id: "manage_payment_items",
     name: "Manage Payment Items & Estate Dues (Security, Electricity, Maintenance)",
     parent_permission: "estate_administration",
   },
@@ -279,7 +285,6 @@ export const ESTATE_PERMISSIONS: PermissionNode[] = [
   },
 ];
 
-
 export const ADDON_MODULES = [
   {
     id: "payments_disputes",
@@ -308,13 +313,6 @@ export const ADDON_MODULES = [
     description:
       "Amenity directory, booking approvals, and paid facility tracking.",
     icon: Calendar,
-  },
-  {
-    id: "resident_management",
-    name: "Resident Management",
-    description:
-      "Resident onboarding approvals, directory, and activity audit logs.",
-    icon: UserCheck,
   },
   {
     id: "marketplace_dispatch",

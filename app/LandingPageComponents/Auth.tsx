@@ -697,8 +697,9 @@ export default function Auth() {
                         {/* Default Core Modules (Always Active) */}
                         <div className="flex items-center space-x-1.5 text-xs text-slate-500 font-medium">
                           <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                          <span>
-                            Core Platform Access (Dashboard & User Management)
+                          <span className="text-xs text-slate-500 font-medium">
+                            Core Platform Access (Dashboard, User & Resident
+                            Management)
                           </span>
                         </div>
 
