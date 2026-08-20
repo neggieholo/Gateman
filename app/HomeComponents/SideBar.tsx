@@ -152,7 +152,9 @@ export default function SideBar({
                   className={`transition-colors ${isActive ? "text-primary" : "text-white"}`}
                   strokeWidth={isActive ? 2.5 : 2}
                 />
-                <span className={`${isActive ? "text-primary" : "text-white"} font-oswald`}>
+                <span
+                  className={`${isActive ? "text-primary" : "text-white"} font-oswald`}
+                >
                   {item.label}
                 </span>
 
@@ -168,13 +170,13 @@ export default function SideBar({
         <div className="p-6 border-t border-slate-50 relative">
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex items-center space-x-3 px-3 py-3 w-full rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 group"
+            className="flex items-center space-x-3 px-3 py-3 w-full rounded-2xl hover:bg-white/5 transition-colors border border-transparent hover:border-slate-100 group"
           >
-            <div className="relative text-white group-hover:text-indigo-700 transition-colors">
-              <User2 />
-              <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></div>
-            </div>
-            <div className="flex flex-col items-start flex-1 min-w-0">              
+            <div className="relative text-white group-hover:text-indigo-700 transition-colors"></div>
+            <div className="flex flex-col items-start flex-1 min-w-0">
+              <span className="text-xs font-bold text-white truncate w-full text-left">
+                {user?.name || "Admin"}
+              </span>
               <div className="flex items-center mt-0.5">
                 <span
                   className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide ${getRoleBadgeColor()}`}

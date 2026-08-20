@@ -1,4 +1,5 @@
 import {
+  PlanSelectionData,
   SecurityJoinRequest,
   SecurityLog,
   SecurityUser,
@@ -50,7 +51,7 @@ export const db = {
     newOtp: string,
     metadata: string,
     adminName: string,
-    selectedPlan: string,
+    selectedPlan: PlanSelectionData,
   ) => {
     const body = {
       name,

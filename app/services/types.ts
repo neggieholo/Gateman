@@ -791,3 +791,8 @@ export interface FetchAdminsResponse {
   users?: User[];
   message?: string;
 }
+
+export interface PlanSelectionData {
+  selectedAddOns: string[];
+  isTrial: boolean;
+}

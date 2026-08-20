@@ -1,3 +1,4 @@
+import { Calendar, CreditCard, MessageSquare, ShieldCheck, UserCheck, Wrench } from "lucide-react";
 import { PermissionNode } from "./types";
 
 export const ESTATE_PERMISSIONS: PermissionNode[] = [
@@ -275,5 +276,51 @@ export const ESTATE_PERMISSIONS: PermissionNode[] = [
     id: "dispatch_service_requests",
     name: "Dispatch Vendors & Update Request Statuses",
     parent_permission: "services_management",
+  },
+];
+
+
+export const ADDON_MODULES = [
+  {
+    id: "payments_disputes",
+    name: "Payments & Dispute Management",
+    description:
+      "Payment recording, proof of payment, invoices, and dispute workflow.",
+    icon: CreditCard,
+  },
+  {
+    id: "security_operations",
+    name: "Security Operations",
+    description:
+      "Guard rosters, live location tracking, panic alerts, gatepass, & access logs.",
+    icon: ShieldCheck,
+  },
+  {
+    id: "community_hub",
+    name: "Community Hub & Broadcasts",
+    description:
+      "Estate feeds, announcements, comments, and push notifications.",
+    icon: MessageSquare,
+  },
+  {
+    id: "facility_bookings",
+    name: "Facility & Amenity Bookings",
+    description:
+      "Amenity directory, booking approvals, and paid facility tracking.",
+    icon: Calendar,
+  },
+  {
+    id: "resident_management",
+    name: "Resident Management",
+    description:
+      "Resident onboarding approvals, directory, and activity audit logs.",
+    icon: UserCheck,
+  },
+  {
+    id: "marketplace_dispatch",
+    name: "Services & Marketplace Dispatch",
+    description:
+      "Service catalog, resident service requests, and dispatch workflow.",
+    icon: Wrench,
   },
 ];

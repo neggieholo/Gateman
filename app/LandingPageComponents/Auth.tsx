@@ -25,6 +25,9 @@ import { useRouter } from "next/navigation";
 import { checkSession, sendOtpApi } from "../services/apis";
 import { states_lgas } from "../utils/states_lgas";
 import toast from "react-hot-toast";
+import { PlanSelectionModal } from "./PlanSelectionModal";
+import { PlanSelectionData } from "../services/types";
+import { ADDON_MODULES } from "../services/data";
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -35,6 +38,10 @@ export default function Auth() {
   const { setUser, setPlan, setContextEstateId } = useUser();
   const router = useRouter();
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+  const [configuredPlan, setConfiguredPlan] = useState<PlanSelectionData>({
+    selectedAddOns: [],
+    isTrial: false,
+  });
 
   // Form State
   const [email, setEmail] = useState("");
@@ -43,9 +50,6 @@ export default function Auth() {
   const [state, setState] = useState("");
   const [lga, setLga] = useState("");
   const [adminName, setAdminName] = useState("");
-  const [selectedPlan, setSelectedPlan] = useState<
-    "estate_management" | "security_only" | "combo" | null
-  >(null);
   const [showPlanModal, setShowPlanModal] = useState(false);
   // const [town, setTown] = useState('');
   const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]);
@@ -106,7 +110,7 @@ export default function Auth() {
   };
 
   const handleRequestOtp = async () => {
-    if (!isLogin && !selectedPlan) {
+    if (!isLogin && !configuredPlan.selectedAddOns) {
       setError("Please choose a subscription plan to continue.");
       setShowPlanModal(true);
       return;
@@ -183,8 +187,8 @@ export default function Auth() {
       return;
     }
 
-    if (!selectedPlan) {
-      alert("Please select a plan");
+    if (!configuredPlan.selectedAddOns) {
+      toast.error("Please select a plan");
       return;
     }
 
@@ -201,7 +205,7 @@ export default function Auth() {
         enteredOtp,
         metadata,
         adminName,
-        selectedPlan,
+        configuredPlan,
       );
 
       setShowOtpInput(false);
@@ -302,7 +306,7 @@ export default function Auth() {
         return;
       }
 
-      if (!selectedPlan) {
+      if (!configuredPlan.selectedAddOns) {
         setError("Please choose a subscription plan to continue.");
         setShowPlanModal(true);
         return;
@@ -684,17 +688,48 @@ export default function Auth() {
                   >
                     <div>
                       <span className="block text-xs font-semibold text-indigo-500 uppercase tracking-wider">
-                        {!selectedPlan ? "No Selection" : "Active Selection"}
+                        {configuredPlan.selectedAddOns.length === 0
+                          ? "No Add-ons Selected"
+                          : "Active Plan Configuration"}
                       </span>
-                      <span className="text-sm font-bold text-slate-900 capitalize">
-                        {selectedPlan === "estate_management" &&
-                          "Estate Management Plan"}
-                        {selectedPlan === "security_only" &&
-                          "Security Officers Plan"}
-                        {selectedPlan === "combo" && "Combo Master Plan"}
-                      </span>
+
+                      <div className="mt-1 space-y-1">
+                        {/* Default Core Modules (Always Active) */}
+                        <div className="flex items-center space-x-1.5 text-xs text-slate-500 font-medium">
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                          <span>
+                            Core Platform Access (Dashboard & User Management)
+                          </span>
+                        </div>
+
+                        {configuredPlan.selectedAddOns.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 pt-1">
+                            {configuredPlan.selectedAddOns.map((addOnId) => {
+                              const ADDON_FEATURES = ADDON_MODULES.find(
+                                (m) => m.id === addOnId,
+                              );
+
+                              return (
+                                <span
+                                  key={addOnId}
+                                  className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-100"
+                                >
+                                  {ADDON_FEATURES?.name || addOnId}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* Trial Badge Indicator */}
+                        {configuredPlan.isTrial && (
+                          <span className="inline-block text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 mt-1">
+                            30-Day Free Trial Enabled
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <span className="text-xs font-bold text-indigo-600 bg-white px-3 py-1.5 rounded-xl border border-indigo-100 shadow-sm group-hover:scale-105 transition-transform">
+                    <span className="ml-2 text-xs font-bold text-indigo-600 bg-white px-3 py-1.5 rounded-xl border border-indigo-100 shadow-sm group-hover:scale-105 transition-transform">
                       Change Plan
                     </span>
                   </button>
@@ -1027,125 +1062,14 @@ export default function Auth() {
         </div>
       )}
       {/* PLAN SELECTOR MODAL OVERLAY */}
-      {showPlanModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-4xl rounded-[2.5rem] p-8 md:p-10 shadow-2xl scale-in-center border border-slate-100 overflow-y-auto max-h-[90vh]">
-            <div
-              className="w-full h-fit text-md flex justify-end"
-              onClick={() => setShowPlanModal(false)}
-            >
-              <X size={16} />
-            </div>
-            <div className="text-center space-y-2 mb-8">
-              <h3 className="text-3xl font-montserrat text-slate-900 tracking-tight">
-                Select Your Subscription Plan
-              </h3>
-              <p className="text-slate-500 font-sans text-sm">
-                Choose the operational blueprint that fits your estate&apos;s
-                needs
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-              {/* Option 1: Estate Management */}
-              <button
-                type="button"
-                onClick={() => setSelectedPlan("estate_management")}
-                className={`flex flex-col text-left p-6 rounded-[1.8rem] border-2 transition-all h-full justify-between ${
-                  selectedPlan === "estate_management"
-                    ? "border-indigo-600 bg-indigo-50/20 shadow-lg shadow-indigo-100"
-                    : "border-slate-100 hover:border-slate-200 bg-slate-50/50"
-                }`}
-              >
-                <div>
-                  <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${
-                      selectedPlan === "estate_management"
-                        ? "bg-indigo-600 text-white"
-                        : "bg-slate-200 text-slate-600"
-                    }`}
-                  >
-                    <Home size={20} />
-                  </div>
-                  <h4 className="font-bold text-slate-900 text-base mb-2 leading-snug">
-                    Estate Management Plan
-                  </h4>
-                  <p className="text-xs text-slate-500 leading-relaxed font-sans">
-                    Full coverage suite to register, manage, and coordinate all
-                    residents, administrative properties, and security stations
-                    with simplified security workflows.
-                  </p>
-                </div>
-                <div className="mt-6 pt-4 border-t border-slate-100/80 w-full">
-                  <span
-                    className={`text-xs font-bold ${
-                      selectedPlan === "estate_management"
-                        ? "text-indigo-600"
-                        : "text-slate-400"
-                    }`}
-                  >
-                    {selectedPlan === "estate_management"
-                      ? "Selected"
-                      : "Choose this Option"}
-                  </span>
-                </div>
-              </button>
-
-              {/* Option 2: Security Only */}
-              <button
-                type="button"
-                onClick={() => setSelectedPlan("security_only")}
-                className={`flex flex-col text-left p-6 rounded-[1.8rem] border-2 transition-all h-full justify-between ${
-                  selectedPlan === "security_only"
-                    ? "border-indigo-600 bg-indigo-50/20 shadow-lg shadow-indigo-100"
-                    : "border-slate-100 hover:border-slate-200 bg-slate-50/50"
-                }`}
-              >
-                <div>
-                  <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${
-                      selectedPlan === "security_only"
-                        ? "bg-indigo-600 text-white"
-                        : "bg-slate-200 text-slate-600"
-                    }`}
-                  >
-                    <ShieldCheck size={20} />
-                  </div>
-                  <h4 className="font-bold text-slate-900 text-base mb-2 leading-snug">
-                    Security Only Plan
-                  </h4>
-                  <p className="text-xs text-slate-500 leading-relaxed font-sans">
-                    Tailored strictly for gate security operations. Track active
-                    guard duty rosters, process gatepass verifications, and
-                    monitor visitor queues instantly.
-                  </p>
-                </div>
-                <div className="mt-6 pt-4 border-t border-slate-100/80 w-full">
-                  <span
-                    className={`text-xs font-bold ${
-                      selectedPlan === "security_only"
-                        ? "text-indigo-600"
-                        : "text-slate-400"
-                    }`}
-                  >
-                    {selectedPlan === "security_only"
-                      ? "Selected"
-                      : "Choose this Option"}
-                  </span>
-                </div>
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowPlanModal(false)}
-              className="w-full py-4 bg-slate-950 text-white hover:bg-slate-900 rounded-2xl font-bold text-lg transition-all"
-            >
-              Confirm Selection
-            </button>
-          </div>
-        </div>
-      )}
+      <PlanSelectionModal
+        isOpen={showPlanModal}
+        onClose={() => setShowPlanModal(false)}
+        onConfirm={(updatedSelection) => {
+          setConfiguredPlan(updatedSelection);
+          console.log("Updated Registration Payload Plan:", updatedSelection);
+        }}
+      />
     </div>
   );
 }
