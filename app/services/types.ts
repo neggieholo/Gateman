@@ -15,6 +15,11 @@ export interface KYCSelection {
   rent_contract: boolean;
 }
 
+export interface Plan {
+  is_trial: boolean;
+  selected_add_ons: string[];
+}
+
 export interface EstateProfile {
   id: string;
   estate_name: string;
@@ -23,7 +28,7 @@ export interface EstateProfile {
   state: string;
   lga: string;
   town: string;
-  plan: string;
+  plan: Plan;
   payment_items: string[];
   bank_name: string | null;
   bank_code: string | null;
@@ -796,3 +801,4 @@ export interface PlanSelectionData {
   selectedAddOns: string[];
   isTrial: boolean;
 }
+

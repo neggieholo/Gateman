@@ -52,6 +52,7 @@ export const db = {
     metadata: string,
     adminName: string,
     selectedPlan: PlanSelectionData,
+    planDuration: number,
   ) => {
     const body = {
       name,
@@ -63,6 +64,7 @@ export const db = {
       metadata,
       adminName,
       selectedPlan,
+      planDuration,
     };
 
     const res = await fetch(`${baseUrl}/api/payment`, {

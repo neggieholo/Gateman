@@ -287,35 +287,35 @@ export const ESTATE_PERMISSIONS: PermissionNode[] = [
 
 export const ADDON_MODULES = [
   {
-    id: "payments_disputes",
+    id: "payments", // Updated from payments_disputes
     name: "Payments & Dispute Management",
     description:
       "Payment recording, proof of payment, invoices, and dispute workflow.",
     icon: CreditCard,
   },
   {
-    id: "security_operations",
+    id: "security", // Updated from security_operations
     name: "Security Operations",
     description:
       "Guard rosters, live location tracking, panic alerts, gatepass, & access logs.",
     icon: ShieldCheck,
   },
   {
-    id: "community_hub",
+    id: "community", // Updated from community_hub
     name: "Community Hub & Broadcasts",
     description:
       "Estate feeds, announcements, comments, and push notifications.",
     icon: MessageSquare,
   },
   {
-    id: "facility_bookings",
+    id: "facility_bookings", // Matches backend
     name: "Facility & Amenity Bookings",
     description:
       "Amenity directory, booking approvals, and paid facility tracking.",
     icon: Calendar,
   },
   {
-    id: "marketplace_dispatch",
+    id: "services_dispatch", // Updated from marketplace_dispatch
     name: "Services & Marketplace Dispatch",
     description:
       "Service catalog, resident service requests, and dispatch workflow.",

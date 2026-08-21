@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
@@ -22,7 +23,7 @@ import {
 import { useUser } from "../UserContext";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { checkSession, sendOtpApi } from "../services/apis";
+import { checkSession, sendOtpApi, sendRegOtpApi } from "../services/apis";
 import { states_lgas } from "../utils/states_lgas";
 import toast from "react-hot-toast";
 import { PlanSelectionModal } from "./PlanSelectionModal";
@@ -42,6 +43,7 @@ export default function Auth() {
     selectedAddOns: [],
     isTrial: false,
   });
+  const [planDuration, setPlanDuration] = useState<number>(1);
 
   // Form State
   const [email, setEmail] = useState("");
@@ -97,7 +99,7 @@ export default function Auth() {
     }
 
     cSessionCheck();
-  }, []);
+  }, [setUser]);
 
   const validateEmail = (text: string) => {
     const cleanedEmail = text.trim();
@@ -130,7 +132,9 @@ export default function Auth() {
     }
 
     try {
-      const otpRes = await sendOtpApi(trimmedEmail);
+      const otpRes = await (!isLogin
+        ? sendRegOtpApi(trimmedEmail)
+        : sendOtpApi(trimmedEmail));
       if (otpRes.success) {
         setMetadata(otpRes.metadata);
         setShowOtpInput(true);
@@ -206,6 +210,7 @@ export default function Auth() {
         metadata,
         adminName,
         configuredPlan,
+        planDuration,
       );
 
       setShowOtpInput(false);
@@ -320,7 +325,7 @@ export default function Auth() {
         const res = await db.forgotPassword(email, "admin");
 
         if (res.success) {
-          alert("A reset link has been sent to your email!");
+          toast.success("A reset link has been sent to your email!");
           setIsForgot(false); // Send them back to login
           setIsLogin(true);
         } else {
@@ -684,20 +689,31 @@ export default function Auth() {
                   <button
                     type="button"
                     onClick={() => setShowPlanModal(true)}
-                    className="w-full flex items-center justify-between px-5 py-3.5 bg-indigo-50/50 hover:bg-indigo-50 border border-indigo-100 hover:border-indigo-200 text-left rounded-2xl transition-all group"
+                    className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-indigo-50/50 hover:bg-indigo-50 border border-indigo-100 hover:border-indigo-200 text-left rounded-2xl transition-all group"
                   >
-                    <div>
-                      <span className="block text-xs font-semibold text-indigo-500 uppercase tracking-wider">
-                        {configuredPlan.selectedAddOns.length === 0
-                          ? "No Add-ons Selected"
-                          : "Active Plan Configuration"}
-                      </span>
+                    {/* Added flex-1 min-w-0 so this container shrinks dynamically */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-semibold text-indigo-500 uppercase tracking-wider whitespace-nowrap">
+                          {configuredPlan.selectedAddOns.length === 0
+                            ? "No Add-ons Selected"
+                            : "Active Plan Configuration"}
+                        </span>
+
+                        {configuredPlan.selectedAddOns.length > 0 && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold text-emerald-600 bg-emerald-50 border border-indigo-200/80 tracking-wide whitespace-nowrap">
+                            {configuredPlan.isTrial
+                              ? "30-Day Trial"
+                              : `${planDuration} ${planDuration === 1 ? "Month" : "Months"}`}
+                          </span>
+                        )}
+                      </div>
 
                       <div className="mt-1 space-y-1">
                         {/* Default Core Modules (Always Active) */}
                         <div className="flex items-center space-x-1.5 text-xs text-slate-500 font-medium">
-                          <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                          <span className="text-xs text-slate-500 font-medium">
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0"></span>
+                          <span className="text-xs text-slate-500 font-medium truncate">
                             Core Platform Access (Dashboard, User & Resident
                             Management)
                           </span>
@@ -722,15 +738,16 @@ export default function Auth() {
                           </div>
                         )}
 
-                        {/* Trial Badge Indicator */}
-                        {configuredPlan.isTrial && (
+                        {/* {configuredPlan.isTrial && (
                           <span className="inline-block text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 mt-1">
                             30-Day Free Trial Enabled
                           </span>
-                        )}
+                        )} */}
                       </div>
                     </div>
-                    <span className="ml-2 text-xs font-bold text-indigo-600 bg-white px-3 py-1.5 rounded-xl border border-indigo-100 shadow-sm group-hover:scale-105 transition-transform">
+
+                    {/* Added shrink-0 and whitespace-nowrap to keep button fixed & formatted */}
+                    <span className="shrink-0 whitespace-nowrap text-xs font-bold text-indigo-600 bg-white px-3 py-1.5 rounded-xl border border-indigo-100 shadow-sm group-hover:scale-105 transition-transform text-center">
                       Change Plan
                     </span>
                   </button>
@@ -1066,8 +1083,9 @@ export default function Auth() {
       <PlanSelectionModal
         isOpen={showPlanModal}
         onClose={() => setShowPlanModal(false)}
-        onConfirm={(updatedSelection) => {
+        onConfirm={([updatedSelection, duration]) => {
           setConfiguredPlan(updatedSelection);
+          setPlanDuration(duration);
           console.log("Updated Registration Payload Plan:", updatedSelection);
         }}
       />

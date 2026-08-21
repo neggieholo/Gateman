@@ -21,6 +21,9 @@ import {
   ShieldCheck,
   Smartphone,
   ArrowLeft,
+  Sparkles,
+  Zap,
+  ArrowRight,
 } from "lucide-react";
 import "react-phone-number-input/style.css";
 import PhoneInput, { isValidPhoneNumber } from "react-phone-number-input";
@@ -33,6 +36,8 @@ import TotpMfaSetupComponent from "./AuthenticatorSetup";
 import { DeletePromptModal } from "./DeletePromptModal";
 import { useRouter } from "next/navigation";
 import { showAccessDeniedToast } from "./Users";
+import { ADDON_MODULES } from "../services/data";
+import { BASELINE_MODULES } from "../LandingPageComponents/PlanSelectionModal";
 
 interface MfaSetupProps {
   onBack: () => void;
@@ -426,6 +431,58 @@ export default function Settings() {
       URL.revokeObjectURL(localPreviewUrl);
     }
   };
+
+  const planInfo = useMemo(() => {
+    if (!activeEstate) return null;
+
+    // Safely parse activeEstate.plan if it comes as a JSON string
+    let parsedPlan: { is_trial?: boolean; selected_add_ons?: string[] } = {};
+    if (typeof activeEstate.plan === "string") {
+      try {
+        parsedPlan = JSON.parse(activeEstate.plan);
+      } catch (e) {
+        console.error("Failed to parse estate plan JSON", e);
+      }
+    } else if (activeEstate.plan) {
+      parsedPlan = activeEstate.plan;
+    }
+
+    const isTrial = parsedPlan.is_trial ?? false;
+    const selectedAddonIds = parsedPlan.selected_add_ons || [];
+
+    // Map base features
+    const baseFeatures = BASELINE_MODULES.map((m) => ({
+      id: m.id,
+      name: m.name,
+      description: m.description,
+    }));
+
+    // Map selected add-ons using ADDON_MODULES lookup
+    const activeAddons = selectedAddonIds
+      .map((id) => ADDON_MODULES.find((m) => m.id === id))
+      .filter((m): m is (typeof ADDON_MODULES)[number] => Boolean(m))
+      .map((m) => ({
+        id: m.id,
+        name: m.name,
+        description: m.description,
+      }));
+
+    // Formatted subscription / trial expiry
+    const formattedExpiry = activeEstate.subscription_expiry
+      ? new Date(activeEstate.subscription_expiry).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })
+      : "N/A";
+
+    return {
+      isTrial,
+      formattedExpiry,
+      baseFeatures,
+      activeAddons,
+    };
+  }, [activeEstate]);
 
   const handleSaveConfig = async () => {
     if (!hasChanges) {
@@ -839,6 +896,124 @@ export default function Settings() {
             </div>
           </button>
         </div>
+
+        {/* Subscription & Plan Info Section */}
+        {planInfo && (
+          <div className="bg-white p-5 sm:p-8 rounded-4xl border border-slate-100 shadow-sm space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="text-amber-500" size={20} />
+                <h2 className="font-montserrat font-bold text-slate-900">
+                  Plan & Features
+                </h2>
+              </div>
+              <span
+                className={`px-3 py-1 rounded-full text-xs font-oswald font-bold uppercase tracking-wider ${
+                  planInfo.isTrial
+                    ? "bg-amber-100 text-amber-700 border border-amber-200"
+                    : "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                }`}
+              >
+                {planInfo.isTrial ? "Trial Mode" : "Active Plan"}
+              </span>
+            </div>
+
+            <div className="p-5 bg-slate-900 text-white rounded-3xl space-y-6 shadow-md">
+              {/* Subscription Status Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-4">
+                <div>
+                  <span className="text-[10px] font-oswald font-black text-slate-400 uppercase tracking-widest">
+                    {planInfo.isTrial
+                      ? "Trial Expiration"
+                      : "Subscription Expiration"}
+                  </span>
+                  <h3 className="text-xl font-montserrat font-extrabold text-white">
+                    {planInfo.formattedExpiry}
+                  </h3>
+                </div>
+                {planInfo.isTrial && (
+                  <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 text-amber-400 px-3 py-1.5 rounded-xl text-xs font-sans font-semibold w-fit">
+                    <Zap size={14} className="shrink-0" />
+                    <span>Free Trial Period</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Base Features */}
+              <div className="space-y-3">
+                <span className="text-[10px] font-oswald font-black text-slate-400 uppercase tracking-widest block">
+                  Core Included Modules
+                </span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {planInfo.baseFeatures.map((feat) => (
+                    <div
+                      key={feat.id}
+                      className="p-3 bg-slate-800/60 rounded-2xl border border-slate-800 space-y-1"
+                    >
+                      <div className="flex items-center gap-2 text-xs font-sans font-bold text-slate-100">
+                        <CheckCircle2
+                          size={14}
+                          className="text-emerald-400 shrink-0"
+                        />
+                        <span>{feat.name}</span>
+                      </div>
+                      <p className="text-[11px] font-sans text-slate-400 pl-5">
+                        {feat.description}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Active Add-ons */}
+              <div className="space-y-3 border-t border-slate-800 pt-4">
+                <span className="text-[10px] font-oswald font-black text-amber-400 uppercase tracking-widest block">
+                  Active Add-on Modules ({planInfo.activeAddons.length})
+                </span>
+                {planInfo.activeAddons.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {planInfo.activeAddons.map((addon) => (
+                      <div
+                        key={addon.id}
+                        className="p-3 bg-indigo-950/40 rounded-2xl border border-indigo-900/50 space-y-1"
+                      >
+                        <div className="flex items-center gap-2 text-xs font-sans font-bold text-indigo-200">
+                          <Sparkles
+                            size={14}
+                            className="text-amber-400 shrink-0"
+                          />
+                          <span>{addon.name}</span>
+                        </div>
+                        <p className="text-[11px] font-sans text-slate-400 pl-5">
+                          {addon.description}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 italic">
+                    No add-on modules currently selected.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Upgrade / Details Target Action */}
+            <div className="pt-2">
+              <button
+                onClick={() => {
+                  console.log(
+                    "Navigate to subscription details page placeholder",
+                  );
+                }}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-sans font-bold text-sm transition-all active:scale-95 cursor-pointer"
+              >
+                <span>Manage Plan & Add-ons</span>
+                <ArrowRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* 3. Payment Routing Section */}
         {canEditPayment && (

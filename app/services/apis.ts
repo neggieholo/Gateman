@@ -45,6 +45,19 @@ export const sendOtpApi = async (email: string) => {
   }
 };
 
+export const sendRegOtpApi = async (email: string) => {
+  try {
+    const res = await fetch(`${baseUrl}/api/payment/otp/send`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, message: "Network error" };
+  }
+};
+
 export const sendPofileChangeOtpApi = async (target: string, type: string) => {
   try {
     const res = await fetch(`${baseUrl}/api/admin/send-otp`, {
