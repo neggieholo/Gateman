@@ -1,5 +1,6 @@
 import {
   PlanSelectionData,
+  PricingConfig,
   SecurityJoinRequest,
   SecurityLog,
   SecurityUser,
@@ -44,15 +45,15 @@ export const db = {
   // Register user
   register: async (
     name: string,
-    email: string,
-    password: string,
     state: string,
     lga: string,
-    newOtp: string,
-    metadata: string,
-    adminName: string,
     selectedPlan: PlanSelectionData,
     planDuration: number,
+    email?: string,
+    password?: string,
+    newOtp?: string,
+    metadata?: string,
+    adminName?: string,
   ) => {
     const body = {
       name,
@@ -71,6 +72,7 @@ export const db = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      credentials: "include",
     });
 
     if (!res.ok) {
@@ -84,45 +86,40 @@ export const db = {
     window.location.href = paymentLink;
   },
 
-  topUpWallet: async (
-    userId: string,
-    amount: number,
-    type: "tenant" | "admin" = "tenant",
-  ) => {
-    const res = await fetch(`${baseUrl}/api/wallet/topup`, {
-      method: "POST",
+  getPricingConfig: async (): Promise<{
+    success: boolean;
+    pricing: PricingConfig;
+    updated_at?: string | null;
+  }> => {
+    const res = await fetch(`${baseUrl}/api/payment/pricing-config`, {
+      method: "GET",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, amount, type }),
-      credentials: "include",
     });
-
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || "Top-up failed");
-    }
-
-    return await res.json(); // updated user
+    return res.json();
   },
 
-  // Deduct wallet
-  deductWallet: async (
-    userId: string,
-    amount: number,
-    type: "tenant" | "admin" = "tenant",
+  subscribe: async (
+    estateId: string,
+    selectedAddOns: string[] = [],
+    planDuration: number = 1,
   ) => {
-    const res = await fetch(`${baseUrl}/api/wallet/deduct`, {
+    const res = await fetch(`${baseUrl}/api/payment/subscribe`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, amount, type }),
+      body: JSON.stringify({ estateId, selectedAddOns, planDuration }),
       credentials: "include",
     });
 
     if (!res.ok) {
       const err = await res.json();
-      throw new Error(err.error || "Deduction failed");
+      throw new Error(err.error || "Subscription initialization failed");
     }
 
-    return await res.json(); // updated user
+    const { paymentLink } = await res.json();
+
+    if (paymentLink) {
+      window.location.href = paymentLink;
+    }
   },
 
   getAllTenants: async (estate_id: string): Promise<Tenant[]> => {

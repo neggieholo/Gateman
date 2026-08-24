@@ -152,6 +152,11 @@ export const ESTATE_PERMISSIONS: PermissionNode[] = [
     name: "Modify Record & Payment Statuses",
     parent_permission: "estate_administration",
   },
+  {
+    id: "manage_estate_subscription",
+    name: "Manage Estate Subscription & Plan Upgrades",
+    parent_permission: "estate_administration",
+  },
 
   // ==========================================
   // AUDIT LOGS & REPORTS

@@ -38,6 +38,8 @@ import { useRouter } from "next/navigation";
 import { showAccessDeniedToast } from "./Users";
 import { ADDON_MODULES } from "../services/data";
 import { BASELINE_MODULES } from "../LandingPageComponents/PlanSelectionModal";
+import { SubscriptionModal } from "./SubscriptionUpdateModal";
+import NewEstateRegisterModal from "./NewEstateRegisterModal";
 
 interface MfaSetupProps {
   onBack: () => void;
@@ -102,6 +104,7 @@ export default function Settings() {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showOtpInput, setShowOtpInput] = useState(false);
+  const [showRegEstateModal, setShowRegEstateModal] = useState(false);
   const [verifyingField, setVerifyingField] = useState<
     "email" | "phone" | "mfa_email" | null
   >(null);
@@ -137,6 +140,7 @@ export default function Settings() {
   const [mfaTotpEnabled, setMfaTotpEnabled] = useState(false);
   const [mfaSmsEnabled, setMfaSmsEnabled] = useState(false);
   const [displayTotpActivator, setDisplayTotpActivator] = useState(false);
+  const [openRenewal, setOpenRenewal] = useState(false);
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
   const hasChanges =
@@ -154,7 +158,6 @@ export default function Settings() {
     profile.avatar !== (user?.avatar || "") ||
     selectedBank.code !== (activeEstate?.bank_code || "");
 
-  
   useEffect(() => {
     if (user && activeEstate) {
       const normalizedMfa =
@@ -638,6 +641,11 @@ export default function Settings() {
     user?.permissions?.includes("delete_notifications") ||
     user?.permissions?.includes("all-access");
 
+  const canManageSubscription =
+    user?.permissions?.includes("estate_administration") ||
+    user?.permissions?.includes("manage_estate_subscription") ||
+    user?.permissions?.includes("all-access");
+
   if (displayTotpActivator) {
     return (
       <div className="relative flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 h-[calc(100vh-120px)] bg-slate-50/50 font-sans">
@@ -665,6 +673,14 @@ export default function Settings() {
           </p>
         </div>
         <div className="flex gap-3 w-full sm:w-auto">
+          {!isEditing && (
+            <button
+              onClick={() => setShowRegEstateModal(true)}
+              className="flex-1 sm:flex-none px-6 py-2 rounded-xl text-sm font-sans font-bold bg-gm-navy text-white hover:bg-slate-200 hover:text-gm-navy transition-all cursor-pointer"
+            >
+              Add New Estate
+            </button>
+          )}
           {isEditing && (
             <button
               onClick={handleCancel}
@@ -898,7 +914,7 @@ export default function Settings() {
         </div>
 
         {/* Subscription & Plan Info Section */}
-        {planInfo && (
+        {planInfo && canManageSubscription && (
           <div className="bg-white p-5 sm:p-8 rounded-4xl border border-slate-100 shadow-sm space-y-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -1002,9 +1018,7 @@ export default function Settings() {
             <div className="pt-2">
               <button
                 onClick={() => {
-                  console.log(
-                    "Navigate to subscription details page placeholder",
-                  );
+                  setOpenRenewal(true);
                 }}
                 className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-sans font-bold text-sm transition-all active:scale-95 cursor-pointer"
               >
@@ -1454,6 +1468,17 @@ export default function Settings() {
         onClose={() => {
           setIsPermissionsOpen(false);
         }}
+      />
+
+      <SubscriptionModal
+        isOpen={openRenewal}
+        activeEstate={activeEstate}
+        onClose={() => setOpenRenewal(false)}
+      />
+
+      <NewEstateRegisterModal
+        isOpen={showRegEstateModal}
+        onClose={() => setShowRegEstateModal(false)}
       />
     </div>
   );

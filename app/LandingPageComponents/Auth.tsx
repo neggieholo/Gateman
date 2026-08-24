@@ -202,15 +202,15 @@ export default function Auth() {
     try {
       await db.register(
         name,
-        trimmedEmail,
-        password,
         state,
         lga,
+        configuredPlan,
+        planDuration,
+        trimmedEmail,
+        password,
         enteredOtp,
         metadata,
         adminName,
-        configuredPlan,
-        planDuration,
       );
 
       setShowOtpInput(false);
@@ -1088,6 +1088,7 @@ export default function Auth() {
           setPlanDuration(duration);
           console.log("Updated Registration Payload Plan:", updatedSelection);
         }}
+        allowTrial={true}
       />
     </div>
   );

@@ -802,3 +802,28 @@ export interface PlanSelectionData {
   isTrial: boolean;
 }
 
+export type DurationTier =
+  | "monthly"
+  | "six_months"
+  | "twelve_months"
+  | "twenty_four_months";
+
+export interface TierPricing {
+  monthly: number;
+  six_months: number;
+  twelve_months: number;
+  twenty_four_months: number;
+}
+
+export type ModulePricingMatrix = {
+  payments: TierPricing;
+  security: TierPricing;
+  community: TierPricing;
+  facility_bookings: TierPricing;
+  services_dispatch: TierPricing;
+};
+
+export interface PricingConfig {
+  base_platform_price: TierPricing;
+  modules: ModulePricingMatrix;
+}

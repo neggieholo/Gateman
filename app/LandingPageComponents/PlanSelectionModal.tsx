@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   X,
   LayoutDashboard,
@@ -9,12 +9,15 @@ import {
   Calendar,
 } from "lucide-react";
 import { ADDON_MODULES } from "../services/data";
-import { PlanSelectionData } from "../services/types";
+import { PlanSelectionData, PricingConfig } from "../services/types";
+import { db } from "../services/database";
+import toast from "react-hot-toast";
 
 interface PlanSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (payload: [PlanSelectionData, number]) => void;
+  allowTrial: boolean;
 }
 
 export const BASELINE_MODULES = [
@@ -45,6 +48,7 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({
   isOpen,
   onClose,
   onConfirm,
+  allowTrial,
 }) => {
   const [selectedAddOns, setSelectedAddOns] = useState<string[]>([]);
   const [isTrial, setIsTrial] = useState<boolean>(false);
@@ -52,6 +56,20 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({
   const [previousAddOns, setPreviousAddOns] = useState<string[]>([]);
   const [previousDuration, setPreviousDuration] = useState<number>(1);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [pricings, setPricings] = useState<PricingConfig | null>(null);
+
+  useEffect(() => {
+    const getPricingConfig = async () => {
+      try {
+        const res = await db.getPricingConfig();
+        if (res.success) setPricings(res.pricing);
+      } catch {
+        toast.error("Failed to get pricing data");
+      }
+    };
+
+    getPricingConfig();
+  }, []);
 
   if (!isOpen) return null;
 
@@ -169,47 +187,49 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({
         </div>
 
         {/* 30-Day Free Trial Toggle Card */}
-        <div
-          onClick={handleTrialToggle}
-          className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all mb-6 ${
-            isTrial
-              ? "border-emerald-500 bg-emerald-50/40 shadow-sm"
-              : "border-slate-100 bg-slate-50/40"
-          }`}
-        >
-          <div className="flex items-center space-x-3">
-            <div
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
-                isTrial
-                  ? "bg-emerald-500 text-white"
-                  : "bg-slate-200 text-slate-500"
-              }`}
-            >
-              <Gift size={20} />
-            </div>
-            <div>
-              <h5 className="font-bold text-slate-900 text-sm">
-                Activate 30-Day Free Trial
-              </h5>
-              <p className="text-xs text-slate-500">
-                Enjoy all features free for 30 days. All add-on modules are
-                automatically unlocked.
-              </p>
-            </div>
-          </div>
-
+        {allowTrial && (
           <div
-            className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${
-              isTrial ? "bg-emerald-500" : "bg-slate-300"
+            onClick={handleTrialToggle}
+            className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all mb-6 ${
+              isTrial
+                ? "border-emerald-500 bg-emerald-50/40 shadow-sm"
+                : "border-slate-100 bg-slate-50/40"
             }`}
           >
+            <div className="flex items-center space-x-3">
+              <div
+                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
+                  isTrial
+                    ? "bg-emerald-500 text-white"
+                    : "bg-slate-200 text-slate-500"
+                }`}
+              >
+                <Gift size={20} />
+              </div>
+              <div>
+                <h5 className="font-bold text-slate-900 text-sm">
+                  Activate 30-Day Free Trial
+                </h5>
+                <p className="text-xs text-slate-500">
+                  Enjoy all features free for 30 days. All add-on modules are
+                  automatically unlocked.
+                </p>
+              </div>
+            </div>
+
             <div
-              className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                isTrial ? "translate-x-5" : "translate-x-0"
+              className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${
+                isTrial ? "bg-emerald-500" : "bg-slate-300"
               }`}
-            />
+            >
+              <div
+                className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                  isTrial ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Duration Dropdown & Optional Modules Row Header */}
         <div className="mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
