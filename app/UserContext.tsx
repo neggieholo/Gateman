@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -7,12 +8,15 @@ import React, {
   useState,
   useEffect,
   useRef,
+  useMemo,
 } from "react";
 import { io, Socket } from "socket.io-client";
 // import localforage from 'localforage';
 import { notification, UserContextType } from "./services/types";
 import { User } from "./services/types";
 import { fetchNotifications } from "./services/apis";
+import { ExpiredSubscriptionModal } from "./HomeComponents/ExpiredSubscriptionModal";
+import { SubscriptionModal } from "./HomeComponents/SubscriptionUpdateModal";
 // import router from "next/router";
 
 interface UnifiedUserContextType extends UserContextType {
@@ -53,6 +57,25 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [refreshTrigger, setRefreshTrigger] = useState<boolean>(false);
   const triggerRefresh = () => setRefreshTrigger((prev) => !prev);
   const [plan, setPlan] = useState<string | null>(null);
+  const [showRenewalModal, setShowRenewalModal] = useState(false);
+
+  const estates = useMemo(() => user?.estates || [], [user?.estates]);
+
+  // Derive active estate object based on contextEstateId
+  const activeEstate = useMemo(() => {
+    return (
+      estates.find((e: any) => e.id === contextEstateId) || estates[0] || null
+    );
+  }, [estates, contextEstateId]);
+
+  // Expiration Logic Check
+  const isCurrentEstateExpired = useMemo(() => {
+    if (!activeEstate) return false;
+    if (!activeEstate.subscription_expiry) return true;
+
+    const expiryDate = new Date(activeEstate.subscription_expiry);
+    return expiryDate <= new Date();
+  }, [activeEstate]);
 
   useEffect(() => {
     const getNotifications = async () => {
@@ -148,6 +171,22 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       }}
     >
       {children}
+
+      {user && isCurrentEstateExpired && (
+        <>
+          <ExpiredSubscriptionModal
+            isOpen={!showRenewalModal}
+            activeEstate={activeEstate}
+            onOpenRenewal={() => setShowRenewalModal(true)}
+          />
+
+          <SubscriptionModal
+            isOpen={showRenewalModal}
+            activeEstate={activeEstate}
+            onClose={() => setShowRenewalModal(false)}
+          />
+        </>
+      )}
     </UserContext.Provider>
   );
 };
