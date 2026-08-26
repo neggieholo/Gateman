@@ -327,3 +327,11 @@ export const ADDON_MODULES = [
     icon: Wrench,
   },
 ];
+
+export const plansList = [
+  "payments",
+  "security",
+  "community",
+  "facility_bookings",
+  "services_dispatch",
+];

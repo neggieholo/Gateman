@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Home,
   ShieldCheck,
@@ -9,11 +10,10 @@ import {
   Users,
   ChevronDown,
   LogOut,
-  Inbox,
   FileText,
-  User2,
   Briefcase,
   User,
+  Lock,
 } from "lucide-react";
 import { ViewState } from "../services/types";
 import { useUser } from "../UserContext";
@@ -36,11 +36,27 @@ export default function SideBar({
   afterNavClick = defaultAfterNavClick,
 }: SideBarProps) {
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const { user, setUser, socket } = useUser();
+  const { user, setUser, socket, contextEstateId } = useUser();
   const router = useRouter();
   const pathname = usePathname();
 
-  const handleLogout = async() => {
+  const estates = useMemo(() => user?.estates || [], [user?.estates]);
+
+  // Derive active estate object based on contextEstateId
+  const activeEstate = useMemo(() => {
+    console.log("UserContext EstateId:", contextEstateId);
+    return (
+      estates.find((e: any) => e.id === contextEstateId) || estates[0] || null
+    );
+  }, [estates, contextEstateId]);
+
+  const isModuleEnabled = (moduleKey: string): boolean => {
+    if (!activeEstate?.plan) return false;
+    if (activeEstate.plan.is_trial) return true;
+    return activeEstate.plan.selected_add_ons?.includes(moduleKey) ?? false;
+  };
+
+  const handleLogout = async () => {
     if (socket) {
       console.log("🔌 Disconnecting socket...");
       socket.disconnect();
@@ -65,24 +81,28 @@ export default function SideBar({
       label: "Payments",
       icon: FileText,
       url: "/home/payments",
+      disabled: !isModuleEnabled("payments"),
     },
     {
       id: ViewState.ACCESS,
       label: "Security",
       icon: ShieldCheck,
       url: "/home/security",
+      disabled: !isModuleEnabled("security"),
     },
     {
       id: ViewState.FORUM,
       label: "Community",
       icon: MessageSquare,
       url: "/home/community",
+      disabled: !isModuleEnabled("community"),
     },
     {
       id: ViewState.EVENTS,
       label: "Bookings",
       icon: Calendar,
       url: "/home/bookings",
+      disabled: !isModuleEnabled("facility_bookings"),
     },
     {
       id: ViewState.RESIDENTS,
@@ -101,6 +121,7 @@ export default function SideBar({
       label: "Services",
       icon: Briefcase,
       url: "/home/services",
+      disabled: !isModuleEnabled("services_dispatch"),
     },
     {
       id: ViewState.USERS,
@@ -133,33 +154,53 @@ export default function SideBar({
         <div className="flex-1 px-6 py-6 space-y-2">
           {navItems.map((item) => {
             const isActive = pathname === item.url;
+            const isDisabled = item.disabled;
 
             return (
               <button
                 key={item.id}
+                type="button"
                 onClick={() => {
+                  if (isDisabled) {
+                    toast.error(
+                      "This module is not included in your current plan.",
+                    );
+                    return;
+                  }
                   afterNavClick();
                   router.push(item.url);
                 }}
-                className={`flex items-center space-x-2 w-full px-3 py-3.5 rounded-2xl transition-all duration-200 group ${
-                  isActive
-                    ? "bg-white text-primary font-semibold shadow-sm" // White bg, Primary text
-                    : "text-white/70 hover:bg-white/10 hover:text-white" // Ghost white on primary bg
+                className={`flex items-center space-x-2 w-full px-3 py-3.5 rounded-2xl transition-all duration-200 group relative ${
+                  isDisabled
+                    ? "opacity-45 cursor-not-allowed text-white/40 hover:bg-transparent"
+                    : isActive
+                      ? "bg-white text-primary font-semibold shadow-sm"
+                      : "text-white/70 hover:bg-white/10 hover:text-white"
                 }`}
               >
                 <item.icon
                   size={22}
-                  className={`transition-colors ${isActive ? "text-primary" : "text-white"}`}
+                  className={`transition-colors ${
+                    isActive && !isDisabled ? "text-primary" : "text-white"
+                  }`}
                   strokeWidth={isActive ? 2.5 : 2}
                 />
                 <span
-                  className={`${isActive ? "text-primary" : "text-white"} font-oswald`}
+                  className={`${
+                    isActive && !isDisabled ? "text-primary" : "text-white"
+                  } font-oswald`}
                 >
                   {item.label}
                 </span>
 
-                {isActive && (
+                {/* Active Indicator */}
+                {isActive && !isDisabled && (
                   <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
+                )}
+
+                {/* Disabled Indicator */}
+                {isDisabled && (
+                  <Lock size={14} className="ml-auto text-white/40 shrink-0" />
                 )}
               </button>
             );

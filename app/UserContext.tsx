@@ -17,6 +17,7 @@ import { User } from "./services/types";
 import { fetchNotifications } from "./services/apis";
 import { ExpiredSubscriptionModal } from "./HomeComponents/ExpiredSubscriptionModal";
 import { SubscriptionModal } from "./HomeComponents/SubscriptionUpdateModal";
+import toast from "react-hot-toast";
 // import router from "next/router";
 
 interface UnifiedUserContextType extends UserContextType {
@@ -63,6 +64,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Derive active estate object based on contextEstateId
   const activeEstate = useMemo(() => {
+    console.log("UserContext EstateId:", contextEstateId)
     return (
       estates.find((e: any) => e.id === contextEstateId) || estates[0] || null
     );
@@ -74,7 +76,10 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     if (!activeEstate.subscription_expiry) return true;
 
     const expiryDate = new Date(activeEstate.subscription_expiry);
-    return expiryDate <= new Date();
+    console.log('Expiry Date:', expiryDate)
+    const now = new Date();
+    console.log("Now:", now)
+    return expiryDate <= now
   }, [activeEstate]);
 
   useEffect(() => {
@@ -82,7 +87,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         // console.log("fetching Notifications");
         setLoadingNotifications(true);
-        const result = await fetchNotifications();
+        const result = await fetchNotifications(contextEstateId!);
         if (result.success) {
           // console.log("fetched notifications:", result.list);
           setNotifications(result.list);
@@ -95,7 +100,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
           setBadgeCount(unreadCount);
         }
       } catch (error) {
-        alert("Failed to fetch notifications");
+        toast.error("Failed to fetch notifications");
       } finally {
         setLoadingNotifications(false);
       }

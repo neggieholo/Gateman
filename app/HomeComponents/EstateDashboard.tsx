@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ShieldCheck,
   CreditCard,
@@ -10,6 +10,7 @@ import {
   UserCheck,
   Loader2,
   PlusCircle,
+  Lock,
 } from "lucide-react";
 import { useUser } from "../UserContext";
 import { useRouter } from "next/navigation";
@@ -17,12 +18,32 @@ import { DashboardStats } from "../services/types";
 import { fetchDashboardStats } from "../services/apis";
 import toast from "react-hot-toast";
 
+// Toggle between showing a locked overlay vs completely hiding locked modules
+const HIDE_LOCKED_MODULES = false;
+
 export default function EstateDashboard() {
   const { user, contextEstateId } = useUser();
   const router = useRouter();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const estates = useMemo(() => user?.estates || [], [user?.estates]);
+
+  // Derive active estate object based on contextEstateId
+  const activeEstate = useMemo(() => {
+    console.log("UserContext EstateId:", contextEstateId);
+    return (
+      estates.find((e: any) => e.id === contextEstateId) || estates[0] || null
+    );
+  }, [estates, contextEstateId]);
+
+  // Feature enablement checker based on activeEstate.plan
+  const isModuleEnabled = (moduleKey: string): boolean => {
+    if (!activeEstate?.plan) return false;
+    if (activeEstate.plan.is_trial) return true;
+    return activeEstate.plan.selected_add_ons?.includes(moduleKey) ?? false;
+  };
 
   useEffect(() => {
     const hasPassWarn = localStorage.getItem("DASHBOARD_PASS_WARN") === "true";
@@ -177,7 +198,7 @@ export default function EstateDashboard() {
 
   return (
     <div className="relative space-y-6 w-full h-full overflow-y-auto p-4 sm:p-6 bg-slate-50/50 pb-20 font-sans">
-      {/* Header - Compact & Mobile Friendly */}
+      {/* Header */}
       <div className="flex justify-between items-center border-b border-slate-100 pb-3">
         <div>
           <div className="text-xs font-oswald font-bold text-slate-400 uppercase tracking-widest">
@@ -194,101 +215,123 @@ export default function EstateDashboard() {
 
       {/* Primary Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
-        <StatCard
-          icon={<ShieldCheck size={22} />}
-          label="Security"
-          value={stats.security.total}
-          color="indigo"
-          onClick={() => router.push("/home/security")}
-          metrics={[
-            {
-              label: "On-Duty",
-              value: stats.security.onDuty,
-              color: "text-emerald-600",
-            },
-            {
-              label: "Unresolved Complaints",
-              value: stats.security.complaints,
-              color: "text-rose-500",
-            },
-            {
-              label: "Join Requests",
-              value: stats.security.pendingRequests,
-              color: "text-rose-500",
-            },
-          ]}
-        />
+        {/* Security Module */}
+        <FeatureWrapper isEnabled={isModuleEnabled("security")}>
+          <StatCard
+            icon={<ShieldCheck size={22} />}
+            label="Security"
+            value={stats.security?.total ?? 0}
+            color="indigo"
+            onClick={() =>
+              isModuleEnabled("security") && router.push("/home/security")
+            }
+            metrics={[
+              {
+                label: "On-Duty",
+                value: stats.security?.onDuty ?? 0,
+                color: "text-emerald-600",
+              },
+              {
+                label: "Unresolved Complaints",
+                value: stats.security?.complaints ?? 0,
+                color: "text-rose-500",
+              },
+              {
+                label: "Join Requests",
+                value: stats.security?.pendingRequests ?? 0,
+                color: "text-rose-500",
+              },
+            ]}
+          />
+        </FeatureWrapper>
 
-        <StatCard
-          icon={<BellRing size={22} />}
-          label="Community Board"
-          value={stats.community.totalAlerts}
-          color="rose"
-          onClick={() => router.push("/home/community")}
-          metrics={[
-            {
-              label: "Unread Posts",
-              value: stats.community.unreadAlerts,
-              color: "text-rose-600",
-            },
-          ]}
-        />
+        {/* Community Board Module */}
+        <FeatureWrapper isEnabled={isModuleEnabled("community")}>
+          <StatCard
+            icon={<BellRing size={22} />}
+            label="Community Board"
+            value={stats.community?.totalAlerts ?? 0}
+            color="rose"
+            onClick={() =>
+              isModuleEnabled("community") && router.push("/home/community")
+            }
+            metrics={[
+              {
+                label: "Unread Posts",
+                value: stats.community?.unreadAlerts ?? 0,
+                color: "text-rose-600",
+              },
+            ]}
+          />
+        </FeatureWrapper>
 
-        <StatCard
-          icon={<CreditCard size={22} />}
-          label="Payments For Current Month"
-          value={stats.payments.monthlyCount}
-          color="amber"
-          onClick={() => router.push("/home/payments")}
-          metrics={[
-            {
-              label: "Total Pending",
-              value: stats.payments.pendingPayments,
-              color: "text-amber-600 font-bold",
-            },
-            {
-              label: "Unresolved Complaints",
-              value: stats.payments.paymentReports,
-              color: "text-slate-500",
-            },
-          ]}
-        />
+        {/* Payments Module */}
+        <FeatureWrapper isEnabled={isModuleEnabled("payments")}>
+          <StatCard
+            icon={<CreditCard size={22} />}
+            label="Payments For Current Month"
+            value={stats.payments?.monthlyCount ?? 0}
+            color="amber"
+            onClick={() =>
+              isModuleEnabled("payments") && router.push("/home/payments")
+            }
+            metrics={[
+              {
+                label: "Total Pending",
+                value: stats.payments?.pendingPayments ?? 0,
+                color: "text-amber-600 font-bold",
+              },
+              {
+                label: "Unresolved Complaints",
+                value: stats.payments?.paymentReports ?? 0,
+                color: "text-slate-500",
+              },
+            ]}
+          />
+        </FeatureWrapper>
 
-        <StatCard
-          icon={<CalendarClock size={22} />}
-          label="Events"
-          value={stats.events.total}
-          color="purple"
-          onClick={() => router.push("/home/events")}
-          metrics={[
-            {
-              label: "Upcoming",
-              value:
-                stats.events.upcoming.venue_name === "None"
-                  ? "None"
-                  : `${stats.events.upcoming.venue_name} (${new Date(stats.events.upcoming.date!).toLocaleDateString()})`,
-              color: "text-purple-600",
-            },
-            {
-              label: "Pending",
-              value: stats.events.pending || 0,
-              color: "text-amber-500",
-            },
-            {
-              label: "Payment Pending",
-              value: stats.events.payment_pending_bookings || 0,
-              color: "text-amber-500",
-            },
-            {
-              label: "Payment Submitted",
-              value: stats.events.payment_submitted_bookings || 0,
-              color: "text-amber-500",
-            },
-          ]}
-        />
+        {/* Facility Bookings Module */}
+        <FeatureWrapper isEnabled={isModuleEnabled("facility_bookings")}>
+          <StatCard
+            icon={<CalendarClock size={22} />}
+            label="Events"
+            value={stats.events?.total ?? 0}
+            color="purple"
+            onClick={() =>
+              isModuleEnabled("facility_bookings") &&
+              router.push("/home/events")
+            }
+            metrics={[
+              {
+                label: "Upcoming",
+                value:
+                  stats.events?.upcoming?.venue_name === "None" ||
+                  !stats.events?.upcoming
+                    ? "None"
+                    : `${stats.events.upcoming.venue_name} (${new Date(stats.events.upcoming.date!).toLocaleDateString()})`,
+                color: "text-purple-600",
+              },
+              {
+                label: "Pending",
+                value: stats.events?.pending || 0,
+                color: "text-amber-500",
+              },
+              {
+                label: "Payment Pending",
+                value: stats.events?.payment_pending_bookings || 0,
+                color: "text-amber-500",
+              },
+              {
+                label: "Payment Submitted",
+                value: stats.events?.payment_submitted_bookings || 0,
+                color: "text-amber-500",
+              },
+            ]}
+          />
+        </FeatureWrapper>
       </div>
 
-      {/* Resident Management Row Block */}
+      {/* Resident Management Row Block (Always Available) */}
       <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col transition-all hover:border-slate-200">
         <div
           className="p-5 sm:p-6 border-b border-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-linear-to-r cursor-pointer from-white to-blue-50/20"
@@ -342,6 +385,41 @@ export default function EstateDashboard() {
   );
 }
 
+// Wrapper to lock or hide unauthorized feature cards
+function FeatureWrapper({
+  isEnabled,
+  children,
+}: {
+  isEnabled: boolean;
+  children: React.ReactNode;
+}) {
+  // 1. If feature is unlocked, render normal children
+  if (isEnabled) return <>{children}</>;
+
+  // 2. If config says hide, return nothing
+  if (HIDE_LOCKED_MODULES) return null;
+
+  // 3. Otherwise render locked overlay state
+  return (
+    <div className="relative group overflow-hidden rounded-3xl border border-slate-100 min-h-40">
+      {/* Blurred background preview */}
+      <div className="pointer-events-none opacity-30 blur-[2px] select-none h-full">
+        {children}
+      </div>
+
+      {/* Lock Overlay */}
+      <div className="absolute inset-0 bg-slate-900/10 backdrop-blur-[2px] flex flex-col items-center justify-center p-4 text-center z-10">
+        <div className="p-2.5 bg-white/90 shadow-md rounded-full mb-2 text-slate-700">
+          <Lock size={18} />
+        </div>
+        <span className="text-xs font-montserrat font-bold text-slate-800 bg-white/90 px-3 py-1 rounded-full shadow-xs">
+          Locked
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function StatCard({ icon, label, value, color, metrics, onClick }: any) {
   const colorMap: any = {
     indigo: "bg-indigo-50 text-indigo-600 border-indigo-100",
@@ -352,7 +430,7 @@ function StatCard({ icon, label, value, color, metrics, onClick }: any) {
 
   return (
     <div
-      className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 flex flex-col justify-between transition-all hover:shadow-md cursor-pointer active:scale-[0.99]"
+      className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 flex flex-col justify-between transition-all hover:shadow-md cursor-pointer active:scale-[0.99] h-full"
       onClick={onClick}
     >
       <div>
