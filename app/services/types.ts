@@ -827,3 +827,15 @@ export interface PricingConfig {
   base_platform_price: TierPricing;
   modules: ModulePricingMatrix;
 }
+
+
+export interface GuardLocation {
+  userId: string;
+  userName?: string;
+  role?: string;
+  estateId: string;
+  latitude: number;
+  longitude: number;
+  address?: string | null;
+  timestamp: number;
+}

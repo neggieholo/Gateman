@@ -12,7 +12,7 @@ import React, {
 } from "react";
 import { io, Socket } from "socket.io-client";
 // import localforage from 'localforage';
-import { notification, UserContextType } from "./services/types";
+import { GuardLocation, notification, UserContextType } from "./services/types";
 import { User } from "./services/types";
 import { fetchNotifications } from "./services/apis";
 import { ExpiredSubscriptionModal } from "./HomeComponents/ExpiredSubscriptionModal";
@@ -38,6 +38,7 @@ interface UnifiedUserContextType extends UserContextType {
   setPlan: (plan: string | null) => void;
   contextEstateId: string | null;
   setContextEstateId: (value: string) => void;
+  guardLocations: Record<string, GuardLocation>;
 }
 
 const UserContext = createContext<UnifiedUserContextType | undefined>(
@@ -59,12 +60,16 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const triggerRefresh = () => setRefreshTrigger((prev) => !prev);
   const [plan, setPlan] = useState<string | null>(null);
   const [showRenewalModal, setShowRenewalModal] = useState(false);
+  const guardLocationsRef = useRef<Record<string, GuardLocation>>({});
+  const [guardLocations, setGuardLocations] = useState<
+    Record<string, GuardLocation>
+  >({});
 
   const estates = useMemo(() => user?.estates || [], [user?.estates]);
 
   // Derive active estate object based on contextEstateId
   const activeEstate = useMemo(() => {
-    console.log("UserContext EstateId:", contextEstateId)
+    console.log("UserContext EstateId:", contextEstateId);
     return (
       estates.find((e: any) => e.id === contextEstateId) || estates[0] || null
     );
@@ -76,10 +81,10 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     if (!activeEstate.subscription_expiry) return true;
 
     const expiryDate = new Date(activeEstate.subscription_expiry);
-    console.log('Expiry Date:', expiryDate)
+    console.log("Expiry Date:", expiryDate);
     const now = new Date();
-    console.log("Now:", now)
-    return expiryDate <= now
+    console.log("Now:", now);
+    return expiryDate <= now;
   }, [activeEstate]);
 
   useEffect(() => {
@@ -107,7 +112,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     getNotifications();
-  }, [user, refreshTrigger]);
+  }, [user, refreshTrigger, contextEstateId]);
 
   useEffect(() => {
     if (!user) {
@@ -144,14 +149,31 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       setBadgeCount((prev) => prev + 1);
     });
 
+    newSocket.on("guard_location_update", (location: GuardLocation) => {
+      console.log("📍 Admin received location stream:", location);
+      if (location.estateId !== contextEstateId) return;
+      guardLocationsRef.current[location.userId] = location;
+
+      // setGuardLocations((prev) => ({
+      //   ...prev,
+      //   [location.userId]: location,
+      // }));
+    });
+
+    const intervalId = setInterval(() => {
+      setGuardLocations({ ...guardLocationsRef.current });
+    }, 5000);
+
     socketRef.current = newSocket;
 
     return () => {
       newSocket.off("new_notification");
+      newSocket.off("guard_location_update");
+      clearInterval(intervalId);
       newSocket.close();
       socketRef.current = null;
     };
-  }, [baseUrl, user]);
+  }, [baseUrl, user, contextEstateId]);
 
   return (
     <UserContext.Provider
@@ -173,6 +195,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         setPlan,
         contextEstateId,
         setContextEstateId,
+        guardLocations,
       }}
     >
       {children}
