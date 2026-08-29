@@ -11,11 +11,13 @@ import {
   Loader2,
   PlusCircle,
   Lock,
+  Wrench,
 } from "lucide-react";
 import { useUser } from "../UserContext";
 import { useRouter } from "next/navigation";
 import { DashboardStats } from "../services/types";
 import { fetchDashboardStats } from "../services/apis";
+
 import toast from "react-hot-toast";
 
 // Toggle between showing a locked overlay vs completely hiding locked modules
@@ -93,7 +95,7 @@ export default function EstateDashboard() {
               onClick={() => {
                 toast.dismiss(t.id);
                 localStorage.removeItem("DASHBOARD_PASS_WARN");
-                localStorage.removeItem("DASHBOARD_MFA_WARN"); // Fixed typo
+                localStorage.removeItem("DASHBOARD_MFA_WARN");
 
                 // Smart routing path selection
                 window.location.href = hasMfaWarn
@@ -331,55 +333,123 @@ export default function EstateDashboard() {
         </FeatureWrapper>
       </div>
 
-      {/* Resident Management Row Block (Always Available) */}
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col transition-all hover:border-slate-200">
-        <div
-          className="p-5 sm:p-6 border-b border-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-linear-to-r cursor-pointer from-white to-blue-50/20"
-          onClick={() => router.push("/home/tenantmanagement")}
-        >
-          <div className="flex items-start sm:items-center gap-4">
-            <div className="p-3 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-100 shrink-0">
-              <UserCheck size={24} />
+      {/* Bottom Row Section: Resident Management & Artisan Services */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Resident Management Row Block */}
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col justify-between transition-all hover:border-slate-200">
+          <div
+            className="p-5 sm:p-6 border-b border-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-linear-to-r cursor-pointer from-white to-blue-50/20"
+            onClick={() => router.push("/home/tenantmanagement")}
+          >
+            <div className="flex items-start sm:items-center gap-4">
+              <div className="p-3 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-100 shrink-0">
+                <UserCheck size={24} />
+              </div>
+              <div>
+                <h3 className="font-montserrat font-black text-slate-900 text-xl tracking-tight">
+                  Resident Management
+                </h3>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs font-oswald font-bold text-slate-400 uppercase tracking-wider">
+                  <span>
+                    Tenants:{" "}
+                    <b className="text-slate-900 font-sans">
+                      {stats.residents.total}
+                    </b>
+                  </span>
+                  <span>
+                    Suggestions & Reports:{" "}
+                    <b className="text-rose-500 font-sans">
+                      {stats.residents.complaints}
+                    </b>
+                  </span>
+                </div>
+              </div>
             </div>
-            <div>
-              <h3 className="font-montserrat font-black text-slate-900 text-xl tracking-tight">
-                Resident Management
-              </h3>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs font-oswald font-bold text-slate-400 uppercase tracking-wider">
-                <span>
-                  Tenants:{" "}
-                  <b className="text-slate-900 font-sans">
-                    {stats.residents.total}
-                  </b>
-                </span>
-                <span>
-                  Suggestions & Reports:{" "}
-                  <b className="text-rose-500 font-sans">
-                    {stats.residents.complaints}
-                  </b>
+          </div>
+
+          <div
+            className="p-5 sm:p-6 bg-slate-50/20 cursor-pointer"
+            onClick={() => router.push("/home/tenantmanagement?requests=true")}
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <PlusCircle size={14} className="text-blue-600" />
+              <h4 className="text-[11px] font-oswald font-bold text-slate-400 uppercase tracking-widest">
+                Pending Requests
+              </h4>
+            </div>
+
+            <div className="bg-white px-5 py-3 rounded-2xl border border-slate-100 inline-block min-w-30 shadow-2xs">
+              <span className="text-2xl font-montserrat font-black text-slate-900">
+                {stats.residents.pendingRequests}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Artisan Services Row Block */}
+        <FeatureWrapper isEnabled={isModuleEnabled("services_dispatch")}>
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col justify-between transition-all hover:border-slate-200 h-full">
+            <div
+              className="p-5 sm:p-6 border-b border-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-linear-to-r cursor-pointer from-white to-emerald-50/20"
+              onClick={() =>
+                isModuleEnabled("services_dispatch") &&
+                router.push("/home/services")
+              }
+            >
+              <div className="flex items-start sm:items-center gap-4">
+                <div className="p-3 bg-emerald-600 text-white rounded-2xl shadow-lg shadow-emerald-100 shrink-0">
+                  <Wrench size={24} />
+                </div>
+                <div>
+                  <h3 className="font-montserrat font-black text-slate-900 text-xl tracking-tight">
+                    Services Requests
+                  </h3>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs font-oswald font-bold text-slate-400 uppercase tracking-wider">
+                    <span>
+                      Total Requests:{" "}
+                      <b className="text-slate-900 font-sans">
+                        {stats.services?.total ?? 0}
+                      </b>
+                    </span>
+                    <span>
+                      Pending:{" "}
+                      <b className="text-amber-500 font-sans">
+                        {stats.services?.pending ?? 0}
+                      </b>
+                    </span>
+                    <span>
+                      Dispatched:{" "}
+                      <b className="text-indigo-600 font-sans">
+                        {stats.services?.dispatched ?? 0}
+                      </b>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div
+              className="p-5 sm:p-6 bg-slate-50/20 cursor-pointer"
+              onClick={() =>
+                isModuleEnabled("services_dispatch") &&
+                router.push("/home/services")
+              }
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <PlusCircle size={14} className="text-emerald-600" />
+                <h4 className="text-[11px] font-oswald font-bold text-slate-400 uppercase tracking-widest">
+                  Recently Completed
+                </h4>
+              </div>
+
+              <div className="bg-white px-5 py-3 rounded-2xl border border-slate-100 inline-block min-w-30 shadow-2xs">
+                <span className="text-2xl font-montserrat font-black text-emerald-600">
+                  {stats.services?.recentlyCompleted ?? 0}
                 </span>
               </div>
             </div>
           </div>
-        </div>
-
-        <div
-          className="p-5 sm:p-6 bg-slate-50/20 cursor-pointer"
-          onClick={() => router.push("/home/tenantmanagement?requests=true")}
-        >
-          <div className="flex items-center gap-2 mb-3">
-            <PlusCircle size={14} className="text-blue-600" />
-            <h4 className="text-[11px] font-oswald font-bold text-slate-400 uppercase tracking-widest">
-              Pending Requests
-            </h4>
-          </div>
-
-          <div className="bg-white px-5 py-3 rounded-2xl border border-slate-100 inline-block min-w-30 shadow-2xs">
-            <span className="text-2xl font-montserrat font-black text-slate-900">
-              {stats.residents.pendingRequests}
-            </span>
-          </div>
-        </div>
+        </FeatureWrapper>
       </div>
     </div>
   );
@@ -401,7 +471,7 @@ function FeatureWrapper({
 
   // 3. Otherwise render locked overlay state
   return (
-    <div className="relative group overflow-hidden rounded-3xl border border-slate-100 min-h-40">
+    <div className="relative group overflow-hidden rounded-3xl border border-slate-100 h-full min-h-40">
       {/* Blurred background preview */}
       <div className="pointer-events-none opacity-30 blur-[2px] select-none h-full">
         {children}

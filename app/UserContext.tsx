@@ -9,6 +9,7 @@ import React, {
   useEffect,
   useRef,
   useMemo,
+  useCallback,
 } from "react";
 import { io, Socket } from "socket.io-client";
 // import localforage from 'localforage';
@@ -38,7 +39,7 @@ interface UnifiedUserContextType extends UserContextType {
   setPlan: (plan: string | null) => void;
   contextEstateId: string | null;
   setContextEstateId: (value: string) => void;
-  guardLocations: Record<string, GuardLocation>;
+  getGuardLocation: (userId: string) => GuardLocation | undefined;
 }
 
 const UserContext = createContext<UnifiedUserContextType | undefined>(
@@ -61,9 +62,6 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [plan, setPlan] = useState<string | null>(null);
   const [showRenewalModal, setShowRenewalModal] = useState(false);
   const guardLocationsRef = useRef<Record<string, GuardLocation>>({});
-  const [guardLocations, setGuardLocations] = useState<
-    Record<string, GuardLocation>
-  >({});
 
   const estates = useMemo(() => user?.estates || [], [user?.estates]);
 
@@ -86,6 +84,10 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     console.log("Now:", now);
     return expiryDate <= now;
   }, [activeEstate]);
+
+  const getGuardLocation = useCallback((userId: string) => {
+    return guardLocationsRef.current[userId];
+  }, []);
 
   useEffect(() => {
     const getNotifications = async () => {
@@ -112,10 +114,10 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     getNotifications();
-  }, [user, refreshTrigger, contextEstateId]);
+  }, [user?.id, refreshTrigger, contextEstateId]);
 
   useEffect(() => {
-    if (!user) {
+    if (!user?.id) {
       if (socketRef.current) {
         console.log("🔌 User logged out. Disconnecting socket...");
         socketRef.current.disconnect();
@@ -138,15 +140,8 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       console.log("✅ Socket Connected via Session ID");
     });
 
-    newSocket.on("new_notification", (newNotif: notification) => {
-      // console.log("🚀 Real-time notification received:", newNotif);
-      setNotifications((prev) => {
-        const exists = prev.find((n) => n.id === newNotif.id);
-        if (exists) return prev;
-        return [newNotif, ...prev];
-      });
-
-      setBadgeCount((prev) => prev + 1);
+    newSocket.on("new_notification", () => {
+      triggerRefresh();
     });
 
     newSocket.on("guard_location_update", (location: GuardLocation) => {
@@ -160,20 +155,16 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       // }));
     });
 
-    const intervalId = setInterval(() => {
-      setGuardLocations({ ...guardLocationsRef.current });
-    }, 5000);
 
     socketRef.current = newSocket;
 
     return () => {
       newSocket.off("new_notification");
       newSocket.off("guard_location_update");
-      clearInterval(intervalId);
       newSocket.close();
       socketRef.current = null;
     };
-  }, [baseUrl, user, contextEstateId]);
+  }, [baseUrl, user?.id, contextEstateId]);
 
   return (
     <UserContext.Provider
@@ -195,7 +186,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         setPlan,
         contextEstateId,
         setContextEstateId,
-        guardLocations,
+        getGuardLocation
       }}
     >
       {children}

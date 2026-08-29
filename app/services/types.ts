@@ -662,6 +662,13 @@ export interface DashboardStats {
       date: string | null;
     };
   };
+  services: {
+    total: number;
+    pending: number;
+    dispatched: number;
+    completed: number;
+    recentlyCompleted: number;
+  };
   residents: {
     totalRequests: number;
     total: number;

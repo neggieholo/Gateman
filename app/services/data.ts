@@ -181,6 +181,11 @@ export const ESTATE_PERMISSIONS: PermissionNode[] = [
     name: "View Admin Activity & Audit Logs",
     parent_permission: "logs_management",
   },
+  {
+    id: "export_logs",
+    name: "Export & Download System Audit Logs",
+    parent_permission: "logs_management",
+  },
   // ==========================================
   // NOTIFICATIONS MANAGEMENT
   // ==========================================
@@ -204,11 +209,7 @@ export const ESTATE_PERMISSIONS: PermissionNode[] = [
     name: "Purge & Delete Notifications",
     parent_permission: "notifications_management",
   },
-  {
-    id: "export_logs",
-    name: "Export & Download System Audit Logs",
-    parent_permission: "logs_management",
-  },
+
   // ==========================================
   // COMMUNITY MANAGEMENT
   // ==========================================

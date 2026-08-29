@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   AdminIdentityPayload,
@@ -687,7 +688,7 @@ export const markAlertsAsRead = async (): Promise<boolean> => {
 export const fetchNotifications =
   async (estate_id: string): Promise<FetchNotificationsResponse> => {
     try {
-      const res = await fetch(`${baseUrl}/api/notifications/:estate_id`, {
+      const res = await fetch(`${baseUrl}/api/notifications/:${estate_id}`, {
         method: "GET",
         credentials: "include",
       });
