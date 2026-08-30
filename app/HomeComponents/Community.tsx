@@ -97,6 +97,7 @@ const AdminAlertManager = () => {
     setLoading(true);
     try {
       const data = await communityApi.getPosts(contextEstateId);
+      console.log("Posts:", data);
       setPosts(data || []);
     } catch (err) {
       console.error("Failed to fetch alerts", err);
@@ -186,7 +187,7 @@ const AdminAlertManager = () => {
           security: targetSecurity,
         },
         type: notificationType,
-        estate_id: contextEstateId!
+        estate_id: contextEstateId!,
       });
 
       toast.success("Notifications sent to selected groups!");
@@ -663,6 +664,17 @@ const AdminAlertManager = () => {
                 <p className="text-slate-600 text-sm leading-relaxed mb-4 max-h-24 overflow-y-auto font-medium">
                   {selectedPost.content}
                 </p>
+
+                {/* {selectedPost.image_url && (
+                  <div className="mb-4 overflow-hidden rounded-xl border border-slate-200/80 bg-slate-100">
+                    <img
+                      src={selectedPost.image_url}
+                      alt={selectedPost.title || "Alert attachment"}
+                      className="w-full max-h-72 object-cover block"
+                      loading="lazy"
+                    />
+                  </div>
+                )} */}
 
                 <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium text-slate-400 bg-slate-50/80 p-2.5 rounded-xl border border-slate-100">
                   <div className="flex items-center gap-1">

@@ -139,7 +139,7 @@ export default function OnDutyPersonnel() {
     setPendingRequests((prev) => ({ ...prev, [guardId]: true }));
 
     try {
-      await requestGuardLocation(guardId);
+      await requestGuardLocation(guardId, contextEstateId!);
       toast.success(
         `Location request sent to ${guardName}. You will be notified when it updates.`,
       );

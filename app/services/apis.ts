@@ -758,10 +758,10 @@ export const postLogout = async () => {
   return data;
 };
 
-export const requestGuardLocation = async (guardId: string) => {
+export const requestGuardLocation = async (guardId: string, estate_id: string) => {
   try {
     const response = await fetch(
-      `${baseUrl}/api/security/request-guard-location`,
+      `${baseUrl}/api/security/request-guard-location/${estate_id}`,
       {
         method: "POST",
         headers: {

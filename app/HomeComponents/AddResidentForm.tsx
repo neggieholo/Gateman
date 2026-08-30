@@ -70,7 +70,8 @@ export default function AddResidentForm({
       });
     });
     setContractFiles(list);
-  }, [locations, contractFiles]);
+  }, [locations]);
+  
 
   // Nested structural state mechanics
   const updateBlockName = (bIndex: number, text: string) => {
