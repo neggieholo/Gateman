@@ -294,9 +294,9 @@ export default function UnifiedResidentPortal() {
           >
             <Users size={18} />
             RESIDENTS{" "}
-            <span className="font-oswald text-[13px] ml-0.5">
+            {/* <span className="font-oswald text-[13px] ml-0.5">
               ({tenants.length})
-            </span>
+            </span> */}
           </button>
           <button
             onClick={() => {
@@ -389,7 +389,7 @@ export default function UnifiedResidentPortal() {
       <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-w-0">
         {activeTab === "REQUESTS" && (
           <div className="animate-in fade-in duration-500 h-full min-w-0">
-            <JoinRequestsPage />
+            <JoinRequestsPage onApprove={fetchData} />
           </div>
         )}
 

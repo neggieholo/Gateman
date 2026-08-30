@@ -195,6 +195,15 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
     ? activeRemainingMonths
     : planDuration;
 
+  useEffect(() => {
+    if (
+      isOpen &&
+      estatePlanState.isExpired &&
+      estatePlanState.activeAddons.length > 0
+    ) {
+      setSelectedAddOns(estatePlanState.activeAddons);
+    }
+  }, [isOpen, estatePlanState.isExpired, estatePlanState.activeAddons]);
   // Toast warning for active plans <= 10 days
   useEffect(() => {
     if (
@@ -216,7 +225,9 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   ]);
 
   const handleClose = () => {
-    setSelectedAddOns([]);
+    setSelectedAddOns(
+      estatePlanState.isExpired ? estatePlanState.activeAddons : [],
+    );
     setValidationError(null);
     setPlanDuration(1);
     onClose();

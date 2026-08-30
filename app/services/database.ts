@@ -80,10 +80,8 @@ export const db = {
       throw new Error(err.error || "Admin registration failed");
     }
 
-    const { paymentLink } = await res.json();
-
-    // Redirect browser to Flutterwave checkout
-    window.location.href = paymentLink;
+    return res.json();
+    
   },
 
   getPricingConfig: async (): Promise<{

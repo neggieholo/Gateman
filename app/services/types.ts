@@ -336,6 +336,9 @@ export interface SecurityUser {
   last_location_time?: string;
   last_known_location_selfie?: string;
   last_liveness_photo_url?: string;
+  checkin_address: string;
+  checkout_address: string;
+  last_known_address:string;
   role: "SECURITY";
   id_type?: string;
   id_front_url?: string;

@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { securityDb } from "../services/database";
 import { GuardLocation, SecurityUser } from "../services/types";
 import {
@@ -43,7 +43,7 @@ export default function OnDutyPersonnel() {
     null,
   );
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!contextEstateId) return;
     try {
       const personnelData = await securityDb.getAllSecurity(contextEstateId);
@@ -53,11 +53,11 @@ export default function OnDutyPersonnel() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [contextEstateId]);
 
   useEffect(() => {
     fetchData();
-  }, [contextEstateId]);
+  }, [fetchData]);
 
   // Listen for socket events when the real-time location modal is active
   useEffect(() => {
@@ -80,28 +80,11 @@ export default function OnDutyPersonnel() {
   }, [socket, selectedGuardForLocation, contextEstateId]);
 
   const handleOpenLocationModal = (guard: SecurityUser) => {
-    // 1. Get initial position from ref store if available
+    // Get initial real-time position from ref store if available
     const initialLocation = getGuardLocation(guard.id);
 
     if (initialLocation) {
       setActiveLocation(initialLocation);
-    } else if (guard.last_known_location) {
-      // Fallback: parse string if lat,lng coordinates are stored in last_known_location
-      const parts = guard.last_known_location.split(",");
-      if (parts.length === 2) {
-        const lat = parseFloat(parts[0]);
-        const lng = parseFloat(parts[1]);
-        if (!isNaN(lat) && !isNaN(lng)) {
-          setActiveLocation({
-            userId: guard.id,
-            userName: guard.name,
-            estateId: contextEstateId || "",
-            latitude: lat,
-            longitude: lng,
-            timestamp: Date.now(),
-          });
-        }
-      }
     } else {
       setActiveLocation(null);
     }
@@ -114,27 +97,27 @@ export default function OnDutyPersonnel() {
     setActiveLocation(null);
   };
 
-  const AddressDisplay = ({ location }: { location: string | null }) => {
-    const [address, setAddress] = useState<string>("Loading address...");
+  // const AddressDisplay = ({ location }: { location: string | null }) => {
+  //   const [address, setAddress] = useState<string>("Loading address...");
 
-    useEffect(() => {
-      if (!location || location === "Unknown") {
-        setAddress("No location data");
-        return;
-      }
+  //   useEffect(() => {
+  //     if (!location || location === "Unknown") {
+  //       setAddress("No location data");
+  //       return;
+  //     }
 
-      fetchReadableAddress(location).then(setAddress);
-    }, [location]);
+  //     fetchReadableAddress(location).then(setAddress);
+  //   }, [location]);
 
-    return (
-      <span
-        className="text-sm font-semibold text-blue-600 truncate block w-full"
-        title={address}
-      >
-        {address}
-      </span>
-    );
-  };
+  //   return (
+  //     <span
+  //       className="text-sm font-semibold text-blue-600 truncate block w-full"
+  //       title={address}
+  //     >
+  //       {address}
+  //     </span>
+  //   );
+  // };
 
   const filteredGuards = guards.filter(
     (g) =>
@@ -247,13 +230,9 @@ export default function OnDutyPersonnel() {
                         Check-in Location
                       </h2>
                       <div className="mt-0.5 truncate">
-                        {guard.checkin_location ? (
-                          <AddressDisplay location={guard.checkin_location} />
-                        ) : (
-                          <span className="text-xs text-slate-400 font-medium">
-                            No initial check-in data
-                          </span>
-                        )}
+                        <span className="text-xs text-slate-400 font-medium">
+                          {guard.checkin_address || "No initial check-in data"}
+                        </span>
                       </div>
                     </div>
 
@@ -288,6 +267,14 @@ export default function OnDutyPersonnel() {
                     <ImageIcon size={13} />
                     View Check-In Photo
                   </button>
+
+                  <button
+                    className="flex items-center justify-center gap-2 w-full py-2.5 bg-white border border-blue-200 text-blue-600 rounded-xl text-xs font-montserrat font-bold uppercase tracking-wider hover:bg-blue-600 hover:text-white hover:border-blue-600 active:scale-98 transition-all shadow-2xs cursor-pointer"
+                    onClick={() => setPhoto(guard.last_known_location_selfie)}
+                  >
+                    <ImageIcon size={13} />
+                    View Live-Location Photo
+                  </button>
                 </div>
 
                 {/* Live Location Section */}
@@ -298,15 +285,9 @@ export default function OnDutyPersonnel() {
                         Last Known Location
                       </h2>
                       <div className="mt-0.5 truncate">
-                        {guard.last_known_location ? (
-                          <AddressDisplay
-                            location={guard.last_known_location}
-                          />
-                        ) : (
-                          <span className="text-xs text-slate-400 font-medium">
-                            No tracked live data
-                          </span>
-                        )}
+                        <span className="text-xs text-slate-400 font-medium">
+                          {guard.last_known_address || "No tracked live data"}
+                        </span>
                       </div>
                     </div>
 
@@ -408,9 +389,6 @@ export default function OnDutyPersonnel() {
                   <h4 className="font-montserrat font-bold text-slate-800 text-base">
                     {selectedGuardForLocation.name}
                   </h4>
-                  <p className="text-xs text-slate-400">
-                    Personnel ID: {selectedGuardForLocation.id}
-                  </p>
                 </div>
               </div>
 
@@ -437,11 +415,9 @@ export default function OnDutyPersonnel() {
 
                   <div>
                     <span className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                      Reverse Geocoded Address
+                      Address
                     </span>
-                    <AddressDisplay
-                      location={`${activeLocation.latitude},${activeLocation.longitude}`}
-                    />
+                    <span>{activeLocation.address}</span>
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 text-xs text-slate-400 font-medium">

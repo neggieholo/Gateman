@@ -11,7 +11,11 @@ import { useUser } from "../UserContext";
 import { showAccessDeniedToast } from "./Users";
 import toast from "react-hot-toast";
 
-export default function JoinRequestsPage() {
+interface JoinReqProps {
+  onApprove?: () => void;
+}
+
+export default function JoinRequestsPage({ onApprove }: JoinReqProps) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
   const { user, contextEstateId } = useUser();
   const [pendingRequests, setPendingRequests] = useState<JoinRequest[]>([]);
@@ -75,6 +79,7 @@ export default function JoinRequestsPage() {
       if (!res.ok) throw new Error("Failed to approve request");
 
       loadData();
+      if (onApprove) onApprove();
     } catch (err) {
       console.error(err);
       toast.error("Could not approve join request. Please try again.");

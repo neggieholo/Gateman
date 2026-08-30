@@ -661,7 +661,7 @@ export default function Settings() {
   }
 
   return (
-    <div className="relative flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 sm:space-y-8 h-[calc(100vh-120px)] bg-slate-50/50 font-sans">
+    <div className="relative flex-1 p-4 sm:p-6 space-y-6 sm:space-y-8  bg-slate-50/50 font-sans">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 sm:gap-0">
         <div>

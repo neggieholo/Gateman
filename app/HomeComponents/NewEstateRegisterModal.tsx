@@ -5,6 +5,7 @@ import { db } from "../services/database";
 import { PlanSelectionModal } from "../LandingPageComponents/PlanSelectionModal";
 import { states_lgas } from "../utils/states_lgas";
 import { ADDON_MODULES } from "../services/data";
+import toast from "react-hot-toast";
 
 interface NewEstateRegisterModalProps {
   isOpen: boolean;
@@ -15,7 +16,6 @@ interface NewEstateRegisterModalProps {
 export const NewEstateRegisterModal: React.FC<NewEstateRegisterModalProps> = ({
   isOpen,
   onClose,
-  onSuccess,
 }) => {
   // Form State (Estate Details Only)
   const [name, setName] = useState(""); // Estate Name
@@ -82,9 +82,19 @@ export const NewEstateRegisterModal: React.FC<NewEstateRegisterModalProps> = ({
 
     try {
       // Calls authenticated estate onboarding endpoint via db service
-      await db.register(name, state, lga, configuredPlan, planDuration);
+      const data = await db.register(
+        name,
+        state,
+        lga,
+        configuredPlan,
+        planDuration,
+      );
 
-      if (onSuccess) onSuccess();
+      if (data?.paymentLink) {
+        window.location.href = data.paymentLink;
+      } else {
+        toast.error(data.error || "Registration failed. Please try again.");
+      }
       onClose();
     } catch (err: any) {
       setError(err.message || "Failed to create estate. Please try again.");

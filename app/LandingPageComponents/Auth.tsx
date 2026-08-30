@@ -111,6 +111,25 @@ export default function Auth() {
     return false;
   };
 
+  const resetFormState = () => {
+    setName("");
+    setEmail("");
+    setPassword("");
+    setState("");
+    setLga("");
+    setAdminName("");
+    setConfiguredPlan({
+      selectedAddOns: [],
+      isTrial: false,
+    });
+    setPlanDuration(1);
+    setOtp(["", "", "", "", "", ""]);
+    setMetadata("");
+    setError(null);
+    setShowOtpInput(false);
+    setShowPlanModal(false);
+  };
+
   const handleRequestOtp = async () => {
     if (!isLogin && !configuredPlan.selectedAddOns) {
       setError("Please choose a subscription plan to continue.");
@@ -200,7 +219,7 @@ export default function Auth() {
     setError("");
 
     try {
-      await db.register(
+      const data = await db.register(
         name,
         state,
         lga,
@@ -213,9 +232,19 @@ export default function Auth() {
         adminName,
       );
 
+      if (data?.paymentLink) {
+        resetFormState();
+        window.location.href = data.paymentLink;
+      } else {
+        toast.error(data.error || "Registration failed. Please try again.");
+      }
+
       setShowOtpInput(false);
       setOtp(["", "", "", "", "", ""]);
     } catch (err: any) {
+      toast.error(
+        err.message || err.error || "Registration failed. Please try again.",
+      );
       setError(err.message || "Registration failed. Please try again.");
     } finally {
       setLoading(false);

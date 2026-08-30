@@ -98,10 +98,6 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({
 
     setValidationError(null);
     if (selectedAddOns.includes(id)) {
-      if (selectedAddOns.length === 1) {
-        setValidationError("You must select at least one add-on module.");
-        return;
-      }
       setSelectedAddOns(selectedAddOns.filter((item) => item !== id));
     } else {
       setSelectedAddOns([...selectedAddOns, id]);
