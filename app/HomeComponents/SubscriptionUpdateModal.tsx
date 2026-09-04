@@ -106,6 +106,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   const [planDuration, setPlanDuration] = useState<number>(1);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [extendSubscription, setExtendSubscription] = useState<boolean>(false);
 
   const canManageSubscription =
     user?.permissions?.includes("estate_administration") ||
@@ -181,13 +182,15 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
       estatePlanState.isActive &&
       !estatePlanState.isTrial &&
       selectedAddOns.length > 0 &&
-      estatePlanState.daysLeft > 10
+      estatePlanState.daysLeft > 10 &&
+      !extendSubscription
     );
   }, [
     estatePlanState.isActive,
     estatePlanState.isTrial,
     selectedAddOns.length,
     estatePlanState.daysLeft,
+    extendSubscription,
   ]);
 
   // Effective duration calculation
@@ -229,6 +232,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
       estatePlanState.isExpired ? estatePlanState.activeAddons : [],
     );
     setValidationError(null);
+    setExtendSubscription(false);
     setPlanDuration(1);
     onClose();
   };
@@ -263,7 +267,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 
     try {
       setLoading(true);
-      await db.subscribe(activeEstate.id, selectedAddOns, effectiveDuration);
+      await db.subscribe(activeEstate.id, selectedAddOns, effectiveDuration, extendSubscription);
       handleClose();
     } catch (error: any) {
       setValidationError(error.message || "Failed to initialize payment");
@@ -271,6 +275,15 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
       setLoading(false);
     }
   };
+
+  const isIdleActiveState = estatePlanState.isActive && !extendSubscription;
+
+  const isSelectDisabled = isProratedToActivePeriod || isIdleActiveState;
+
+  const canConfirm =
+    estatePlanState.isExpired ||
+    (estatePlanState.isActive && extendSubscription) ||
+    isProratedToActivePeriod;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
@@ -342,46 +355,77 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
           </div>
 
           {/* Subscription Duration Selector */}
-          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
-                <Calendar size={20} />
+          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-4">
+            {/* Top Row: Title + Dropdown */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+                  <Calendar size={20} />
+                </div>
+                <div>
+                  <h5 className="font-bold text-slate-900 text-sm">
+                    Subscription Duration
+                  </h5>
+                  <p className="text-xs text-slate-500">
+                    {isProratedToActivePeriod
+                      ? `Prorated to active period (${estatePlanState.daysLeft} days remaining)`
+                      : extendSubscription
+                        ? `Extending subscription by ${planDuration} ${planDuration === 1 ? "month" : "months"}`
+                        : "Select billing duration length"}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h5 className="font-bold text-slate-900 text-sm">
-                  Subscription Duration
-                </h5>
-                <p className="text-xs text-slate-500">
-                  {isProratedToActivePeriod
-                    ? `Prorated to active period (${estatePlanState.daysLeft} days remaining)`
-                    : "Select billing duration length"}
-                </p>
+
+              <div className="w-full md:w-64">
+                <select
+                  disabled={isSelectDisabled}
+                  value={effectiveDuration}
+                  onChange={(e) => setPlanDuration(Number(e.target.value))}
+                  className={`w-full p-3 rounded-xl border text-sm font-bold transition-all ${
+                    isSelectDisabled
+                      ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
+                      : "bg-white border-slate-300 text-slate-900 focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none"
+                  }`}
+                >
+                  {Array.from({ length: 24 }, (_, i) => i + 1).map((month) => (
+                    <option key={month} value={month}>
+                      {month} {month === 1 ? "Month" : "Months"}{" "}
+                      {month === 12
+                        ? "(1 Year)"
+                        : month === 24
+                          ? "(2 Years)"
+                          : ""}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
-            <div className="w-full md:w-64">
-              <select
-                disabled={isProratedToActivePeriod}
-                value={effectiveDuration}
-                onChange={(e) => setPlanDuration(Number(e.target.value))}
-                className={`w-full p-3 rounded-xl border text-sm font-bold transition-all ${
-                  isProratedToActivePeriod
-                    ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
-                    : "bg-white border-slate-300 text-slate-900 focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none"
-                }`}
-              >
-                {Array.from({ length: 24 }, (_, i) => i + 1).map((month) => (
-                  <option key={month} value={month}>
-                    {month} {month === 1 ? "Month" : "Months"}{" "}
-                    {month === 12
-                      ? "(1 Year)"
-                      : month === 24
-                        ? "(2 Years)"
-                        : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Bottom Row: Extend Subscription Checkbox */}
+            {estatePlanState.isActive && !estatePlanState.isTrial && (
+              <div className="pt-3 border-t border-slate-200/60">
+                <label className="flex items-start space-x-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={extendSubscription}
+                    onChange={(e) => setExtendSubscription(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  />
+                  <div className="text-xs">
+                    <span className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">
+                      Extend active subscription duration
+                    </span>
+                    <p className="text-slate-500 mt-0.5 leading-relaxed">
+                      {extendSubscription
+                        ? `Your subscription end date will be pushed forward by ${planDuration} ${
+                            planDuration === 1 ? "month" : "months"
+                          }. Selected add-ons will cover both your remaining active period and the extended timeframe.`
+                        : "Check this box to stack additional duration onto your current expiry date instead of prorating."}
+                    </p>
+                  </div>
+                </label>
+              </div>
+            )}
           </div>
 
           {/* Add-Ons Section */}
@@ -464,21 +508,23 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
             </p>
           )}
 
-          <button
-            type="button"
-            onClick={handleConfirm}
-            disabled={loading}
-            className="w-full py-4 bg-slate-950 hover:bg-slate-900 active:scale-[0.99] disabled:opacity-75 disabled:cursor-not-allowed text-white rounded-2xl font-bold text-base transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin text-white" />
-                <span>Redirecting to Checkout...</span>
-              </>
-            ) : (
-              `Confirm Configuration (${effectiveDuration} ${effectiveDuration === 1 ? "Month" : "Months"})`
-            )}
-          </button>
+          {canConfirm ? (
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={loading}
+              className="w-full py-4 bg-slate-950 hover:bg-slate-900 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-2xl font-bold text-base transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin text-white" />
+                  <span>Redirecting to Checkout...</span>
+                </>
+              ) : (
+                `Confirm Configuration (${effectiveDuration} ${effectiveDuration === 1 ? "Month" : "Months"})`
+              )}
+            </button>
+          ) : null}
         </div>
       </div>
     </div>

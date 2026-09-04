@@ -3,7 +3,7 @@
 export type Role = "resident" | "admin" | "superadmin";
 
 export interface EmergencyContact {
-  id: number; // or string, depending on Date.now() or UUID
+  id: number; 
   name: string;
   phone: string;
 }
@@ -848,4 +848,40 @@ export interface GuardLocation {
   longitude: number;
   address?: string | null;
   timestamp: number;
+}
+
+// --- TYPES ---
+export type ScheduleMode = "specific" | "recurring";
+export type RecurringCadence = "daily" | "weekly" | "bi-weekly" | "tri-weekly";
+
+export interface ShiftPeriod {
+  id: string;
+  label?: string;
+  startTime: string;
+  endTime: string;
+  assignedGuardIds: string[];
+  startTimeDayOffset: number;
+  endTimeDayOffset: number;
+}
+
+export interface DateShiftGroup {
+  date: string; 
+  periods: ShiftPeriod[];
+}
+
+export interface ScheduleDefinition {
+  id: string;
+  name: string;
+  mode: ScheduleMode;
+
+  // Specific Dates Configuration
+  specificDateGroups?: DateShiftGroup[];
+
+  // Recurring Configuration
+  recurringCadence?: RecurringCadence;
+  startDate?: string;
+  endDate?: string;
+  recurringPeriods?: ShiftPeriod[];
+  useSingleGuardThroughout?: boolean;
+  singleGuardId?: string;
 }

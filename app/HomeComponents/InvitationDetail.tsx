@@ -19,12 +19,13 @@ const InvitationDetailModal = ({
   onClose,
   statusDetails,
 }: InvitationDetailProps) => {
-  const { user } = useUser();
+  const { user, contextEstateId } = useUser();
   if (!invite) return null;
   console.log("Invite:", invite);
   const isStaffEntry = invite.invite_type === "staff_entry";
-  const estateLocations: LocationPair[] =
-    user?.estate_id && invite.locations ? invite.locations[user.estate_id] : [];
+  const estateLocations: LocationPair[] = invite.locations
+    ? invite.locations[contextEstateId!]
+    : [];
 
   return (
     <div

@@ -13,7 +13,7 @@ import React, {
 } from "react";
 import { io, Socket } from "socket.io-client";
 // import localforage from 'localforage';
-import { GuardLocation, notification, UserContextType } from "./services/types";
+import { GuardLocation, notification, Plan, UserContextType } from "./services/types";
 import { User } from "./services/types";
 import { fetchNotifications } from "./services/apis";
 import { ExpiredSubscriptionModal } from "./HomeComponents/ExpiredSubscriptionModal";
@@ -35,8 +35,8 @@ interface UnifiedUserContextType extends UserContextType {
   setBadgeCount: (count: number) => void;
   loadingNotifications: boolean;
   socket: Socket | null;
-  plan: string | null;
-  setPlan: (plan: string | null) => void;
+  plan: Plan | null;
+  setPlan: (plan: Plan | null) => void;
   contextEstateId: string | null;
   setContextEstateId: (value: string) => void;
   getGuardLocation: (userId: string) => GuardLocation | undefined;
@@ -59,7 +59,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [badgeCount, setBadgeCount] = useState<number>(0);
   const [refreshTrigger, setRefreshTrigger] = useState<boolean>(false);
   const triggerRefresh = () => setRefreshTrigger((prev) => !prev);
-  const [plan, setPlan] = useState<string | null>(null);
+  const [plan, setPlan] = useState<Plan | null>(null);
   const [showRenewalModal, setShowRenewalModal] = useState(false);
   const guardLocationsRef = useRef<Record<string, GuardLocation>>({});
 

@@ -1,6 +1,7 @@
 import {
   PlanSelectionData,
   PricingConfig,
+  ScheduleDefinition,
   SecurityJoinRequest,
   SecurityLog,
   SecurityUser,
@@ -81,7 +82,6 @@ export const db = {
     }
 
     return res.json();
-    
   },
 
   getPricingConfig: async (): Promise<{
@@ -100,11 +100,17 @@ export const db = {
     estateId: string,
     selectedAddOns: string[] = [],
     planDuration: number = 1,
+    isExtension: boolean = false,
   ) => {
     const res = await fetch(`${baseUrl}/api/payment/subscribe`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ estateId, selectedAddOns, planDuration }),
+      body: JSON.stringify({
+        estateId,
+        selectedAddOns,
+        planDuration,
+        isExtension,
+      }),
       credentials: "include",
     });
 
@@ -374,5 +380,106 @@ export const securityDb = {
     }
     const data = await res.json();
     return data.logs as SecurityLog[];
+  },
+  createSecuritySchedule: async (
+    estate_id: string,
+    scheduleData: Omit<ScheduleDefinition, "id">,
+  ) => {
+    const res = await fetch(`${baseUrl}/api/security/schedules`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        estate_id,
+        ...scheduleData,
+      }),
+      credentials: "include",
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(
+        err.message || err.error || "Failed to create security schedule",
+      );
+    }
+
+    const data = await res.json();
+    return data;
+  },
+  // 11. Fetch all security schedules for an estate
+  getSchedules: async (estate_id: string) => {
+    const res = await fetch(`${baseUrl}/api/security/schedules/${estate_id}`, {
+      credentials: "include",
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message || err.error || "Failed to fetch schedules");
+    }
+
+    const data = await res.json();
+    return data;
+  },
+
+  // 12. Update an existing security schedule
+  updateSchedule: async (
+    scheduleId: string,
+    estate_id: string,
+    scheduleData: Partial<ScheduleDefinition>,
+  ): Promise<ScheduleDefinition> => {
+    const res = await fetch(`${baseUrl}/api/security/schedules/${scheduleId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        estate_id,
+        ...scheduleData,
+      }),
+      credentials: "include",
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(
+        err.message || err.error || "Failed to update security schedule",
+      );
+    }
+
+    const data = await res.json();
+    const s = data.schedule;
+
+    return {
+      id: s.id,
+      name: s.name,
+      mode: s.mode,
+      specificDateGroups: s.specific_date_groups,
+      recurringCadence: s.recurring_cadence,
+      startDate: s.start_date,
+      endDate: s.end_date,
+      recurringPeriods: s.recurring_periods,
+      useSingleGuardThroughout: s.use_single_guard_throughout,
+      singleGuardId: s.single_guard_id,
+    };
+  },
+
+  // 13. Delete a security schedule
+  deleteSchedule: async (scheduleId: string, estate_id: string) => {
+    const res = await fetch(
+      `${baseUrl}/api/security/schedules/${scheduleId}?estate_id=${estate_id}`,
+      {
+        method: "DELETE",
+        credentials: "include",
+      },
+    );
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message || err.error || "Failed to delete schedule");
+    }
+
+    const data = await res.json();
+    return data;
   },
 };

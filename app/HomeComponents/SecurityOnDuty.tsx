@@ -18,7 +18,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import {
-  fetchReadableAddress,
+  // fetchReadableAddress,
   formatTime,
   requestGuardLocation,
 } from "../services/apis";
@@ -246,7 +246,7 @@ export default function OnDutyPersonnel() {
                             <span className="flex items-center gap-1 text-[10px] font-oswald font-bold px-2 py-0.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 shrink-0 uppercase tracking-wide">
                               {formatTime(
                                 guard.last_checkin
-                                  ?.split("T")[1]
+                                  ?.split(" ")[1]
                                   ?.split(".")[0],
                               )}
                             </span>

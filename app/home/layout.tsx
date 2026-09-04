@@ -31,14 +31,7 @@ export default function HomeLayout({
             <X size={24} />
           </button>
         )}
-        {plan === "security_only" ? (
-          <SecuritySideBar
-            isOpen={isSidebarOpen}
-            afterNavClick={closeAfterNavClick}
-          />
-        ) : (
-          <SideBar isOpen={isSidebarOpen} afterNavClick={closeAfterNavClick} />
-        )}
+        <SideBar isOpen={isSidebarOpen} afterNavClick={closeAfterNavClick} />
       </div>
       {children}
       {isSidebarOpen && (

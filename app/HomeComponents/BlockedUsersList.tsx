@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { UserMinus, ShieldCheck, Mail, Info } from "lucide-react";
 import { db } from "../services/database";
+import { useUser } from "../UserContext";
 
 interface BlockedUser {
   id: string;
@@ -21,6 +22,7 @@ const BlockedUsersList: React.FC<BlockedUsersListProps> = ({
   onUnblockSuccess,
   loading = false,
 }) => {
+  const { contextEstateId } = useUser();
   const [processingId, setProcessingId] = useState<string | null>(null);
 
   const handleUnblock = async (id: string, name: string) => {
@@ -29,7 +31,7 @@ const BlockedUsersList: React.FC<BlockedUsersListProps> = ({
 
     setProcessingId(id);
     try {
-      await db.handleUnblock(id);
+      await db.handleUnblock(id, contextEstateId!);
       onUnblockSuccess(id);
     } catch (err) {
       alert("Failed to unblock user. Please try again.");

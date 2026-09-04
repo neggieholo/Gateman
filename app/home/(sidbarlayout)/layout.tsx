@@ -2,8 +2,8 @@ import { headers } from "next/headers";
 import { isMobile } from "@/app/utils/ismobile";
 import HomeNavbar from "@/app/HomeComponents/HomeNavbar";
 import MobHomeNavbar from "@/app/HomeComponents/Mobile/MobHomeNavBar";
-import DynamicSideBar from "@/app/HomeComponents/DynamicSideBar";
 import EstateSelector from "@/app/HomeComponents/EstateSelector";
+import SideBar from "@/app/HomeComponents/SideBar";
 
 export default async function SidebarLayout({
   children,
@@ -18,7 +18,7 @@ export default async function SidebarLayout({
     <>
       {!mobileCheck ? (
         <div className="flex h-screen bg-[#F8FAFC] overflow-hidden">
-          <DynamicSideBar />
+          <SideBar />
           <div className="flex-1 flex flex-col h-full">
             <div className="h-24">
               <HomeNavbar />

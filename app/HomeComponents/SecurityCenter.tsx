@@ -10,6 +10,7 @@ import {
   AlertOctagon,
   FileText,
   ShieldAlert,
+  Calendar,
 } from "lucide-react";
 import GatePassesView from "./GatePassView";
 import SecurityJoinRequestsPage from "./SecurityJoinRequestPage";
@@ -18,11 +19,12 @@ import OnDutyPersonnel from "./SecurityOnDuty";
 import SecurityReportsView from "./SecurityReportsView";
 import UserLogsPage from "./UsersLogsPage";
 import { useUser } from "../UserContext";
+import SecuritySchedulesPage from "./SecuritySchedules";
 
 export default function SecurityManagement() {
   const { user } = useUser();
   const [activeTab, setActiveTab] = useState<
-    "requests" | "personnel" | "onduty" | "reports" | "gatepasses" | "logs"
+    "requests" | "personnel" | "onduty" | "reports" | "gatepasses" | "logs" | "schedules"
   >("requests");
 
   const tabs = [
@@ -65,6 +67,13 @@ export default function SecurityManagement() {
       id: "logs",
       label: "Logs",
       icon: FileText,
+      color: "text-slate-600",
+      bg: "bg-purple-50",
+    },
+    {
+      id: "schedules",
+      label: "Schedules",
+      icon: Calendar,
       color: "text-slate-600",
       bg: "bg-purple-50",
     },
@@ -116,6 +125,8 @@ export default function SecurityManagement() {
           {activeTab === "gatepasses" && <GatePassesView />}
 
           {activeTab === "logs" && <UserLogsPage role="SECURITY" />}
+
+          {activeTab === "schedules" && <SecuritySchedulesPage/>}
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center p-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200/80 max-w-xl mx-auto my-8">

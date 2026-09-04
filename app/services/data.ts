@@ -79,6 +79,26 @@ export const ESTATE_PERMISSIONS: PermissionNode[] = [
     name: "Delete Guard Account",
     parent_permission: "security_management",
   },
+  {
+    id: "view_security_schedules",
+    name: "View Security Schedules & Patrols",
+    parent_permission: "security_management",
+  },
+  {
+    id: "add_security_schedule",
+    name: "Create Security Schedules",
+    parent_permission: "security_management",
+  },
+  {
+    id: "edit_security_schedule",
+    name: "Modify & Update Security Schedules",
+    parent_permission: "security_management",
+  },
+  {
+    id: "delete_security_schedule",
+    name: "Delete Security Schedules",
+    parent_permission: "security_management",
+  },
 
   // ==========================================
   // VISITOR & ENTRY OPERATIONS (Gate Operations)
