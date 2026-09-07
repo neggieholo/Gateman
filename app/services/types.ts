@@ -885,3 +885,42 @@ export interface ScheduleDefinition {
   useSingleGuardThroughout?: boolean;
   singleGuardId?: string;
 }
+
+// Structure for individual shift items stored inside current_cycle_shifts and next_cycle_shifts
+export interface ProjectedShiftInstance {
+  period_id: string | null;
+  label: string;
+  start_date: string; // ISO Date format "YYYY-MM-DD"
+  start_time: string; // Time format "HH:mm"
+  end_date: string;   // ISO Date format "YYYY-MM-DD"
+  end_time: string;   // Time format "HH:mm"
+  guard_id: string | null;
+  guard_name?: string; // Optional: Hydrated on frontend fetch for UI display
+}
+
+// Interface matching the estate_security_schedule_projections database table
+export interface EstateSecurityScheduleProjection {
+  id: string;
+  estate_id: string;
+  schedule_id: string;
+  current_cycle_shifts: ProjectedShiftInstance[];
+  next_cycle_shifts: ProjectedShiftInstance[];
+  cycle_start_date: string;
+  cycle_end_date?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// Combined interface for calendar/view components
+export interface SecurityScheduleWithProjections {
+  id: string;
+  estate_id: string;
+  name: string;
+  mode: 'specific' | 'recurring';
+  recurring_cadence?: 'daily' | 'weekly' | 'bi-weekly' | 'tri-weekly' | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  use_single_guard_throughout: boolean;
+  single_guard_id?: string | null;
+  projections?: EstateSecurityScheduleProjection | null;
+}

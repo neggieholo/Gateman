@@ -2,7 +2,13 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import {
   Calendar as CalendarIcon,
   Plus,
@@ -104,8 +110,8 @@ export default function SecuritySchedulesPage() {
         <InteractiveCalendarTab
           selectedSchedule={selectedScheduleForCalendar}
           onBack={() => {
+            setActiveTab("builder");
             setSelectedScheduleForCalendar(null);
-            setActiveTab("calendar");
           }}
         />
       )}
@@ -155,35 +161,29 @@ export function ScheduleBuilderTab({
       .catch(console.error);
   }, [contextEstateId]);
 
-  const createInitialPeriodsForCadence = (
-    selectedCadence: RecurringCadence,
-  ): ShiftPeriod[] => {
-    const count =
-      selectedCadence === "weekly"
+  const maxDays = useMemo(() => {
+    const days =
+      cadence === "weekly"
         ? 7
-        : selectedCadence === "bi-weekly"
+        : cadence === "bi-weekly"
           ? 14
-          : selectedCadence === "tri-weekly"
+          : cadence === "tri-weekly"
             ? 21
-            : 1;
-
-    return Array.from({ length: count }, (_, i) => ({
-      id: uuidv4(),
-      label:
-        selectedCadence === "daily" ? `Period ${i + 1}` : `Day ${i + 1} Shift`,
-      startTime: "08:00",
-      endTime: "16:00",
-      startTimeDayOffset: selectedCadence === "daily" ? 0 : i,
-      endTimeDayOffset: selectedCadence === "daily" ? 0 : i,
-      assignedGuardIds: [],
-    }));
-  };
+            : 0;
+    return days;
+  }, [cadence]);
 
   // Handle Adding Specific Dates
   const handleAddDateGroup = () => {
-    if (!dateInput) return;
+    if (!dateInput) {
+      return toast.error("Please select a date before adding", {
+        id: "no_date_warning",
+      });
+    }
     if (specificGroups.some((g) => g.date === dateInput)) {
-      return toast.error("Date already added");
+      return toast.error("Date already added", {
+        id: "duplicate_date_warning",
+      });
     }
     setSpecificGroups([
       ...specificGroups,
@@ -262,35 +262,68 @@ export function ScheduleBuilderTab({
     );
   };
 
-  const handleDeleteRecurringPeriod = (id: string) => {
-    setRecurringPeriods((prev) => prev.filter((p) => p.id !== id));
-  };
+  const createInitialPeriodsForCadence = (
+    selectedCadence: RecurringCadence,
+  ): ShiftPeriod[] => {
+    const count =
+      selectedCadence === "weekly"
+        ? 7
+        : selectedCadence === "bi-weekly"
+          ? 14
+          : selectedCadence === "tri-weekly"
+            ? 21
+            : 1;
 
-  // Helper to calculate End Date based on Cadence and Start Date
-  const calculateEndDateForCadence = (
-    start: string,
-    currentCadence: RecurringCadence,
-  ): string => {
-    if (!start) return "";
-    const date = new Date(start);
-    if (isNaN(date.getTime())) return "";
-
-    let daysToAdd = 1; // default for daily
-    if (currentCadence === "weekly") daysToAdd = 7;
-    else if (currentCadence === "bi-weekly") daysToAdd = 14;
-    else if (currentCadence === "tri-weekly") daysToAdd = 21;
-
-    date.setDate(date.getDate() + daysToAdd - 1);
-    return date.toISOString().split("T")[0];
+    return Array.from({ length: count }, (_, i) => ({
+      id: uuidv4(),
+      label:
+        selectedCadence === "daily" ? `Period ${i + 1}` : `Day ${i + 1} Shift`,
+      startTime: "08:00",
+      endTime: "16:00",
+      startTimeDayOffset: i,
+      endTimeDayOffset: i,
+      assignedGuardIds: [],
+    }));
   };
 
   // Handle Cadence Change & update End Date automatically
   const handleCadenceChange = (newCadence: RecurringCadence) => {
+    resetForm();
     setCadence(newCadence);
     if (startDate) {
       setEndDate(calculateEndDateForCadence(startDate, newCadence));
     }
     setRecurringPeriods(createInitialPeriodsForCadence(newCadence));
+  };
+
+  const handleDeleteRecurringPeriod = (id: string) => {
+    setRecurringPeriods((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const calculateEndDateForCadence = (
+    start: string,
+    currentCadence: RecurringCadence,
+    periods: ShiftPeriod[] = recurringPeriods,
+  ): string => {
+    if (!start) return "";
+    const date = new Date(start);
+    if (isNaN(date.getTime())) return "";
+
+    let daysToAdd = 1;
+    if (currentCadence === "weekly") daysToAdd = 7;
+    else if (currentCadence === "bi-weekly") daysToAdd = 14;
+    else if (currentCadence === "tri-weekly") daysToAdd = 21;
+    else if (currentCadence === "daily") daysToAdd = 1;
+
+    date.setDate(date.getDate() + daysToAdd - 1);
+    return date.toISOString().split("T")[0];
+  };
+
+  // Call this whenever setRecurringPeriods updates slots in daily mode
+  const updateDailyEndDate = () => {
+    if (cadence === "daily" && startDate) {
+      setEndDate(calculateEndDateForCadence(startDate, "daily"));
+    }
   };
 
   // Handle Start Date Change & update End Date automatically
@@ -303,15 +336,6 @@ export function ScheduleBuilderTab({
 
   // Add new recurring period with smart time/dayOffset calculation
   const addRecurringPeriod = () => {
-    const maxDays =
-      cadence === "weekly"
-        ? 7
-        : cadence === "bi-weekly"
-          ? 14
-          : cadence === "tri-weekly"
-            ? 21
-            : 1;
-
     let newStartTime = "08:00";
     let newEndTime = "16:00";
     let newStartOffset = 0;
@@ -320,7 +344,7 @@ export function ScheduleBuilderTab({
       const last = recurringPeriods[recurringPeriods.length - 1];
 
       // Starts on the exact day offset where the last shift finished
-      newStartOffset = cadence === "daily" ? 0 : last.endTimeDayOffset;
+      newStartOffset = last.endTimeDayOffset;
       newStartTime = last.endTime;
 
       // Auto-calculate default 8-hour window
@@ -334,7 +358,9 @@ export function ScheduleBuilderTab({
     }
 
     // Check overnight wrap
-    const isOvernight = newStartTime >= newEndTime && newEndTime !== "00:00";
+    const isOvernight =
+      (newStartTime >= newEndTime && newEndTime !== "00:00") ||
+      newEndTime === "00:00";
     const newEndOffset = isOvernight ? newStartOffset + 1 : newStartOffset;
 
     // --- BOUNDARY VALIDATION ---
@@ -358,8 +384,8 @@ export function ScheduleBuilderTab({
             : `Day ${newStartOffset} Shift`,
         startTime: newStartTime,
         endTime: newEndTime,
-        startTimeDayOffset: cadence === "daily" ? 0 : newStartOffset,
-        endTimeDayOffset: cadence === "daily" ? 0 : newEndOffset,
+        startTimeDayOffset: newStartOffset,
+        endTimeDayOffset: newEndOffset,
         assignedGuardIds: [],
       },
     ]);
@@ -434,7 +460,6 @@ export function ScheduleBuilderTab({
     }
 
     // --- 2. RECURRING MODE VALIDATION ---
-    // --- 2. RECURRING MODE VALIDATION ---
     if (mode === "recurring") {
       if (!startDate || !endDate) {
         return toast.error(
@@ -446,19 +471,10 @@ export function ScheduleBuilderTab({
         return toast.error("Please add at least one recurring period slot");
       }
 
-      const maxDays =
-        cadence === "weekly"
-          ? 7
-          : cadence === "bi-weekly"
-            ? 14
-            : cadence === "tri-weekly"
-              ? 21
-              : 1;
-
       // A. Check if ANY shift exceeds the current cadence window
       for (const period of recurringPeriods) {
         if (
-          cadence !== "daily" &&
+          maxDays > 0 &&
           (period.startTimeDayOffset >= maxDays ||
             period.endTimeDayOffset >= maxDays)
         ) {
@@ -473,7 +489,6 @@ export function ScheduleBuilderTab({
         const prev = recurringPeriods[i - 1];
         const curr = recurringPeriods[i];
 
-        const [prevStartH, prevStartM] = prev.startTime.split(":").map(Number);
         const [prevEndH, prevEndM] = prev.endTime.split(":").map(Number);
         const [currStartH, currStartM] = curr.startTime.split(":").map(Number);
 
@@ -487,6 +502,55 @@ export function ScheduleBuilderTab({
             `Time overlap detected: Shift "${curr.label}" starts before Shift "${prev.label}" ends.`,
           );
         }
+      }
+
+      if (recurringPeriods.length > 1) {
+        const first = recurringPeriods[0];
+        const last = recurringPeriods[recurringPeriods.length - 1];
+
+        const [firstStartH, firstStartM] = first.startTime
+          .split(":")
+          .map(Number);
+        const [lastEndH, lastEndM] = last.endTime.split(":").map(Number);
+
+        const totalCycleDays =
+          maxDays > 0
+            ? maxDays
+            : last.endTimeDayOffset - first.startTimeDayOffset;
+
+        const firstStartAbs =
+          first.startTimeDayOffset * 1440 + (firstStartH * 60 + firstStartM);
+        const lastEndAbs =
+          (last.endTimeDayOffset - totalCycleDays) * 1440 +
+          (lastEndH * 60 + lastEndM);
+
+        if (lastEndAbs > firstStartAbs) {
+          return toast.error(
+            `Cycle Rollover Overlap: Shift "${last.label}" ends at ${last.endTime}, which overlaps with Shift "${first.label}" starting at ${first.startTime} in the next repeating cycle.`,
+          );
+        }
+      }
+
+      const maxOffset = Math.max(
+        ...recurringPeriods.map(
+          (p) => p.endTimeDayOffset ?? p.startTimeDayOffset ?? 0,
+        ),
+      );
+      const requiredDays = Math.max(1, maxOffset + 1);
+
+      const [startY, startM, startD] = startDate.split("-").map(Number);
+      const minRequiredEndDate = new Date(Date.UTC(startY, startM - 1, startD));
+      minRequiredEndDate.setUTCDate(
+        minRequiredEndDate.getUTCDate() + requiredDays - 1,
+      );
+      const minEndDateStr = minRequiredEndDate.toISOString().split("T")[0];
+
+      if (endDate < minEndDateStr) {
+        return toast.error(
+          `Selected End Date (${endDate}) does not cover the full shift sequence. The schedule extends to Day ${
+            maxOffset + 1
+          }, requiring an End Date of at least ${minEndDateStr}.`,
+        );
       }
     }
 
@@ -518,6 +582,20 @@ export function ScheduleBuilderTab({
     } else {
       toast.error("Failed to create schedule. Please try again.");
     }
+  };
+
+  const resetForm = () => {
+    setScheduleName("");
+
+    // Specific Dates State
+    setSpecificGroups([]);
+    setDateInput("");
+
+    setStartDate(new Date().toISOString().split("T")[0]);
+    setEndDate("");
+    setUseSingleGuard(false);
+    setSingleGuardId("");
+    setRecurringPeriods([]);
   };
 
   return (
@@ -587,7 +665,10 @@ export function ScheduleBuilderTab({
                   type="radio"
                   name="scheduleMode"
                   checked={mode === "specific"}
-                  onChange={() => setMode("specific")}
+                  onChange={() => {
+                    setMode("specific");
+                    resetForm();
+                  }}
                   className="w-4 h-4 text-blue-600 focus:ring-blue-500"
                 />
                 <span className="text-xs font-bold text-slate-700">
@@ -600,7 +681,10 @@ export function ScheduleBuilderTab({
                   type="radio"
                   name="scheduleMode"
                   checked={mode === "recurring"}
-                  onChange={() => setMode("recurring")}
+                  onChange={() => {
+                    setMode("recurring");
+                    resetForm();
+                  }}
                   className="w-4 h-4 text-blue-600 focus:ring-blue-500"
                 />
                 <span className="text-xs font-bold text-slate-700">
@@ -636,125 +720,168 @@ export function ScheduleBuilderTab({
 
               {/* Index used as key for currently being created groups */}
               <div className="space-y-4 pt-2">
-                {specificGroups.map((group, groupIdx) => (
-                  <div
-                    key={group.date || groupIdx}
-                    className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3"
-                  >
-                    <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                      <span className="font-montserrat font-black text-xs text-blue-600">
-                        🗓️ {group.date}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setSpecificGroups((prev) =>
-                            prev.filter((_, idx) => idx !== groupIdx),
-                          )
-                        }
-                        className="text-slate-300 hover:text-rose-500 cursor-pointer"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+                {specificGroups.map((group, groupIdx) => {
+                  const addedDays = group.periods.reduce((acc, p) => {
+                    return p.startTime && p.endTime && p.startTime >= p.endTime
+                      ? acc + 1
+                      : acc;
+                  }, 0);
 
-                    {group.periods.map((period, periodIdx) => {
-                      const prevPeriod = group.periods[periodIdx - 1];
-                      const hasOverlap =
-                        prevPeriod && period.startTime < prevPeriod.endTime;
-
-                      return (
-                        <div
-                          key={periodIdx}
-                          className={`p-3 rounded-xl border space-y-2 text-xs transition-colors ${
-                            hasOverlap
-                              ? "bg-rose-50/50 border-rose-200"
-                              : "bg-slate-50 border-slate-100"
-                          }`}
-                        >
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                            <input
-                              type="text"
-                              placeholder="Shift Label"
-                              value={period.label}
-                              onChange={(e) =>
-                                updateSpecificPeriod(
-                                  groupIdx,
-                                  periodIdx,
-                                  e.target.value,
-                                  "label",
-                                )
-                              }
-                              className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs"
-                            />
-                            <input
-                              type="time"
-                              value={period.startTime}
-                              min={prevPeriod ? prevPeriod.endTime : undefined}
-                              onChange={(e) =>
-                                updateSpecificPeriod(
-                                  groupIdx,
-                                  periodIdx,
-                                  e.target.value,
-                                  "startTime",
-                                )
-                              }
-                              className={`px-2 py-1 bg-white border rounded-lg text-xs ${
-                                hasOverlap
-                                  ? "border-rose-400 text-rose-600 font-bold"
-                                  : "border-slate-200"
-                              }`}
-                            />
-                            <input
-                              type="time"
-                              value={period.endTime}
-                              onChange={(e) =>
-                                updateSpecificPeriod(
-                                  groupIdx,
-                                  periodIdx,
-                                  e.target.value,
-                                  "endTime",
-                                )
-                              }
-                              className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs"
-                            />
-                          </div>
-
-                          {/* Validation Warnings */}
-                          {hasOverlap && (
-                            <p className="text-[10px] text-rose-600 font-bold">
-                              ⚠️ Shift overlaps with the previous shift (ends at{" "}
-                              {prevPeriod.endTime}).
-                            </p>
+                  return (
+                    <div
+                      key={group.date || groupIdx}
+                      className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3"
+                    >
+                      <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-montserrat font-black text-xs text-blue-600">
+                            🗓️ {group.date}
+                          </span>
+                          {addedDays > 0 && (
+                            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-bold rounded-full flex items-center gap-1">
+                              Spans {addedDays} extra day
+                              {addedDays > 1 ? "s" : ""}
+                            </span>
                           )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSpecificGroups((prev) =>
+                              prev.filter((_, idx) => idx !== groupIdx),
+                            )
+                          }
+                          className="text-slate-300 hover:text-rose-500 cursor-pointer"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
 
-                          {period.startTime >= period.endTime &&
-                            !hasOverlap && (
-                              <p className="text-[10px] text-purple-600 font-bold">
-                                🌙 Overnight Shift (+1 Day)
+                      {group.periods.map((period, periodIdx) => {
+                        const prevPeriod = group.periods[periodIdx - 1];
+                        const hasOverlap =
+                          prevPeriod && period.startTime < prevPeriod.endTime;
+
+                        return (
+                          <div
+                            key={periodIdx}
+                            className={`p-3 rounded-xl border space-y-2 text-xs transition-colors ${
+                              hasOverlap
+                                ? "bg-rose-50/50 border-rose-200"
+                                : "bg-slate-50 border-slate-100"
+                            }`}
+                          >
+                            {/* Header row with period label and delete action */}
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 flex-1">
+                                <input
+                                  type="text"
+                                  placeholder="Shift Label"
+                                  value={period.label}
+                                  onChange={(e) =>
+                                    updateSpecificPeriod(
+                                      groupIdx,
+                                      periodIdx,
+                                      e.target.value,
+                                      "label",
+                                    )
+                                  }
+                                  className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs"
+                                />
+                                <input
+                                  type="time"
+                                  value={period.startTime}
+                                  min={
+                                    prevPeriod ? prevPeriod.endTime : undefined
+                                  }
+                                  onChange={(e) =>
+                                    updateSpecificPeriod(
+                                      groupIdx,
+                                      periodIdx,
+                                      e.target.value,
+                                      "startTime",
+                                    )
+                                  }
+                                  className={`px-2 py-1 bg-white border rounded-lg text-xs ${
+                                    hasOverlap
+                                      ? "border-rose-400 text-rose-600 font-bold"
+                                      : "border-slate-200"
+                                  }`}
+                                />
+                                <input
+                                  type="time"
+                                  value={period.endTime}
+                                  onChange={(e) =>
+                                    updateSpecificPeriod(
+                                      groupIdx,
+                                      periodIdx,
+                                      e.target.value,
+                                      "endTime",
+                                    )
+                                  }
+                                  className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs"
+                                />
+                              </div>
+
+                              {/* Delete Period Button */}
+                              <button
+                                type="button"
+                                title="Delete Shift Period"
+                                onClick={() => {
+                                  setSpecificGroups((prev) =>
+                                    prev.map((g, gIdx) => {
+                                      if (gIdx !== groupIdx) return g;
+                                      return {
+                                        ...g,
+                                        periods: g.periods.filter(
+                                          (_, pIdx) => pIdx !== periodIdx,
+                                        ),
+                                      };
+                                    }),
+                                  );
+                                }}
+                                className="text-slate-300 hover:text-rose-500 transition-colors p-1 cursor-pointer"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+
+                            {/* Validation Warnings */}
+                            {hasOverlap && (
+                              <p className="text-[10px] text-rose-600 font-bold">
+                                ⚠️ Shift overlaps with the previous shift (ends
+                                at {prevPeriod.endTime}).
                               </p>
                             )}
 
-                          <GuardAssignmentDropdown
-                            guards={guards}
-                            period={period}
-                            groupIdx={groupIdx}
-                            periodIdx={periodIdx}
-                            setSpecificGroups={setSpecificGroups}
-                          />
-                        </div>
-                      );
-                    })}
+                            {period.startTime >= period.endTime &&
+                              !hasOverlap && (
+                                <p className="text-[10px] text-purple-600 font-bold">
+                                  🌙 Overnight Shift (+1 Day)
+                                </p>
+                              )}
 
-                    <button
-                      type="button"
-                      onClick={() => addPeriodToDateGroup(group.date)}
-                      className="text-[11px] font-bold text-blue-600 hover:underline flex items-center gap-1 cursor-pointer"
-                    >
-                      <Plus size={12} /> Add Shift Period to {group.date}
-                    </button>
-                  </div>
-                ))}
+                            <GuardAssignmentDropdown
+                              guards={guards}
+                              period={period}
+                              groupIdx={groupIdx}
+                              periodIdx={periodIdx}
+                              setSpecificGroups={setSpecificGroups}
+                            />
+                          </div>
+                        );
+                      })}
+
+                      <button
+                        type="button"
+                        onClick={() => addPeriodToDateGroup(group.date)}
+                        className="text-[11px] font-bold text-blue-600 hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Plus size={12} /> Add Shift Period to {group.date}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -774,7 +901,7 @@ export function ScheduleBuilderTab({
                     }
                     className="w-full mt-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium"
                   >
-                    <option value="daily">Daily (Hour-Cycle Repeating)</option>
+                    <option value="daily">Daily (Freestyle)</option>
                     <option value="weekly">Weekly (7-Day Cycle)</option>
                     <option value="bi-weekly">Bi-Weekly (14-Day Cycle)</option>
                     <option value="tri-weekly">
@@ -853,7 +980,10 @@ export function ScheduleBuilderTab({
                   </label>
                   <button
                     type="button"
-                    onClick={addRecurringPeriod}
+                    onClick={() => {
+                      addRecurringPeriod();
+                      updateDailyEndDate();
+                    }}
                     className="px-3 py-1 bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer hover:bg-slate-700"
                   >
                     <Plus size={12} /> Add Period Slot
@@ -862,13 +992,12 @@ export function ScheduleBuilderTab({
 
                 {recurringPeriods.map((period, idx) => {
                   const prevPeriod = recurringPeriods[idx - 1];
+                  const firstPeriod = recurringPeriods[0];
+                  const isLastPeriod = idx === recurringPeriods.length - 1;
 
-                  // Absolute minute checks for exact chronological sequence overlap detection
-                  let hasOverlap = false;
+                  // 1. Check Sequential Overlap (Current Shift vs Previous Shift)
+                  let hasSequentialOverlap = false;
                   if (prevPeriod) {
-                    const [pStartH, pStartM] = prevPeriod.startTime
-                      .split(":")
-                      .map(Number);
                     const [pEndH, pEndM] = prevPeriod.endTime
                       .split(":")
                       .map(Number);
@@ -882,8 +1011,40 @@ export function ScheduleBuilderTab({
                       period.startTimeDayOffset * 1440 +
                       (cStartH * 60 + cStartM);
 
-                    hasOverlap = currStartAbs < prevEndAbs;
+                    hasSequentialOverlap = currStartAbs < prevEndAbs;
                   }
+
+                  let hasRolloverOverlap = false;
+                  if (
+                    isLastPeriod &&
+                    firstPeriod &&
+                    recurringPeriods.length > 1
+                  ) {
+                    const totalCycleDays =
+                      maxDays > 0
+                        ? maxDays
+                        : period.endTimeDayOffset -
+                          firstPeriod.startTimeDayOffset;
+
+                    const [currEndH, currEndM] = period.endTime
+                      .split(":")
+                      .map(Number);
+                    const [firstStartH, firstStartM] = firstPeriod.startTime
+                      .split(":")
+                      .map(Number);
+
+                    const currEndNormalized =
+                      (period.endTimeDayOffset - totalCycleDays) * 1440 +
+                      (currEndH * 60 + currEndM);
+                    const firstStartNormalized =
+                      firstPeriod.startTimeDayOffset * 1440 +
+                      (firstStartH * 60 + firstStartM);
+
+                    hasRolloverOverlap =
+                      currEndNormalized > firstStartNormalized;
+                  }
+
+                  const hasOverlap = hasSequentialOverlap || hasRolloverOverlap;
 
                   const isOvernight =
                     period.startTime >= period.endTime &&
@@ -981,70 +1142,87 @@ export function ScheduleBuilderTab({
                         </div>
                       </div>
 
-                      {cadence !== "daily" && (
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="text-[9px] font-black uppercase text-slate-400">
-                              Start Day Offset
-                            </label>
-                            <input
-                              type="number"
-                              min="0"
-                              max={
-                                cadence === "weekly"
-                                  ? 6
-                                  : cadence === "bi-weekly"
-                                    ? 13
-                                    : 20
-                              }
-                              value={period.startTimeDayOffset ?? 0}
-                              onChange={(e) => {
-                                const val = parseInt(e.target.value, 10) || 0;
-                                setRecurringPeriods((prev) =>
-                                  prev.map((p, i) => {
-                                    if (i !== idx) return p;
-                                    const checkOvernight =
-                                      p.startTime >= p.endTime &&
-                                      p.endTime !== "00:00";
-                                    return {
-                                      ...p,
-                                      startTimeDayOffset: val,
-                                      endTimeDayOffset: checkOvernight
-                                        ? val + 1
-                                        : val,
-                                    };
-                                  }),
-                                );
-                              }}
-                              className="w-full mt-0.5 px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs"
-                            />
-                          </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[9px] font-black uppercase text-slate-400">
+                            Start Day Number
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            max={cadence !== "daily" ? maxDays : undefined}
+                            value={(period.startTimeDayOffset ?? 0) + 1}
+                            onChange={(e) => {
+                              const rawUserVal =
+                                parseInt(e.target.value, 10) || 1;
+                              const internalOffset = Math.max(
+                                0,
+                                rawUserVal - 1,
+                              );
 
-                          <div>
-                            <label className="text-[9px] font-black uppercase text-slate-400">
-                              End Day Offset
-                            </label>
-                            <input
-                              type="number"
-                              readOnly
-                              value={period.endTimeDayOffset ?? 0}
-                              className="w-full mt-0.5 px-2 py-1 bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold text-slate-500 cursor-not-allowed"
-                            />
-                          </div>
+                              setRecurringPeriods((prev) =>
+                                prev.map((p, i) => {
+                                  if (i !== idx) return p;
+                                  const checkOvernight =
+                                    p.startTime >= p.endTime &&
+                                    p.endTime !== "00:00";
+                                  return {
+                                    ...p,
+                                    startTimeDayOffset: internalOffset,
+                                    endTimeDayOffset: checkOvernight
+                                      ? internalOffset + 1
+                                      : internalOffset,
+                                  };
+                                }),
+                              );
+                            }}
+                            className="w-full mt-0.5 px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                          />
                         </div>
-                      )}
+
+                        <div>
+                          <label className="text-[9px] font-black uppercase text-slate-400">
+                            End Day Number
+                          </label>
+                          <input
+                            type="number"
+                            readOnly
+                            /* Shows Day 1 visually if offset equals maxDays (Day 8 internal offset = 7) */
+                            value={
+                              maxDays > 0 && period.endTimeDayOffset >= maxDays
+                                ? 1
+                                : (period.endTimeDayOffset ?? 0) + 1
+                            }
+                            className="w-full mt-0.5 px-2 py-1 bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold text-slate-500 cursor-not-allowed"
+                          />
+                        </div>
+                      </div>
 
                       {/* Validation Warnings */}
-                      {hasOverlap && (
+                      {hasSequentialOverlap && (
                         <p className="text-[10px] text-rose-600 font-bold">
                           ⚠️ Shift overlaps with the previous shift.
+                        </p>
+                      )}
+
+                      {hasRolloverOverlap && (
+                        <p className="text-[10px] text-rose-600 font-bold">
+                          ⚠️ Shift ends at {period.endTime} on Day 1 of the next
+                          cycle, overlapping with Shift 1 starting at{" "}
+                          {firstPeriod?.startTime}.
                         </p>
                       )}
 
                       {isOvernight && !hasOverlap && (
                         <p className="text-[10px] text-purple-600 font-bold">
                           🌙 Overnight Shift (Ends on Day{" "}
-                          {period.endTimeDayOffset})
+                          {period.endTimeDayOffset >= maxDays
+                            ? 1
+                            : period.endTimeDayOffset + 1}{" "}
+                          {period.endTimeDayOffset >= maxDays
+                            ? "of Next Cycle"
+                            : ""}
+                          )
                         </p>
                       )}
 
@@ -1068,7 +1246,7 @@ export function ScheduleBuilderTab({
           <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
             <button
               type="button"
-              onClick={() => setIsModalOpen(false)}
+              onClick={() => {resetForm(); setIsModalOpen(false);}}
               className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition-all cursor-pointer"
             >
               Cancel
@@ -1696,7 +1874,6 @@ const GuardAssignmentDropdown = ({
     </div>
   );
 };
-
 
 interface RecurringGuardDropdownProps {
   guards: Array<{ id: string; name: string }>;
