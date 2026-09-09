@@ -43,6 +43,10 @@ import {
 } from "../services/types";
 import { securityDb } from "../services/database";
 import { showAccessDeniedToast } from "./Users";
+import {
+  GuardAssignmentDropdown,
+  RecurringGuardDropdown,
+} from "./ScheduleGuardSelect";
 
 interface InteractiveCalendarTabProps {
   selectedSchedule: ScheduleDefinition | null;
@@ -152,6 +156,7 @@ export function ScheduleBuilderTab({
   const [useSingleGuard, setUseSingleGuard] = useState(false);
   const [singleGuardId, setSingleGuardId] = useState("");
   const [recurringPeriods, setRecurringPeriods] = useState<ShiftPeriod[]>([]);
+  const recurringbottomRef = useRef(null as HTMLDivElement | null);
 
   useEffect(() => {
     if (!contextEstateId) return;
@@ -203,22 +208,28 @@ export function ScheduleBuilderTab({
       },
     ]);
     setDateInput("");
+    setTimeout(() => {
+      recurringbottomRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "end",
+      });
+    }, 100);
   };
 
-  // Helper to calculate next start/end times safely
   const getNextPeriodTimes = (periods: any[]) => {
     if (periods.length === 0) {
-      return { startTime: "08:00", endTime: "16:00" };
+      return { startTime: "08:00", endTime: "16:00", startOffset: 0 };
     }
 
     const lastPeriod = periods[periods.length - 1];
     const lastEnd = lastPeriod.endTime;
 
-    // Convert HH:MM to minutes
+    // The start offset of the NEW shift is the end offset of the LAST shift
+    const startOffset = lastPeriod.endTimeDayOffset ?? 0;
+
     const [hours, mins] = lastEnd.split(":").map(Number);
     const totalMins = hours * 60 + mins;
 
-    // Default next shift duration: 8 hours (480 mins)
     const nextStartMins = totalMins % (24 * 60);
     const nextEndMins = (nextStartMins + 480) % (24 * 60);
 
@@ -233,15 +244,24 @@ export function ScheduleBuilderTab({
     return {
       startTime: formatTime(nextStartMins),
       endTime: formatTime(nextEndMins),
+      startOffset,
     };
   };
 
+  // Helper to calculate next start/end times safely
   const addPeriodToDateGroup = (dateStr: string) => {
     setSpecificGroups((prev) =>
       prev.map((group) => {
         if (group.date !== dateStr) return group;
 
-        const { startTime, endTime } = getNextPeriodTimes(group.periods);
+        const { startTime, endTime, startOffset } = getNextPeriodTimes(
+          group.periods,
+        );
+
+        const isOvernight =
+          (startTime >= endTime && endTime !== "00:00") || endTime === "00:00";
+
+        const newEndOffset = isOvernight ? startOffset + 1 : startOffset;
 
         return {
           ...group,
@@ -253,13 +273,19 @@ export function ScheduleBuilderTab({
               startTime,
               endTime,
               assignedGuardIds: [],
-              startTimeDayOffset: 0,
-              endTimeDayOffset: 0,
+              startTimeDayOffset: startOffset, // Starts on the offset inherited from previous shift end
+              endTimeDayOffset: newEndOffset,
             },
           ],
         };
       }),
     );
+    setTimeout(() => {
+      recurringbottomRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "end",
+      });
+    }, 100);
   };
 
   const createInitialPeriodsForCadence = (
@@ -389,6 +415,12 @@ export function ScheduleBuilderTab({
         assignedGuardIds: [],
       },
     ]);
+    setTimeout(() => {
+      recurringbottomRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "end", 
+      });
+    }, 100);
   };
 
   const handleDeleteSchedule = async (id: string) => {
@@ -417,16 +449,52 @@ export function ScheduleBuilderTab({
     field: string,
   ) => {
     setSpecificGroups((prev) =>
-      prev.map((g, gIdx) =>
-        gIdx === gIndex
-          ? {
-              ...g,
-              periods: g.periods.map((p, pIdx) =>
-                pIdx === pIndex ? { ...p, [field]: val } : p,
-              ),
-            }
-          : g,
-      ),
+      prev.map((g, gIdx) => {
+        if (gIdx !== gIndex) return g;
+
+        const isTimeField = field === "startTime" || field === "endTime";
+
+        // Simple update for non-time fields (label, guards, etc.)
+        if (!isTimeField) {
+          return {
+            ...g,
+            periods: g.periods.map((p, pIdx) =>
+              pIdx === pIndex ? { ...p, [field]: val } : p,
+            ),
+          };
+        }
+
+        // Cascade offset recalculation across all periods when a time changes
+        let currentOffset = 0;
+        const updatedPeriods = g.periods.map((p, pIdx) => {
+          const updated = pIdx === pIndex ? { ...p, [field]: val } : { ...p };
+
+          const startTimeDayOffset = currentOffset;
+
+          const isOvernight =
+            (updated.startTime >= updated.endTime &&
+              updated.endTime !== "00:00") ||
+            updated.endTime === "00:00";
+
+          const endTimeDayOffset = isOvernight
+            ? currentOffset + 1
+            : currentOffset;
+
+          // Carry forward the end offset to the next period in line
+          currentOffset = endTimeDayOffset;
+
+          return {
+            ...updated,
+            startTimeDayOffset,
+            endTimeDayOffset,
+          };
+        });
+
+        return {
+          ...g,
+          periods: updatedPeriods,
+        };
+      }),
     );
   };
 
@@ -446,13 +514,33 @@ export function ScheduleBuilderTab({
           const prev = group.periods[i - 1];
           const curr = group.periods[i];
 
-          // Handles same-day overlap and shifts starting before an overnight shift ends
-          const prevIsOvernight =
-            prev.startTime >= prev.endTime && prev.endTime !== "00:00";
+          const [prevStartH, prevStartM] = prev.startTime
+            .split(":")
+            .map(Number);
+          const [prevEndH, prevEndM] = prev.endTime.split(":").map(Number);
+          const [currStartH, currStartM] = curr.startTime
+            .split(":")
+            .map(Number);
 
-          if (curr.startTime < prev.endTime || prevIsOvernight) {
+          // Convert times to absolute minutes from Day 0 00:00
+          const prevStartAbs =
+            (prev.startTimeDayOffset ?? 0) * 1440 +
+            (prevStartH * 60 + prevStartM);
+
+          // If end time is 00:00, it marks the exact start of the next day (endTimeDayOffset * 1440)
+          const prevEndAbs =
+            prev.endTime === "00:00"
+              ? (prev.endTimeDayOffset ?? 0) * 1440
+              : (prev.startTimeDayOffset ?? 0) * 1440 +
+                (prevEndH * 60 + prevEndM);
+
+          const currStartAbs =
+            (curr.startTimeDayOffset ?? 0) * 1440 +
+            (currStartH * 60 + currStartM);
+
+          if (currStartAbs < prevEndAbs) {
             return toast.error(
-              `Time overlap detected on ${group.date}: Shift "${curr.label}" overlaps with Shift "${prev.label}".`,
+              `Time overlap detected on ${group.date}: Shift "${curr.label}" starts before Shift "${prev.label}" ends.`,
             );
           }
         }
@@ -625,7 +713,7 @@ export function ScheduleBuilderTab({
       {isModalOpen ? (
         <form
           onSubmit={handleSaveSchedule}
-          className="bg-white border border-slate-200 p-6 sm:p-8 rounded-3xl space-y-6 shadow-md animate-in fade-in zoom-in-95 duration-200"
+          className="bg-white border border-slate-200 p-6 sm:p-8 rounded-3xl space-y-6 shadow-md animate-in fade-in zoom-in-95 duration-200 pb-12"
         >
           <div className="flex justify-between items-center border-b border-slate-100 pb-4">
             <h4 className="font-montserrat font-black text-slate-800 text-base uppercase tracking-wide">
@@ -1246,7 +1334,10 @@ export function ScheduleBuilderTab({
           <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
             <button
               type="button"
-              onClick={() => {resetForm(); setIsModalOpen(false);}}
+              onClick={() => {
+                resetForm();
+                setIsModalOpen(false);
+              }}
               className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition-all cursor-pointer"
             >
               Cancel
@@ -1258,6 +1349,8 @@ export function ScheduleBuilderTab({
               Save Schedule
             </button>
           </div>
+
+          <div ref={recurringbottomRef} className="h-4 w-full" />
         </form>
       ) : (
         /* MODE 2: SCHEDULES LIST VIEW */
@@ -1759,217 +1852,3 @@ export function InteractiveCalendarTab({
 }
 
 // Dropdown Checkbox List Component
-interface GuardAssignmentDropdownProps {
-  guards: any[];
-  period: any;
-  groupIdx: number;
-  periodIdx: number;
-  setSpecificGroups: React.Dispatch<React.SetStateAction<any[]>>;
-}
-
-const GuardAssignmentDropdown = ({
-  guards,
-  period,
-  groupIdx,
-  periodIdx,
-  setSpecificGroups,
-}: GuardAssignmentDropdownProps) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Close dropdown on click outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const assignedCount = period.assignedGuardIds.length;
-
-  const toggleGuardAssignment = (guardId: string | number) => {
-    setSpecificGroups((prev) =>
-      prev.map((grp, gIdx) =>
-        gIdx === groupIdx
-          ? {
-              ...grp,
-              periods: grp.periods.map((p: any, pIdx: number) => {
-                if (pIdx !== periodIdx) return p;
-                const exists = p.assignedGuardIds.includes(guardId);
-                return {
-                  ...p,
-                  assignedGuardIds: exists
-                    ? p.assignedGuardIds.filter((id: any) => id !== guardId)
-                    : [...p.assignedGuardIds, guardId],
-                };
-              }),
-            }
-          : grp,
-      ),
-    );
-  };
-
-  return (
-    <div className="relative inline-block text-left w-full" ref={dropdownRef}>
-      <p className="text-[9px] font-black uppercase text-slate-400 mb-1">
-        Assigned Guards
-      </p>
-
-      {/* Dropdown Toggle Button */}
-      <button
-        type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
-        className="w-full flex items-center justify-between px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 shadow-sm hover:border-slate-300 transition-colors cursor-pointer"
-      >
-        <span className="truncate">
-          {assignedCount === 0
-            ? "Select guards..."
-            : `${assignedCount} Guard${assignedCount > 1 ? "s" : ""} Selected`}
-        </span>
-        <svg
-          className={`w-3.5 h-3.5 text-slate-400 transition-transform ${
-            isOpen ? "rotate-180" : ""
-          }`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M19 9l-7 7-7-7"
-          />
-        </svg>
-      </button>
-
-      {/* Checkbox Menu Popover */}
-      {isOpen && (
-        <div className="absolute left-0 mt-1 w-full max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg z-50 py-1">
-          {guards.map((g: any) => {
-            const isAssigned = period.assignedGuardIds.includes(g.id);
-            return (
-              <label
-                key={g.id}
-                className="flex items-center px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 cursor-pointer select-none transition-colors"
-              >
-                <input
-                  type="checkbox"
-                  checked={isAssigned}
-                  onChange={() => toggleGuardAssignment(g.id)}
-                  className="w-3.5 h-3.5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
-                />
-                <span className="ml-2 font-medium truncate">{g.name}</span>
-              </label>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-};
-
-interface RecurringGuardDropdownProps {
-  guards: Array<{ id: string; name: string }>;
-  period: any;
-  periodIdx: number;
-  setRecurringPeriods: React.Dispatch<React.SetStateAction<any[]>>;
-}
-
-export const RecurringGuardDropdown: React.FC<RecurringGuardDropdownProps> = ({
-  guards,
-  period,
-  periodIdx,
-  setRecurringPeriods,
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const assignedCount = period.assignedGuardIds?.length || 0;
-
-  return (
-    <div className="relative mt-2" ref={dropdownRef}>
-      <p className="text-[9px] font-black uppercase text-slate-400 mb-1">
-        Assigned Guards
-      </p>
-      <button
-        type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
-        className="w-full flex items-center justify-between px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-100 transition-colors"
-      >
-        <span className="flex items-center gap-1.5">
-          <ShieldCheck size={14} className="text-blue-600" />
-          {assignedCount === 0
-            ? "Assign Guards..."
-            : `${assignedCount} Guard${assignedCount > 1 ? "s" : ""} Assigned`}
-        </span>
-        <ChevronDown
-          size={14}
-          className={`transition-transform ${isOpen ? "rotate-180" : ""}`}
-        />
-      </button>
-
-      {isOpen && (
-        <div className="absolute z-30 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg p-2 max-h-48 overflow-y-auto space-y-1">
-          {guards.length === 0 ? (
-            <p className="text-[11px] text-slate-400 px-2 py-1">
-              No guards available
-            </p>
-          ) : (
-            guards.map((g) => {
-              const isAssigned = period.assignedGuardIds?.includes(g.id);
-              return (
-                <label
-                  key={g.id}
-                  className="flex items-center gap-2 px-2 py-1 hover:bg-slate-50 rounded-lg cursor-pointer text-xs font-medium text-slate-700"
-                >
-                  <input
-                    type="checkbox"
-                    checked={isAssigned}
-                    onChange={() => {
-                      setRecurringPeriods((prev) =>
-                        prev.map((p, i) => {
-                          if (i !== periodIdx) return p;
-                          const exists = p.assignedGuardIds?.includes(g.id);
-                          return {
-                            ...p,
-                            assignedGuardIds: exists
-                              ? p.assignedGuardIds.filter(
-                                  (id: string) => id !== g.id,
-                                )
-                              : [...(p.assignedGuardIds || []), g.id],
-                          };
-                        }),
-                      );
-                    }}
-                    className="w-3.5 h-3.5 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
-                  />
-                  <span>{g.name}</span>
-                </label>
-              );
-            })
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
