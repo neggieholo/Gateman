@@ -685,18 +685,19 @@ export const markAlertsAsRead = async (): Promise<boolean> => {
   }
 };
 
-export const fetchNotifications =
-  async (estate_id: string): Promise<FetchNotificationsResponse> => {
-    try {
-      const res = await fetch(`${baseUrl}/api/notifications/:${estate_id}`, {
-        method: "GET",
-        credentials: "include",
-      });
-      return await res.json();
-    } catch (err) {
-      return { success: false, list: [], lastReadAt: "1970-01-01" };
-    }
-  };
+export const fetchNotifications = async (
+  estate_id: string,
+): Promise<FetchNotificationsResponse> => {
+  try {
+    const res = await fetch(`${baseUrl}/api/notifications/:${estate_id}`, {
+      method: "GET",
+      credentials: "include",
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, list: [], lastReadAt: "1970-01-01" };
+  }
+};
 
 export const markAllAsReadApi = async () => {
   try {
@@ -758,7 +759,10 @@ export const postLogout = async () => {
   return data;
 };
 
-export const requestGuardLocation = async (guardId: string, estate_id: string) => {
+export const requestGuardLocation = async (
+  guardId: string,
+  estate_id: string,
+) => {
   try {
     const response = await fetch(
       `${baseUrl}/api/security/request-guard-location/${estate_id}`,
@@ -1320,4 +1324,18 @@ export const updatePaymentItems = async (
     console.error("API Error updating payment items:", err);
     return { success: false, error: "Network error updating payment items" };
   }
+};
+
+export const formatUtcDate = (dateStr?: string | null): string => {
+  if (!dateStr) return "";
+
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+
+  // Extract UTC components explicitly
+  const year = d.getUTCFullYear();
+  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
 };

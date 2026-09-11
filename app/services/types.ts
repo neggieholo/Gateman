@@ -3,7 +3,7 @@
 export type Role = "resident" | "admin" | "superadmin";
 
 export interface EmergencyContact {
-  id: number; 
+  id: number;
   name: string;
   phone: string;
 }
@@ -338,7 +338,7 @@ export interface SecurityUser {
   last_liveness_photo_url?: string;
   checkin_address: string;
   checkout_address: string;
-  last_known_address:string;
+  last_known_address: string;
   role: "SECURITY";
   id_type?: string;
   id_front_url?: string;
@@ -838,7 +838,6 @@ export interface PricingConfig {
   modules: ModulePricingMatrix;
 }
 
-
 export interface GuardLocation {
   userId: string;
   userName?: string;
@@ -865,7 +864,7 @@ export interface ShiftPeriod {
 }
 
 export interface DateShiftGroup {
-  date: string; 
+  date: string;
   periods: ShiftPeriod[];
 }
 
@@ -886,41 +885,59 @@ export interface ScheduleDefinition {
   singleGuardId?: string;
 }
 
-// Structure for individual shift items stored inside current_cycle_shifts and next_cycle_shifts
-export interface ProjectedShiftInstance {
+export interface ProjectionShift {
   period_id: string | null;
   label: string;
-  start_date: string; // ISO Date format "YYYY-MM-DD"
-  start_time: string; // Time format "HH:mm"
-  end_date: string;   // ISO Date format "YYYY-MM-DD"
-  end_time: string;   // Time format "HH:mm"
-  guard_id: string | null;
-  guard_name?: string; // Optional: Hydrated on frontend fetch for UI display
+  start_date: string;
+  start_time: string;
+  end_date: string;
+  end_time: string;
+  assigned_guard_ids: string[];
 }
 
-// Interface matching the estate_security_schedule_projections database table
-export interface EstateSecurityScheduleProjection {
+export interface SecurityScheduleProjection {
   id: string;
   estate_id: string;
   schedule_id: string;
-  current_cycle_shifts: ProjectedShiftInstance[];
-  next_cycle_shifts: ProjectedShiftInstance[];
-  cycle_start_date: string;
-  cycle_end_date?: string | null;
-  created_at: string;
+  current_cycle_shifts: ProjectionShift[];
+  next_cycle_shifts: ProjectionShift[];
+  current_cycle_start_date: string;
+  current_cycle_end_date: string;
+  next_cycle_start_date: string | null;
+  next_cycle_end_date: string | null;
   updated_at: string;
 }
 
-// Combined interface for calendar/view components
-export interface SecurityScheduleWithProjections {
+export interface FetchedSecuritySchedule {
   id: string;
   estate_id: string;
   name: string;
-  mode: 'specific' | 'recurring';
-  recurring_cadence?: 'daily' | 'weekly' | 'bi-weekly' | 'tri-weekly' | null;
-  start_date?: string | null;
-  end_date?: string | null;
+  mode: "specific" | "recurring";
+  specific_date_groups?: DateShiftGroup[];
+  recurring_cadence?: "daily" | "weekly" | "monthly" | "custom";
+  start_date?: string;
+  end_date?: string;
+  recurring_periods?: ShiftPeriod[];
   use_single_guard_throughout: boolean;
-  single_guard_id?: string | null;
-  projections?: EstateSecurityScheduleProjection | null;
+  single_guard_id?: string;
+  created_at: string;
+  updated_at: string;
+  created_by_name?: string;
+  created_by_email?: string;
+  projection: SecurityScheduleProjection | null;
+}
+
+export interface ScheduleGuard {
+  id: string;
+  name: string;
+  avatar?: string | null;
+  email?: string | null;
+  phone?: string | null;
+}
+
+export interface FetchSchedulesResponse {
+  success: boolean;
+  count: number;
+  schedules: FetchedSecuritySchedule[];
+  guardList: ScheduleGuard[];
 }

@@ -29,14 +29,19 @@ import {
   List,
   ShieldCheck,
   ChevronDown,
+  Loader,
+  Loader2,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useUser } from "../UserContext";
 import { v4 as uuidv4 } from "uuid";
 import {
   DateShiftGroup,
+  FetchedSecuritySchedule,
+  FetchSchedulesResponse,
   RecurringCadence,
   ScheduleDefinition,
+  ScheduleGuard,
   ScheduleMode,
   SecurityUser,
   ShiftPeriod,
@@ -47,17 +52,16 @@ import {
   GuardAssignmentDropdown,
   RecurringGuardDropdown,
 } from "./ScheduleGuardSelect";
+import { formatUtcDate } from "../services/apis";
+import SecurityScheduleDetailView from "./SecurityScheduleDetailView";
 
-interface InteractiveCalendarTabProps {
-  selectedSchedule: ScheduleDefinition | null;
-  onBack?: () => void;
-}
 
 export default function SecuritySchedulesPage() {
   const [activeTab, setActiveTab] = useState<"builder" | "calendar">("builder");
-  const [schedules, setSchedules] = useState<ScheduleDefinition[]>([]);
+  const [schedules, setSchedules] = useState<FetchedSecuritySchedule[]>([]);
+  const [scheduleGuards, setScheduleGuards] = useState<ScheduleGuard[]>([]);
   const [selectedScheduleForCalendar, setSelectedScheduleForCalendar] =
-    useState<ScheduleDefinition | null>(null);
+    useState<FetchedSecuritySchedule | null>(null);
   const { user, contextEstateId } = useUser();
   const canView =
     user?.permissions?.includes("security_management") ||
@@ -68,22 +72,13 @@ export default function SecuritySchedulesPage() {
     if (!contextEstateId) return;
 
     try {
-      const res = await securityDb.getSchedules(contextEstateId!);
+      const res: FetchSchedulesResponse =
+        await securityDb.getSchedules(contextEstateId);
       if (res.success) {
-        const schedules: ScheduleDefinition[] = res.schedules.map((s: any) => ({
-          id: s.id,
-          name: s.name,
-          mode: s.mode,
-          specificDateGroups: s.specific_date_groups,
-          recurringCadence: s.recurring_cadence,
-          startDate: s.start_date,
-          endDate: s.end_date,
-          recurringPeriods: s.recurring_periods,
-          useSingleGuardThroughout: s.use_single_guard_throughout,
-          singleGuardId: s.single_guard_id, // Fixed space typo here
-        }));
-
+        const schedules: FetchedSecuritySchedule[] = res.schedules;
+        const scheduleGuards: ScheduleGuard[] = res.guardList;
         setSchedules(schedules);
+        setScheduleGuards(scheduleGuards);
       }
     } catch (err) {
       toast.error("Failed to load schedules");
@@ -111,8 +106,9 @@ export default function SecuritySchedulesPage() {
           }}
         />
       ) : (
-        <InteractiveCalendarTab
+        <SecurityScheduleDetailView
           selectedSchedule={selectedScheduleForCalendar}
+          guards={scheduleGuards}
           onBack={() => {
             setActiveTab("builder");
             setSelectedScheduleForCalendar(null);
@@ -131,9 +127,9 @@ export function ScheduleBuilderTab({
   setSchedules,
   onViewCalendar,
 }: {
-  schedules: ScheduleDefinition[];
-  setSchedules: React.Dispatch<React.SetStateAction<ScheduleDefinition[]>>;
-  onViewCalendar: (sch: ScheduleDefinition) => void;
+  schedules: FetchedSecuritySchedule[];
+  setSchedules: React.Dispatch<React.SetStateAction<FetchedSecuritySchedule[]>>;
+  onViewCalendar: (sch: FetchedSecuritySchedule) => void;
 }) {
   const { contextEstateId } = useUser();
   const [guards, setGuards] = useState<SecurityUser[]>([]);
@@ -156,6 +152,7 @@ export function ScheduleBuilderTab({
   const [useSingleGuard, setUseSingleGuard] = useState(false);
   const [singleGuardId, setSingleGuardId] = useState("");
   const [recurringPeriods, setRecurringPeriods] = useState<ShiftPeriod[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
   const recurringbottomRef = useRef(null as HTMLDivElement | null);
 
   useEffect(() => {
@@ -302,8 +299,7 @@ export function ScheduleBuilderTab({
 
     return Array.from({ length: count }, (_, i) => ({
       id: uuidv4(),
-      label:
-        selectedCadence === "daily" ? `Period ${i + 1}` : `Day ${i + 1} Shift`,
+      label: `Day ${i + 1} Shift`,
       startTime: "08:00",
       endTime: "16:00",
       startTimeDayOffset: i,
@@ -406,7 +402,7 @@ export function ScheduleBuilderTab({
         id: uuidv4(),
         label:
           cadence === "daily"
-            ? `Period ${prev.length + 1}`
+            ? `Day ${prev.length + 1} Shift`
             : `Day ${newStartOffset} Shift`,
         startTime: newStartTime,
         endTime: newEndTime,
@@ -418,7 +414,7 @@ export function ScheduleBuilderTab({
     setTimeout(() => {
       recurringbottomRef.current?.scrollIntoView({
         behavior: "smooth",
-        block: "end", 
+        block: "end",
       });
     }, 100);
   };
@@ -502,173 +498,198 @@ export function ScheduleBuilderTab({
     e.preventDefault();
     if (!scheduleName) return toast.error("Schedule title is required");
 
-    // --- 1. SPECIFIC DATES MODE VALIDATION ---
-    if (mode === "specific") {
-      if (specificGroups.length === 0) {
-        return toast.error("Please add at least one date");
+    setIsSaving(true);
+
+    try {
+      // --- 1. SPECIFIC DATES MODE VALIDATION ---
+      if (mode === "specific") {
+        if (specificGroups.length === 0) {
+          return toast.error("Please add at least one date");
+        }
+
+        // Check for overlapping periods within each specific date group
+        for (const group of specificGroups) {
+          for (let i = 1; i < group.periods.length; i++) {
+            const prev = group.periods[i - 1];
+            const curr = group.periods[i];
+
+            const [prevStartH, prevStartM] = prev.startTime
+              .split(":")
+              .map(Number);
+            const [prevEndH, prevEndM] = prev.endTime.split(":").map(Number);
+            const [currStartH, currStartM] = curr.startTime
+              .split(":")
+              .map(Number);
+
+            // Convert times to absolute minutes from Day 0 00:00
+            const prevStartAbs =
+              (prev.startTimeDayOffset ?? 0) * 1440 +
+              (prevStartH * 60 + prevStartM);
+
+            // If end time is 00:00, it marks the exact start of the next day (endTimeDayOffset * 1440)
+            const prevEndAbs =
+              prev.endTime === "00:00"
+                ? (prev.endTimeDayOffset ?? 0) * 1440
+                : (prev.endTimeDayOffset ?? prev.startTimeDayOffset ?? 0) *
+                    1440 +
+                  (prevEndH * 60 + prevEndM);
+
+            const currStartAbs =
+              (curr.startTimeDayOffset ?? 0) * 1440 +
+              (currStartH * 60 + currStartM);
+
+            if (currStartAbs < prevEndAbs) {
+              return toast.error(
+                `Time overlap detected on ${group.date}: Shift "${curr.label}" starts before Shift "${prev.label}" ends.`,
+              );
+            }
+          }
+        }
       }
 
-      // Check for overlapping periods within each specific date group
-      for (const group of specificGroups) {
-        for (let i = 1; i < group.periods.length; i++) {
-          const prev = group.periods[i - 1];
-          const curr = group.periods[i];
+      // --- 2. RECURRING MODE VALIDATION ---
+      if (mode === "recurring") {
+        if (!startDate || !endDate) {
+          return toast.error(
+            "Please specify both Start and End dates for recurring schedule",
+          );
+        }
 
-          const [prevStartH, prevStartM] = prev.startTime
-            .split(":")
-            .map(Number);
+        if (recurringPeriods.length === 0) {
+          return toast.error("Please add at least one recurring period slot");
+        }
+
+        // A. Check if ANY shift exceeds the current cadence window
+        for (const period of recurringPeriods) {
+          if (
+            maxDays > 0 &&
+            (period.startTimeDayOffset >= maxDays ||
+              period.endTimeDayOffset >= maxDays)
+          ) {
+            return toast.error(
+              `Shift "${period.label}" extends to Day ${period.endTimeDayOffset}, which exceeds the ${cadence} limit (${maxDays} days).`,
+            );
+          }
+        }
+
+        // B. Check for shift overlaps using absolute minute comparisons
+        for (let i = 1; i < recurringPeriods.length; i++) {
+          const prev = recurringPeriods[i - 1];
+          const curr = recurringPeriods[i];
+
           const [prevEndH, prevEndM] = prev.endTime.split(":").map(Number);
           const [currStartH, currStartM] = curr.startTime
             .split(":")
             .map(Number);
 
-          // Convert times to absolute minutes from Day 0 00:00
-          const prevStartAbs =
-            (prev.startTimeDayOffset ?? 0) * 1440 +
-            (prevStartH * 60 + prevStartM);
-
-          // If end time is 00:00, it marks the exact start of the next day (endTimeDayOffset * 1440)
           const prevEndAbs =
-            prev.endTime === "00:00"
-              ? (prev.endTimeDayOffset ?? 0) * 1440
-              : (prev.startTimeDayOffset ?? 0) * 1440 +
-                (prevEndH * 60 + prevEndM);
-
+            prev.endTimeDayOffset * 1440 + (prevEndH * 60 + prevEndM);
           const currStartAbs =
-            (curr.startTimeDayOffset ?? 0) * 1440 +
-            (currStartH * 60 + currStartM);
+            curr.startTimeDayOffset * 1440 + (currStartH * 60 + currStartM);
 
           if (currStartAbs < prevEndAbs) {
             return toast.error(
-              `Time overlap detected on ${group.date}: Shift "${curr.label}" starts before Shift "${prev.label}" ends.`,
+              `Time overlap detected: Shift "${curr.label}" starts before Shift "${prev.label}" ends.`,
             );
           }
         }
-      }
-    }
 
-    // --- 2. RECURRING MODE VALIDATION ---
-    if (mode === "recurring") {
-      if (!startDate || !endDate) {
-        return toast.error(
-          "Please specify both Start and End dates for recurring schedule",
+        if (recurringPeriods.length > 1) {
+          const first = recurringPeriods[0];
+          const last = recurringPeriods[recurringPeriods.length - 1];
+
+          const [firstStartH, firstStartM] = first.startTime
+            .split(":")
+            .map(Number);
+          const [lastEndH, lastEndM] = last.endTime.split(":").map(Number);
+
+          const totalCycleDays =
+            maxDays > 0
+              ? maxDays
+              : last.endTimeDayOffset - first.startTimeDayOffset;
+
+          const firstStartAbs =
+            first.startTimeDayOffset * 1440 + (firstStartH * 60 + firstStartM);
+          const lastEndAbs =
+            (last.endTimeDayOffset - totalCycleDays) * 1440 +
+            (lastEndH * 60 + lastEndM);
+
+          if (lastEndAbs > firstStartAbs) {
+            return toast.error(
+              `Cycle Rollover Overlap: Shift "${last.label}" ends at ${last.endTime}, which overlaps with Shift "${first.label}" starting at ${first.startTime} in the next repeating cycle.`,
+            );
+          }
+        }
+
+        const maxOffset = Math.max(
+          ...recurringPeriods.map(
+            (p) => p.endTimeDayOffset ?? p.startTimeDayOffset ?? 0,
+          ),
+        );
+        const requiredDays = Math.max(1, maxOffset + 1);
+
+        const [startY, startM, startD] = startDate.split("-").map(Number);
+        const minRequiredEndDate = new Date(
+          Date.UTC(startY, startM - 1, startD),
+        );
+        minRequiredEndDate.setUTCDate(
+          minRequiredEndDate.getUTCDate() + requiredDays - 1,
+        );
+        const minEndDateStr = minRequiredEndDate.toISOString().split("T")[0];
+
+        if (endDate < minEndDateStr) {
+          return toast.error(
+            `Selected End Date (${endDate}) does not cover the full shift sequence. The schedule extends to Day ${
+              maxOffset + 1
+            }, requiring an End Date of at least ${minEndDateStr}.`,
+          );
+        }
+      }
+
+      if (useSingleGuard && !singleGuardId) {
+        return toast.error("Please select a guard for the single-guard allocation.");
+      }
+
+      // --- 3. PAYLOAD PREPARATION & DATABASE DISPATCH ---
+      const newSchedule: Omit<ScheduleDefinition, "id"> = {
+        name: scheduleName,
+        mode,
+        ...(mode === "specific"
+          ? { specificDateGroups: specificGroups }
+          : {
+              recurringCadence: cadence,
+              startDate,
+              endDate,
+              recurringPeriods,
+              useSingleGuardThroughout: useSingleGuard,
+              singleGuardId: useSingleGuard ? singleGuardId : undefined,
+            }),
+      };
+
+      const res = await securityDb.createSecuritySchedule(
+        contextEstateId!,
+        newSchedule,
+      );
+
+      if (res.success) {
+        setSchedules([...schedules, res.schedule]);
+        setIsModalOpen(false);
+        resetForm();
+        toast.success("Schedule created successfully!");
+      } else {
+        toast.error(
+          res.message || "Failed to create schedule. Please try again.",
         );
       }
-
-      if (recurringPeriods.length === 0) {
-        return toast.error("Please add at least one recurring period slot");
-      }
-
-      // A. Check if ANY shift exceeds the current cadence window
-      for (const period of recurringPeriods) {
-        if (
-          maxDays > 0 &&
-          (period.startTimeDayOffset >= maxDays ||
-            period.endTimeDayOffset >= maxDays)
-        ) {
-          return toast.error(
-            `Shift "${period.label}" extends to Day ${period.endTimeDayOffset}, which exceeds the ${cadence} limit (${maxDays} days).`,
-          );
-        }
-      }
-
-      // B. Check for shift overlaps using absolute minute comparisons
-      for (let i = 1; i < recurringPeriods.length; i++) {
-        const prev = recurringPeriods[i - 1];
-        const curr = recurringPeriods[i];
-
-        const [prevEndH, prevEndM] = prev.endTime.split(":").map(Number);
-        const [currStartH, currStartM] = curr.startTime.split(":").map(Number);
-
-        const prevEndAbs =
-          prev.endTimeDayOffset * 1440 + (prevEndH * 60 + prevEndM);
-        const currStartAbs =
-          curr.startTimeDayOffset * 1440 + (currStartH * 60 + currStartM);
-
-        if (currStartAbs < prevEndAbs) {
-          return toast.error(
-            `Time overlap detected: Shift "${curr.label}" starts before Shift "${prev.label}" ends.`,
-          );
-        }
-      }
-
-      if (recurringPeriods.length > 1) {
-        const first = recurringPeriods[0];
-        const last = recurringPeriods[recurringPeriods.length - 1];
-
-        const [firstStartH, firstStartM] = first.startTime
-          .split(":")
-          .map(Number);
-        const [lastEndH, lastEndM] = last.endTime.split(":").map(Number);
-
-        const totalCycleDays =
-          maxDays > 0
-            ? maxDays
-            : last.endTimeDayOffset - first.startTimeDayOffset;
-
-        const firstStartAbs =
-          first.startTimeDayOffset * 1440 + (firstStartH * 60 + firstStartM);
-        const lastEndAbs =
-          (last.endTimeDayOffset - totalCycleDays) * 1440 +
-          (lastEndH * 60 + lastEndM);
-
-        if (lastEndAbs > firstStartAbs) {
-          return toast.error(
-            `Cycle Rollover Overlap: Shift "${last.label}" ends at ${last.endTime}, which overlaps with Shift "${first.label}" starting at ${first.startTime} in the next repeating cycle.`,
-          );
-        }
-      }
-
-      const maxOffset = Math.max(
-        ...recurringPeriods.map(
-          (p) => p.endTimeDayOffset ?? p.startTimeDayOffset ?? 0,
-        ),
+    } catch (error: any) {
+      console.error("Error creating security schedule:", error);
+      toast.error(
+        error?.response?.data?.message ||
+          error?.message ||
+          "An unexpected error occurred while saving.",
       );
-      const requiredDays = Math.max(1, maxOffset + 1);
-
-      const [startY, startM, startD] = startDate.split("-").map(Number);
-      const minRequiredEndDate = new Date(Date.UTC(startY, startM - 1, startD));
-      minRequiredEndDate.setUTCDate(
-        minRequiredEndDate.getUTCDate() + requiredDays - 1,
-      );
-      const minEndDateStr = minRequiredEndDate.toISOString().split("T")[0];
-
-      if (endDate < minEndDateStr) {
-        return toast.error(
-          `Selected End Date (${endDate}) does not cover the full shift sequence. The schedule extends to Day ${
-            maxOffset + 1
-          }, requiring an End Date of at least ${minEndDateStr}.`,
-        );
-      }
-    }
-
-    // --- 3. PAYLOAD PREPARATION & DATABASE DISPATCH ---
-    const newSchedule: Omit<ScheduleDefinition, "id"> = {
-      name: scheduleName,
-      mode,
-      ...(mode === "specific"
-        ? { specificDateGroups: specificGroups }
-        : {
-            recurringCadence: cadence,
-            startDate,
-            endDate,
-            recurringPeriods,
-            useSingleGuardThroughout: useSingleGuard,
-            singleGuardId: useSingleGuard ? singleGuardId : undefined,
-          }),
-    };
-
-    const res = await securityDb.createSecuritySchedule(
-      contextEstateId!,
-      newSchedule,
-    );
-
-    if (res.success) {
-      setSchedules([...schedules, res.schedule]);
-      setIsModalOpen(false);
-      toast.success("Schedule created successfully!");
-    } else {
-      toast.error("Failed to create schedule. Please try again.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1344,9 +1365,16 @@ export function ScheduleBuilderTab({
             </button>
             <button
               type="submit"
+              disabled={isSaving}
               className="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 transition-all cursor-pointer shadow-xs"
             >
-              Save Schedule
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                </>
+              ) : (
+                "Save Schedule"
+              )}
             </button>
           </div>
 
@@ -1389,20 +1417,28 @@ export function ScheduleBuilderTab({
                   </div>
 
                   {schedule.mode === "specific" ? (
-                    <p className="text-xs text-slate-500 font-medium">
-                      📅 {schedule.specificDateGroups?.length || 0} Date
-                      Group(s) configured
-                    </p>
+                    <>
+                      <p className="text-xs text-slate-500 font-medium">
+                        📅 {schedule.specific_date_groups?.length || 0} Date
+                        Group(s) configured
+                      </p>
+                      {schedule.specific_date_groups?.[0]?.date && (
+                        <p className="text-[11px] text-slate-400">
+                          Starts: {schedule.specific_date_groups[0].date}
+                        </p>
+                      )}
+                    </>
                   ) : (
                     <div className="text-xs text-slate-500 space-y-1 font-medium">
                       <p>
                         🔄 Cadence:{" "}
                         <span className="capitalize font-semibold text-slate-700">
-                          {schedule.recurringCadence}
+                          {schedule.recurring_cadence}
                         </span>
                       </p>
                       <p className="text-[11px] text-slate-400">
-                        {schedule.startDate} → {schedule.endDate}
+                        {formatUtcDate(schedule.start_date)} →{" "}
+                        {formatUtcDate(schedule.end_date)}
                       </p>
                     </div>
                   )}
@@ -1432,423 +1468,3 @@ export function ScheduleBuilderTab({
     </div>
   );
 }
-
-// ==========================================
-// TAB 2: INTERACTIVE CALENDAR & GUARD SWAPPER
-// ==========================================
-
-export function InteractiveCalendarTab({
-  selectedSchedule: initialSchedule,
-  onBack,
-}: InteractiveCalendarTabProps) {
-  const { contextEstateId } = useUser();
-  const [guards, setGuards] = useState<SecurityUser[]>([]);
-
-  // Internal state for managing view/edit modes and active schedule data
-  const [schedule, setSchedule] = useState<ScheduleDefinition | null>(
-    initialSchedule,
-  );
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingSlot, setEditingSlot] = useState<{
-    dateStr: string;
-    periodId: string;
-    currentGuardIds: string[];
-  } | null>(null);
-
-  // Sync state if prop changes externally
-  useEffect(() => {
-    setSchedule(initialSchedule);
-  }, [initialSchedule]);
-
-  useEffect(() => {
-    if (!contextEstateId) return;
-    securityDb
-      .getAllSecurity(contextEstateId)
-      .then(setGuards)
-      .catch(console.error);
-  }, [contextEstateId]);
-
-  const handleDelete = async () => {
-    if (!schedule || !contextEstateId) return;
-    if (!confirm(`Are you sure you want to delete "${schedule.name}"?`)) return;
-
-    try {
-      const res = await securityDb.deleteSchedule(contextEstateId, schedule.id);
-      if (res?.success) {
-        toast.success("Schedule deleted successfully");
-        if (onBack) onBack();
-      } else {
-        toast.error("Failed to delete schedule");
-      }
-    } catch (err) {
-      toast.error("Failed to delete schedule");
-    }
-  };
-
-  const handleSaveInternalEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!schedule || !contextEstateId) return;
-
-    try {
-      // Update local storage/database directly
-      await securityDb.updateSchedule(schedule.id, contextEstateId!, schedule);
-      toast.success("Schedule updated successfully");
-      setIsEditing(false);
-    } catch (err) {
-      toast.error("Failed to save changes");
-    }
-  };
-
-  if (!schedule) {
-    return (
-      <div className="bg-white p-12 rounded-3xl border border-slate-100 text-center space-y-4 shadow-2xs">
-        <CalendarIcon size={32} className="mx-auto text-slate-300" />
-        <h4 className="font-montserrat font-black text-slate-700">
-          No Schedule Selected
-        </h4>
-        <p className="text-xs text-slate-400">
-          Select a schedule from the roster list to view its spread and details.
-        </p>
-        {onBack && (
-          <button
-            onClick={onBack}
-            className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold"
-          >
-            Go Back
-          </button>
-        )}
-      </div>
-    );
-  }
-
-  // Extract all distinct guards attached to this schedule
-  const allAttachedGuardIds = Array.from(
-    new Set(
-      schedule.mode === "specific"
-        ? schedule.specificDateGroups?.flatMap((g) =>
-            g.periods.flatMap((p) => p.assignedGuardIds),
-          ) || []
-        : schedule.recurringPeriods?.flatMap((p) => p.assignedGuardIds) || [],
-    ),
-  );
-
-  return (
-    <div className="space-y-6">
-      {/* TOP NAVIGATION BAR */}
-      <div className="flex items-center justify-between">
-        {onBack && (
-          <button
-            onClick={onBack}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-montserrat font-bold text-xs rounded-xl transition-all cursor-pointer"
-          >
-            <ArrowLeft size={14} /> Back
-          </button>
-        )}
-      </div>
-
-      {/* INTERNAL EDIT MODE FORM */}
-      {isEditing ? (
-        <form
-          onSubmit={handleSaveInternalEdit}
-          className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6 animate-in fade-in duration-200"
-        >
-          <div className="flex justify-between items-center border-b border-slate-100 pb-4">
-            <h3 className="font-montserrat font-black text-slate-800 text-base uppercase">
-              Edit Schedule Details
-            </h3>
-            <button
-              type="button"
-              onClick={() => setIsEditing(false)}
-              className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
-            >
-              <X size={20} />
-            </button>
-          </div>
-
-          <div>
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-              Schedule Title
-            </label>
-            <input
-              type="text"
-              value={schedule.name}
-              onChange={(e) =>
-                setSchedule({ ...schedule, name: e.target.value })
-              }
-              className="w-full mt-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:bg-white"
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={() => setIsEditing(false)}
-              className="px-5 py-2.5 bg-slate-100 text-slate-600 font-montserrat font-bold text-xs uppercase tracking-wider rounded-xl hover:bg-slate-200"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="flex items-center gap-1.5 px-6 py-2.5 bg-blue-600 text-white font-montserrat font-bold text-xs uppercase tracking-wider rounded-xl hover:bg-blue-700"
-            >
-              <Save size={14} /> Save Changes
-            </button>
-          </div>
-        </form>
-      ) : (
-        /* READ-ONLY DISPLAY MODE */
-        <>
-          {/* HEADER CARD */}
-          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-2xs space-y-4">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-4">
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
-                  {schedule.mode === "specific"
-                    ? "Specific Dates"
-                    : "Recurring Cycle"}
-                </span>
-                <h3 className="font-montserrat font-black text-slate-800 text-xl mt-1">
-                  {schedule.name}
-                </h3>
-                <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
-                  <Clock size={12} />
-                  {schedule.mode === "recurring"
-                    ? `${schedule.startDate} to ${schedule.endDate}`
-                    : `${schedule.specificDateGroups?.length || 0} scheduled day(s)`}
-                </p>
-              </div>
-
-              {/* ACTION BUTTONS */}
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 text-blue-600 font-bold text-xs rounded-xl hover:bg-blue-100 transition-all cursor-pointer"
-                >
-                  <Edit size={14} /> Edit
-                </button>
-                <button
-                  onClick={handleDelete}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-rose-50 text-rose-600 font-bold text-xs rounded-xl hover:bg-rose-100 transition-all cursor-pointer"
-                >
-                  <Trash2 size={14} /> Delete
-                </button>
-              </div>
-            </div>
-
-            {/* ATTACHED GUARDS SUMMARY */}
-            <div className="space-y-1.5">
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1">
-                <Users size={12} /> Attached Guards (
-                {allAttachedGuardIds.length})
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {allAttachedGuardIds.length === 0 ? (
-                  <span className="text-xs text-slate-400 italic">
-                    No guards assigned to this roster
-                  </span>
-                ) : (
-                  allAttachedGuardIds.map((gId) => {
-                    const guard = guards.find((g) => g.id === gId);
-                    return (
-                      <span
-                        key={gId}
-                        className="text-xs font-bold bg-slate-50 text-slate-700 border border-slate-200/60 px-2.5 py-1 rounded-lg"
-                      >
-                        👤 {guard ? guard.name : "Unknown Guard"}
-                      </span>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* CALENDAR DISPLAY SPREAD */}
-          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-2xs space-y-6">
-            <h4 className="font-montserrat font-black text-xs uppercase tracking-widest text-slate-400">
-              Shift Spread & On-Call Personnel
-            </h4>
-
-            {schedule.mode === "specific" && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {schedule.specificDateGroups?.map((group) => (
-                  <div
-                    key={group.date}
-                    className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-3"
-                  >
-                    <div className="flex justify-between items-center border-b border-slate-200/60 pb-2">
-                      <span className="font-montserrat font-black text-xs text-slate-800">
-                        🗓️ {group.date}
-                      </span>
-                      <span className="text-[10px] font-bold text-slate-400">
-                        {group.periods.length} Shift Period(s)
-                      </span>
-                    </div>
-
-                    {group.periods.map((p) => (
-                      <div
-                        key={p.id}
-                        className="p-3 bg-white rounded-xl border border-slate-100 space-y-2 shadow-2xs"
-                      >
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs font-bold text-slate-700">
-                            {p.label || "Shift"} ({p.startTime} - {p.endTime})
-                          </span>
-                          <button
-                            onClick={() =>
-                              setEditingSlot({
-                                dateStr: group.date,
-                                periodId: p.id,
-                                currentGuardIds: p.assignedGuardIds,
-                              })
-                            }
-                            className="text-blue-600 hover:text-blue-800 cursor-pointer"
-                          >
-                            <Edit2 size={12} />
-                          </button>
-                        </div>
-
-                        <div className="flex flex-wrap gap-1">
-                          {p.assignedGuardIds.length === 0 ? (
-                            <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-md flex items-center gap-1">
-                              <UserX size={10} /> No Guard Assigned
-                            </span>
-                          ) : (
-                            p.assignedGuardIds.map((gId) => {
-                              const guard = guards.find((g) => g.id === gId);
-                              return (
-                                <span
-                                  key={gId}
-                                  className="text-[10px] font-extrabold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md border border-blue-100"
-                                >
-                                  👤 {guard ? guard.name : "Guard"}
-                                </span>
-                              );
-                            })
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {schedule.mode === "recurring" && (
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
-                <p className="text-xs font-bold text-slate-700">
-                  Recurring Pattern Active between {schedule.startDate} and{" "}
-                  {schedule.endDate}
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {schedule.recurringPeriods?.map((p) => (
-                    <div
-                      key={p.id}
-                      className="p-3 bg-white rounded-xl border border-slate-200"
-                    >
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs font-bold text-slate-800">
-                          {p.label} ({p.startTime} - {p.endTime})
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-1 pt-1">
-                        {schedule.useSingleGuardThroughout ? (
-                          <span className="text-[10px] font-black bg-purple-50 text-purple-700 px-2 py-0.5 rounded-md">
-                            Single Guard Locked
-                          </span>
-                        ) : p.assignedGuardIds.length === 0 ? (
-                          <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-md">
-                            Unassigned Cycle Slot
-                          </span>
-                        ) : (
-                          p.assignedGuardIds.map((gId) => {
-                            const guard = guards.find((g) => g.id === gId);
-                            return (
-                              <span
-                                key={gId}
-                                className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md"
-                              >
-                                👤 {guard?.name}
-                              </span>
-                            );
-                          })
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </>
-      )}
-
-      {/* QUICK GUARD REASSIGNMENT MODAL */}
-      {editingSlot && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white border border-slate-200 p-6 rounded-3xl w-full max-w-md space-y-4 shadow-xl">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-              <h4 className="font-montserrat font-black text-sm text-slate-800 uppercase">
-                Swap Guard / Edit Shift Position
-              </h4>
-              <button
-                onClick={() => setEditingSlot(null)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <p className="text-xs text-slate-500 font-medium">
-              Update guard assignments for shift slot on{" "}
-              <strong className="text-slate-800">{editingSlot.dateStr}</strong>.
-            </p>
-
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {guards.map((g) => {
-                const isSelected = editingSlot.currentGuardIds.includes(g.id);
-                return (
-                  <button
-                    key={g.id}
-                    onClick={() => {
-                      const updatedIds = isSelected
-                        ? editingSlot.currentGuardIds.filter(
-                            (id) => id !== g.id,
-                          )
-                        : [...editingSlot.currentGuardIds, g.id];
-                      setEditingSlot({
-                        ...editingSlot,
-                        currentGuardIds: updatedIds,
-                      });
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                      isSelected
-                        ? "bg-blue-50 border-blue-200 text-blue-700"
-                        : "bg-slate-50 border-slate-100 text-slate-500"
-                    }`}
-                  >
-                    <span>{g.name}</span>
-                    {isSelected && (
-                      <CheckCircle2 size={14} className="text-blue-600" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-              <button
-                onClick={() => setEditingSlot(null)}
-                className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold uppercase tracking-wider cursor-pointer"
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Dropdown Checkbox List Component

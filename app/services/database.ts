@@ -426,7 +426,7 @@ export const securityDb = {
   updateSchedule: async (
     scheduleId: string,
     estate_id: string,
-    scheduleData: Partial<ScheduleDefinition>,
+    scheduleData: { new_name?: string; new_end_date?: string },
   ): Promise<ScheduleDefinition> => {
     const res = await fetch(`${baseUrl}/api/security/schedules/${scheduleId}`, {
       method: "PUT",
@@ -462,6 +462,41 @@ export const securityDb = {
       useSingleGuardThroughout: s.use_single_guard_throughout,
       singleGuardId: s.single_guard_id,
     };
+  },
+
+  // 14. Update guard slot reassignment
+  assignSlotGuard: async (payload: {
+    scheduleId: string;
+    estate_id: string;
+    periodId: string;
+    assignedGuardIds: string[];
+    dateStr?: string;
+  }) => {
+    const res = await fetch(
+      `${baseUrl}/api/security/schedules/${payload.scheduleId}/assign-slot`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          estate_id: payload.estate_id,
+          periodId: payload.periodId,
+          assignedGuardIds: payload.assignedGuardIds,
+          dateStr: payload.dateStr,
+        }),
+        credentials: "include",
+      },
+    );
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(
+        err.message || err.error || "Failed to update guard slot assignment",
+      );
+    }
+
+    return await res.json();
   },
 
   // 13. Delete a security schedule

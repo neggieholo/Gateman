@@ -24,7 +24,13 @@ import SecuritySchedulesPage from "./SecuritySchedules";
 export default function SecurityManagement() {
   const { user } = useUser();
   const [activeTab, setActiveTab] = useState<
-    "requests" | "personnel" | "onduty" | "reports" | "gatepasses" | "logs" | "schedules"
+    | "requests"
+    | "personnel"
+    | "onduty"
+    | "reports"
+    | "gatepasses"
+    | "logs"
+    | "schedules"
   >("requests");
 
   const tabs = [
@@ -74,8 +80,8 @@ export default function SecurityManagement() {
       id: "schedules",
       label: "Schedules",
       icon: Calendar,
-      color: "text-slate-600",
-      bg: "bg-purple-50",
+      color: "text-cyan-600",
+      bg: "bg-cyan-50",
     },
   ];
 
@@ -87,7 +93,7 @@ export default function SecurityManagement() {
   return (
     <div className="space-y-6 pb-24 md:pb-8 font-sans">
       {/* Tab Navigation */}
-      <div className="flex overflow-x-auto pb-2 no-scrollbar gap-2 px-4">
+      <div className="flex overflow-x-auto pb-2 no-scrollbar gap-2 px-4 py-2">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -126,7 +132,7 @@ export default function SecurityManagement() {
 
           {activeTab === "logs" && <UserLogsPage role="SECURITY" />}
 
-          {activeTab === "schedules" && <SecuritySchedulesPage/>}
+          {activeTab === "schedules" && <SecuritySchedulesPage />}
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center p-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200/80 max-w-xl mx-auto my-8">
