@@ -881,8 +881,6 @@ export interface ScheduleDefinition {
   startDate?: string;
   endDate?: string;
   recurringPeriods?: ShiftPeriod[];
-  useSingleGuardThroughout?: boolean;
-  singleGuardId?: string;
 }
 
 export interface ProjectionShift {
@@ -918,8 +916,6 @@ export interface FetchedSecuritySchedule {
   start_date?: string;
   end_date?: string;
   recurring_periods?: ShiftPeriod[];
-  use_single_guard_throughout: boolean;
-  single_guard_id?: string;
   created_at: string;
   updated_at: string;
   created_by_name?: string;
@@ -940,4 +936,47 @@ export interface FetchSchedulesResponse {
   count: number;
   schedules: FetchedSecuritySchedule[];
   guardList: ScheduleGuard[];
+}
+
+export type SecurityDutyAction = "CHECK_IN" | "CHECK_OUT";
+
+export interface SecurityAtendanceLog {
+  id: string;
+  guard_id: string;
+  estate_id: string;
+  action: SecurityDutyAction;
+  location: string | null;
+  address: string | null;
+  liveness_photo_url: string | null;
+  created_at: string;
+}
+
+export interface OverrideProjectionSlotPayload {
+  projectionId: string;
+  estate_id: string;
+  periodId: string;
+  cycle: "current" | "next";
+  assignedGuardIds: string[];
+}
+
+export type DutyActionType = "CHECK_IN" | "CHECK_OUT";
+
+export interface SecurityDutyLog {
+  id: string;
+  guard_id: string;
+  guard_name?: string;
+  guard_email?: string;
+  schedule_name: string;
+  estate_id: string;
+  action: DutyActionType;
+  location: string;
+  address: string | null;
+  liveness_photo_url: string;
+  projection_id: string | null;
+  expected_start_time: string | null;
+  expected_end_time: string | null;
+  actual_checkin_time: string | null;
+  actual_checkout_time: string | null;
+  created_at: string;
+  updated_at: string;
 }

@@ -1,5 +1,4 @@
-"use client";
-
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
@@ -24,9 +23,12 @@ import {
 import { useUser } from "../UserContext";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { checkSession, sendOtpApi } from "../services/apis";
+import { checkSession, sendOtpApi, sendRegOtpApi } from "../services/apis";
 import { states_lgas } from "../utils/states_lgas";
 import toast from "react-hot-toast";
+import { PlanSelectionModal } from "./PlanSelectionModal";
+import { PlanSelectionData } from "../services/types";
+import { ADDON_MODULES } from "../services/data";
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -37,6 +39,11 @@ export default function Auth() {
   const { setUser, setPlan, setContextEstateId } = useUser();
   const router = useRouter();
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+  const [configuredPlan, setConfiguredPlan] = useState<PlanSelectionData>({
+    selectedAddOns: [],
+    isTrial: false,
+  });
+  const [planDuration, setPlanDuration] = useState<number>(1);
 
   // Form State
   const [email, setEmail] = useState("");
@@ -45,9 +52,6 @@ export default function Auth() {
   const [state, setState] = useState("");
   const [lga, setLga] = useState("");
   const [adminName, setAdminName] = useState("");
-  const [selectedPlan, setSelectedPlan] = useState<
-    "estate_management" | "security_only" | "combo" | null
-  >(null);
   const [showPlanModal, setShowPlanModal] = useState(false);
   // const [town, setTown] = useState('');
   const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]);
@@ -95,7 +99,7 @@ export default function Auth() {
     }
 
     cSessionCheck();
-  }, []);
+  }, [setUser]);
 
   const validateEmail = (text: string) => {
     const cleanedEmail = text.trim();
@@ -107,8 +111,27 @@ export default function Auth() {
     return false;
   };
 
+  const resetFormState = () => {
+    setName("");
+    setEmail("");
+    setPassword("");
+    setState("");
+    setLga("");
+    setAdminName("");
+    setConfiguredPlan({
+      selectedAddOns: [],
+      isTrial: false,
+    });
+    setPlanDuration(1);
+    setOtp(["", "", "", "", "", ""]);
+    setMetadata("");
+    setError(null);
+    setShowOtpInput(false);
+    setShowPlanModal(false);
+  };
+
   const handleRequestOtp = async () => {
-    if (!isLogin && !selectedPlan) {
+    if (!isLogin && !configuredPlan.selectedAddOns) {
       setError("Please choose a subscription plan to continue.");
       setShowPlanModal(true);
       return;
@@ -128,7 +151,9 @@ export default function Auth() {
     }
 
     try {
-      const otpRes = await sendOtpApi(trimmedEmail);
+      const otpRes = await (!isLogin
+        ? sendRegOtpApi(trimmedEmail)
+        : sendOtpApi(trimmedEmail));
       if (otpRes.success) {
         setMetadata(otpRes.metadata);
         setShowOtpInput(true);
@@ -185,8 +210,8 @@ export default function Auth() {
       return;
     }
 
-    if (!selectedPlan) {
-      alert("Please select a plan");
+    if (!configuredPlan.selectedAddOns) {
+      toast.error("Please select a plan");
       return;
     }
 
@@ -194,21 +219,32 @@ export default function Auth() {
     setError("");
 
     try {
-      await db.register(
+      const data = await db.register(
         name,
-        trimmedEmail,
-        password,
         state,
         lga,
+        configuredPlan,
+        planDuration,
+        trimmedEmail,
+        password,
         enteredOtp,
         metadata,
         adminName,
-        selectedPlan,
       );
+
+      if (data?.paymentLink) {
+        resetFormState();
+        window.location.href = data.paymentLink;
+      } else {
+        toast.error(data.error || "Registration failed. Please try again.");
+      }
 
       setShowOtpInput(false);
       setOtp(["", "", "", "", "", ""]);
     } catch (err: any) {
+      toast.error(
+        err.message || err.error || "Registration failed. Please try again.",
+      );
       setError(err.message || "Registration failed. Please try again.");
     } finally {
       setLoading(false);
@@ -304,7 +340,7 @@ export default function Auth() {
         return;
       }
 
-      if (!selectedPlan) {
+      if (!configuredPlan.selectedAddOns) {
         setError("Please choose a subscription plan to continue.");
         setShowPlanModal(true);
         return;
@@ -318,7 +354,7 @@ export default function Auth() {
         const res = await db.forgotPassword(email, "admin");
 
         if (res.success) {
-          alert("A reset link has been sent to your email!");
+          toast.success("A reset link has been sent to your email!");
           setIsForgot(false); // Send them back to login
           setIsLogin(true);
         } else {
@@ -527,411 +563,380 @@ export default function Auth() {
     );
 
   return (
-    <div className="min-h-[100dvh] flex flex-col lg:flex-row bg-slate-100 lg:bg-[linear-gradient(to_bottom,#0A1F44_50%,#f1f5f9_50%)] overflow-x-hidden">
-      {/* Left Side - Desktop Branding Panel */}
-      <div
-        className="hidden lg:flex lg:w-2/3 bg-gm-navy relative overflow-hidden min-h-screen"
-        style={{ borderRadius: "0px 0px 120px 0px" }}
-      >
-        <div className="absolute inset-0 mix-blend-multiply z-10" />
-        <div className="relative z-20 flex flex-col justify-between items-start h-full p-16 text-white">
-          <div className="relative w-full h-20 flex items-center overflow-hidden self-start">
+    <div className="min-h-screen w-full bg-slate-100 flex flex-col justify-center items-center p-4 sm:p-6 overflow-y-auto">
+      {/* Auth Form Container */}
+      <div className="w-full max-w-md my-auto bg-white p-6 sm:p-10 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-white space-y-6">
+        {/* Mobile Branding: Logo & App Name */}
+        <div className="flex flex-col items-center text-center space-y-3">
+          <div className="relative w-32 h-16 flex items-center justify-center overflow-hidden">
             <Image
               src="/gmadminlogo.jpg"
               alt="GateMan Logo"
               fill
               priority
-              className="object-contain object-left"
+              className="object-contain object-center"
             />
           </div>
-
-          <div className="space-y-6 max-w-xl">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-none">
-              <span className="block font-montserrat text-transparent bg-clip-text bg-linear-to-r py-3 from-white via-slate-200 to-indigo-200">
-                Modern Living,
-              </span>
-              <span className="block text-indigo-400 mt-1 font-montserrat">
-                Simplified.
-              </span>
-              <span className="block text-xl sm:text-2xl font-oswald italic text-indigo-200/70 tracking-wide mt-4">
-                ...While Protecting What Matters Most.
-              </span>
+          <div>
+            <h1 className="text-2xl font-black font-montserrat text-slate-900 tracking-tight">
+              GateMan
             </h1>
-
-            <p className="text-base sm:text-lg text-slate-300/90 leading-relaxed max-w-md font-oswald">
-              Experience seamless estate management. Pay bills, manage visitors,
-              and connect with your community—all in one place.
+            <p className="text-xs text-indigo-500 font-oswald tracking-wide">
+              Modern Living, Simplified.
             </p>
-
-            <div className="flex gap-4 pt-4">
-              <div className="flex -space-x-3">
-                {[1, 2, 3, 4].map((i) => (
-                  <img
-                    key={i}
-                    src={`https://picsum.photos/40/40?random=${i}`}
-                    className="w-10 h-10 rounded-full border-2 border-indigo-900"
-                    alt="User"
-                  />
-                ))}
-              </div>
-              <div className="flex flex-col justify-center">
-                <span className="font-montserrat text-sm">
-                  2,000+ Residents
-                </span>
-                <span className="text-xs text-indigo-200 font-sans">
-                  Trust Gateman
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-sm text-indigo-200/60 font-oswald">
-            © 2026 Gateman Inc. All rights reserved.
-          </div>
-        </div>
-      </div>
-
-      {/* Right Side - Mobile & Desktop Auth Form Container */}
-      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 bg-slate-100 min-h-[100dvh]">
-        {/* Mobile-Only Header Brand Logo */}
-        <div className="lg:hidden w-full max-w-md flex justify-center items-center py-4 mb-2">
-          <div className="relative w-40 h-12">
-            <Image
-              src="/gmadminlogo.jpg"
-              alt="GateMan Logo"
-              fill
-              priority
-              className="object-contain"
-            />
           </div>
         </div>
 
-        <div className="w-full max-w-md space-y-6 my-auto bg-white p-6 sm:p-8 md:p-12 rounded-3xl lg:rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-white">
-          <div className="text-center">
-            <h2 className="text-2xl sm:text-3xl font-montserrat text-slate-900 tracking-tight mb-2">
-              {isLogin
-                ? "Welcome back"
-                : isForgot
-                  ? "Forgot Password"
-                  : "Create an account"}
-            </h2>
-            <p className="text-slate-500 font-sans text-xs sm:text-sm">
-              {isLogin
-                ? "Enter your details to access your account"
-                : isForgot
-                  ? "Enter your email to reset your password"
-                  : "Join your community today"}
-            </p>
+        {/* Dynamic Title / Subtitle */}
+        <div className="text-center pt-2">
+          <h2 className="text-2xl font-montserrat font-bold text-slate-900 tracking-tight mb-1">
+            {isLogin
+              ? "Welcome back"
+              : isForgot
+                ? "Forgot Password"
+                : "Create an account"}
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-500 font-sans">
+            {isLogin
+              ? "Enter your details to access your account"
+              : isForgot
+                ? "Enter your email to reset your password"
+                : "Join your community today"}
+          </p>
+        </div>
+
+        {/* Error Banner */}
+        {error && !showOtpInput && (
+          <div className="bg-rose-50 text-rose-600 p-3 rounded-xl flex items-center gap-3 text-sm font-bold border border-rose-100 animate-shake">
+            <AlertCircle size={18} className="shrink-0" />
+            <span>{error}</span>
           </div>
+        )}
 
-          {error && !showOtpInput && (
-            <div className="bg-rose-50 text-rose-600 p-3 min-h-12 rounded-xl flex items-center gap-3 text-sm font-bold border border-rose-100 animate-shake">
-              <AlertCircle size={18} className="shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
-            {!isLogin && !isForgot && (
-              <>
-                <div>
-                  <label className="block text-xs sm:text-sm font-oswald text-slate-700 mb-1 ml-1">
-                    Your Full Name
-                  </label>
-                  <div className="relative">
-                    <UserIcon
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                      size={18}
-                    />
-                    <input
-                      type="text"
-                      required
-                      value={adminName}
-                      onChange={(e) => setAdminName(e.target.value)}
-                      className="w-full pl-11 pr-4 py-3 sm:py-3.5 bg-slate-50 border border-slate-100 text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-medium"
-                      placeholder="John Doe"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs sm:text-sm font-oswald text-slate-700 mb-1 ml-1">
-                    Estate Name
-                  </label>
-                  <div className="relative">
-                    <UserIcon
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                      size={18}
-                    />
-                    <input
-                      type="text"
-                      required
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="w-full pl-11 pr-4 py-3 sm:py-3.5 bg-slate-50 border border-slate-100 text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-medium"
-                      placeholder="Platinum Estate"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs sm:text-sm font-oswald text-slate-700 mb-1 ml-1">
-                    Subscription Tier
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowPlanModal(true)}
-                    className="w-full flex items-center justify-between px-4 sm:px-5 py-3 sm:py-3.5 bg-indigo-50/50 hover:bg-indigo-50 border border-indigo-100 hover:border-indigo-200 text-left rounded-2xl transition-all group"
-                  >
-                    <div>
-                      <span className="block text-[10px] sm:text-xs font-semibold text-indigo-500 uppercase tracking-wider">
-                        {!selectedPlan ? "No Selection" : "Active Selection"}
-                      </span>
-                      <span className="text-xs sm:text-sm font-bold text-slate-900 capitalize">
-                        {selectedPlan === "estate_management" &&
-                          "Estate Management Plan"}
-                        {selectedPlan === "security_only" &&
-                          "Security Officers Plan"}
-                        {selectedPlan === "combo" && "Combo Master Plan"}
-                      </span>
-                    </div>
-                    <span className="text-[10px] sm:text-xs font-bold text-indigo-600 bg-white px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl border border-indigo-100 shadow-sm shrink-0">
-                      Change Plan
-                    </span>
-                  </button>
-                </div>
-              </>
-            )}
-
-            <div>
-              <label className="block text-xs sm:text-sm font-oswald text-slate-700 mb-1 ml-1">
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                  size={18}
-                />
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 sm:py-3.5 bg-slate-50 border border-slate-100 font-sans text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-medium"
-                  placeholder="name@company.com"
-                />
-              </div>
-            </div>
-
-            {!isForgot && (
+        {/* Auth Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {!isLogin && !isForgot && (
+            <>
               <div>
-                <label className="block text-xs sm:text-sm font-oswald text-slate-700 mb-1 ml-1">
-                  Password
+                <label className="block text-sm font-oswald text-slate-700 mb-1.5 ml-1">
+                  Your Full Name
                 </label>
                 <div className="relative">
-                  <Lock
+                  <UserIcon
                     className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                    size={18}
+                    size={20}
                   />
                   <input
-                    type={show ? "text" : "password"}
+                    type="text"
                     required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-11 pr-12 py-3 sm:py-3.5 bg-slate-50 border border-slate-100 font-sans text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-medium"
-                    placeholder="••••••••"
+                    value={adminName}
+                    onChange={(e) => setAdminName(e.target.value)}
+                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-medium"
+                    placeholder="John Doe"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShow(!show)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                  >
-                    {show ? <Eye size={18} /> : <EyeClosed size={18} />}
-                  </button>
                 </div>
               </div>
-            )}
 
-            {isLogin && !isForgot && (
-              <div className="flex items-center justify-between pt-1">
-                <div className="flex items-center">
-                  <input
-                    id="remember_me"
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => {
-                      const isChecked = e.target.checked;
-                      setRememberMe(isChecked);
-                      localStorage.setItem("rememberMe", String(isChecked));
-                    }}
-                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+              <div>
+                <label className="block text-sm font-oswald text-slate-700 mb-1.5 ml-1">
+                  Estate Name
+                </label>
+                <div className="relative">
+                  <UserIcon
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                    size={20}
                   />
-                  <label
-                    htmlFor="remember_me"
-                    className="ml-2 block text-xs sm:text-sm text-gray-700 font-sans select-none"
-                  >
-                    Remember me
-                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-medium"
+                    placeholder="Platinum Estate"
+                  />
                 </div>
+              </div>
 
+              <div>
+                <label className="block text-sm font-oswald text-slate-700 mb-1.5 ml-1">
+                  Subscription Tier
+                </label>
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsForgot(true);
-                    setIsLogin(false);
-                    setError(null);
-                    setEmail("");
-                  }}
-                  className="text-xs sm:text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors"
+                  onClick={() => setShowPlanModal(true)}
+                  className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-indigo-50/50 hover:bg-indigo-50 border border-indigo-100 hover:border-indigo-200 text-left rounded-2xl transition-all group"
                 >
-                  <span className="font-oswald text-indigo-600">
-                    Forgot password?
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-semibold text-indigo-500 uppercase tracking-wider whitespace-nowrap">
+                        {configuredPlan.selectedAddOns.length === 0
+                          ? "No Add-ons Selected"
+                          : "Active Plan Configuration"}
+                      </span>
+
+                      {configuredPlan.selectedAddOns.length > 0 && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold text-emerald-600 bg-emerald-50 border border-indigo-200/80 tracking-wide whitespace-nowrap">
+                          {configuredPlan.isTrial
+                            ? "30-Day Trial"
+                            : `${planDuration} ${planDuration === 1 ? "Month" : "Months"}`}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="mt-1 space-y-1">
+                      <div className="flex items-center space-x-1.5 text-xs text-slate-500 font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0"></span>
+                        <span className="text-xs text-slate-500 font-medium truncate">
+                          Core Platform Access
+                        </span>
+                      </div>
+
+                      {configuredPlan.selectedAddOns.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {configuredPlan.selectedAddOns.map((addOnId) => {
+                            const ADDON_FEATURES = ADDON_MODULES.find(
+                              (m) => m.id === addOnId,
+                            );
+
+                            return (
+                              <span
+                                key={addOnId}
+                                className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-100"
+                              >
+                                {ADDON_FEATURES?.name || addOnId}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <span className="shrink-0 whitespace-nowrap text-xs font-bold text-indigo-600 bg-white px-3 py-1.5 rounded-xl border border-indigo-100 shadow-sm text-center">
+                    Change
                   </span>
                 </button>
               </div>
-            )}
+            </>
+          )}
 
-            {!isLogin && !isForgot && (
-              <div className="grid grid-cols-1 gap-4">
-                {/* State Select */}
-                <div>
-                  <label className="block text-xs sm:text-sm font-oswald text-slate-700 mb-1 ml-1">
-                    State
-                  </label>
-                  <div className="relative">
-                    <MapPin
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-                      size={18}
-                    />
-                    <select
-                      required
-                      value={state}
-                      onChange={(e) => {
-                        setState(e.target.value);
-                        setLga("");
-                      }}
-                      className="w-full pl-11 pr-4 py-3 sm:py-3.5 bg-slate-50 border border-slate-100 font-sans text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block outline-none font-medium appearance-none"
-                    >
-                      <option value="">Select State</option>
-                      {states_lgas.map((s) => (
-                        <option key={s.alias} value={s.state}>
-                          {s.state}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+          <div>
+            <label className="block text-sm font-oswald text-slate-700 mb-1.5 ml-1">
+              Email Address
+            </label>
+            <div className="relative">
+              <Mail
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                size={20}
+              />
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 font-sans text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-medium"
+                placeholder="name@company.com"
+              />
+            </div>
+          </div>
 
-                {/* City (LGA) Select */}
-                <div>
-                  <label className="block text-xs sm:text-sm font-oswald text-slate-700 mb-1 ml-1">
-                    LGA
-                  </label>
-                  <div className="relative">
-                    <MapPin
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-                      size={18}
-                    />
-                    <select
-                      required
-                      disabled={!state}
-                      value={lga}
-                      onChange={(e) => setLga(e.target.value)}
-                      className="w-full pl-11 pr-4 py-3 sm:py-3.5 bg-slate-50 border border-slate-100 font-sans text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block outline-none font-medium appearance-none disabled:opacity-50"
-                    >
-                      <option value="">Select LGA</option>
-                      {availableLgas.map((lga) => (
-                        <option key={lga} value={lga}>
-                          {lga}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+          {!isForgot && (
+            <div>
+              <label className="block text-sm font-oswald text-slate-700 mb-1.5 ml-1">
+                Password
+              </label>
+              <div className="relative">
+                <Lock
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                  size={20}
+                />
+                <input
+                  type={show ? "text" : "password"}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-11 pr-12 py-3 bg-slate-50 border border-slate-100 font-sans text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-medium"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShow(!show)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  {show ? <Eye size={20} /> : <EyeClosed size={20} />}
+                </button>
               </div>
-            )}
+            </div>
+          )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center text-white bg-primary/60 hover:bg-primary focus:ring-4 focus:ring-indigo-300 font-montserrat rounded-2xl text-base sm:text-lg px-5 py-3.5 sm:py-4 transition-all shadow-xl shadow-indigo-200 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed mt-2"
-            >
-              {loading || requestingOtp ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <>
-                  {isLogin
-                    ? "Sign In"
-                    : isForgot
-                      ? "Get Reset Link"
-                      : "Create Account"}
-                  <ArrowRight size={18} className="ml-2" />
-                </>
-              )}
-            </button>
-          </form>
+          {isLogin && !isForgot && (
+            <div className="flex items-center justify-between pt-1">
+              <div className="flex items-center">
+                <input
+                  id="remember_me"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => {
+                    const isChecked = e.target.checked;
+                    setRememberMe(isChecked);
+                    localStorage.setItem("rememberMe", String(isChecked));
+                  }}
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+                />
+                <label
+                  htmlFor="remember_me"
+                  className="ml-2 block text-xs sm:text-sm text-gray-700 font-sans"
+                >
+                  Remember me
+                </label>
+              </div>
 
-          <div className="text-center pt-2">
-            {!isForgot ? (
               <button
                 type="button"
                 onClick={() => {
-                  setIsLogin(!isLogin);
+                  setIsForgot(true);
+                  setIsLogin(false);
                   setError(null);
                   setEmail("");
-                  setPassword("");
-                  setLga("");
-                  setName("");
                 }}
-                className="text-xs sm:text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors"
+                className="text-xs sm:text-sm font-oswald text-indigo-600 hover:underline transition-colors"
               >
-                {isLogin
-                  ? "Don't have an account? "
-                  : "Already have an account? "}
-                <span className="font-oswald text-indigo-600 underline underline-offset-2">
-                  {isLogin ? "Sign up" : "Sign in"}
-                </span>
+                Forgot password?
               </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsForgot(false);
-                  setIsLogin(true);
-                  setError(null);
-                }}
-                className="text-xs sm:text-sm font-medium text-slate-500 hover:text-indigo-600"
-              >
-                <span className="font-bold text-indigo-600">Back to Login</span>
-              </button>
-            )}
-          </div>
-        </div>
+            </div>
+          )}
 
-        {/* Mobile Footer Copyright */}
-        <div className="lg:hidden text-center text-xs text-slate-400 font-oswald mt-6 pb-2">
-          © 2026 Gateman Inc. All rights reserved.
+          {!isLogin && !isForgot && (
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-sm font-oswald text-slate-700 mb-1.5 ml-1">
+                  State
+                </label>
+                <div className="relative">
+                  <MapPin
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                    size={20}
+                  />
+                  <select
+                    required
+                    value={state}
+                    onChange={(e) => {
+                      setState(e.target.value);
+                      setLga("");
+                    }}
+                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 font-sans text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block outline-none font-medium appearance-none"
+                  >
+                    <option value="">Select State</option>
+                    {states_lgas.map((s) => (
+                      <option key={s.alias} value={s.state}>
+                        {s.state}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-oswald text-slate-700 mb-1.5 ml-1">
+                  LGA
+                </label>
+                <div className="relative">
+                  <MapPin
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                    size={20}
+                  />
+                  <select
+                    required
+                    disabled={!state}
+                    value={lga}
+                    onChange={(e) => setLga(e.target.value)}
+                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 font-sans text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block outline-none font-medium appearance-none disabled:opacity-50"
+                  >
+                    <option value="">Select LGA</option>
+                    {availableLgas.map((lga) => (
+                      <option key={lga} value={lga}>
+                        {lga}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full flex items-center justify-center text-white bg-primary hover:bg-primary/90 focus:ring-4 focus:ring-indigo-300 font-montserrat rounded-2xl text-base py-3.5 transition-all shadow-xl shadow-indigo-200 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed mt-2"
+          >
+            {loading || requestingOtp ? (
+              <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <>
+                {isLogin
+                  ? "Sign In"
+                  : isForgot
+                    ? "Get Reset Link"
+                    : "Create Account"}
+                <ArrowRight size={18} className="ml-2" />
+              </>
+            )}
+          </button>
+        </form>
+
+        {/* Navigation Switchers */}
+        <div className="text-center pt-2">
+          {!isForgot && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsLogin(!isLogin);
+                setError(null);
+                setEmail("");
+                setPassword("");
+                setLga("");
+                setName("");
+              }}
+              className="text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors"
+            >
+              {isLogin
+                ? "Don't have an account? "
+                : "Already have an account? "}
+              <span className="font-oswald text-indigo-600 font-semibold">
+                {isLogin ? "Sign up" : "Sign in"}
+              </span>
+            </button>
+          )}
+
+          {isForgot && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsForgot(false);
+                setIsLogin(true);
+                setError(null);
+              }}
+              className="text-sm font-medium text-slate-500 hover:text-indigo-600"
+            >
+              <span className="font-bold text-indigo-600">Back to Login</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* OTP MODAL OVERLAY - Optimized for Mobile Screen Constraints */}
+      {/* OTP MODAL OVERLAY */}
       {showOtpInput && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-sm sm:max-w-md rounded-3xl p-6 sm:p-8 shadow-2xl scale-in-center border border-slate-100">
+          <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-6 sm:p-8 shadow-2xl scale-in-center border border-slate-100">
             <div className="text-center space-y-3 mb-6">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-2">
+              <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto">
                 {mfaType === "EMAIL" ? (
-                  <Mail size={24} className="sm:hidden" />
+                  <Mail size={28} />
                 ) : (
-                  <Smartphone size={24} className="sm:hidden" />
-                )}
-                {mfaType === "EMAIL" ? (
-                  <Mail size={32} className="hidden sm:block" />
-                ) : (
-                  <Smartphone size={32} className="hidden sm:block" />
+                  <Smartphone size={28} />
                 )}
               </div>
-              <h3 className="text-xl sm:text-2xl font-bold text-slate-900">
+              <h3 className="text-xl font-bold text-slate-900">
                 {mfaType === "EMAIL"
                   ? "Verify your email"
                   : "Device Verification"}
@@ -939,16 +944,13 @@ export default function Auth() {
               <p className="text-slate-500 text-xs sm:text-sm">
                 {mfaType === "EMAIL" ? (
                   <>
-                    We&apos;ve sent a 6-digit code to <br />
-                    <span className="font-semibold text-slate-900 break-all">
+                    We&apos;ve sent a code to <br />
+                    <span className="font-semibold text-slate-900">
                       {email}
                     </span>
                   </>
                 ) : (
-                  <>
-                    Enter the changing 6-digit token from your authenticator
-                    app.
-                  </>
+                  <>Enter the 6-digit code from your authenticator app.</>
                 )}
               </p>
             </div>
@@ -966,32 +968,30 @@ export default function Auth() {
                   value={digit}
                   onChange={(e) => handleOtpChange(e.target.value, index)}
                   onKeyDown={(e) => handleKeyDown(e, index)}
-                  className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-bold bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 transition-all outline-none"
+                  className="w-10 h-12 text-center text-xl font-bold bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 transition-all outline-none"
                 />
               ))}
             </div>
 
+            <button
+              onClick={handleCancelOtp}
+              className="w-full py-2 text-slate-500 text-sm font-medium hover:text-slate-800 transition-colors"
+            >
+              Cancel
+            </button>
+
             {error && (
-              <div className="mb-4 bg-rose-50 text-rose-600 p-2.5 rounded-xl flex items-center gap-2 text-xs sm:text-sm font-bold">
+              <div className="mt-4 bg-rose-50 text-rose-600 p-2.5 rounded-xl flex items-center gap-2 text-xs font-bold">
                 <AlertCircle size={16} className="shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
-            <div className="space-y-3">
-              <button
-                onClick={handleCancelOtp}
-                className="w-full py-2 text-xs sm:text-sm text-slate-500 font-medium hover:text-slate-800 transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-
-            <p className="text-center text-xs text-slate-400 mt-4">
-              Didn&apos;t receive the code?{" "}
+            <p className="text-center text-xs text-slate-400 mt-6">
+              Didn&apos;t receive code?{" "}
               <button
                 onClick={handleRequestOtp}
-                className="text-indigo-600 font-bold hover:underline ml-1"
+                className="text-indigo-600 font-bold hover:underline"
               >
                 Resend
               </button>
@@ -1001,123 +1001,15 @@ export default function Auth() {
       )}
 
       {/* PLAN SELECTOR MODAL OVERLAY */}
-      {showPlanModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-4xl rounded-3xl p-6 sm:p-8 md:p-10 shadow-2xl scale-in-center border border-slate-100 overflow-y-auto max-h-[85vh]">
-            <div
-              className="w-full h-fit flex justify-end cursor-pointer text-slate-400 hover:text-slate-600"
-              onClick={() => setShowPlanModal(false)}
-            >
-              <X size={20} />
-            </div>
-            <div className="text-center space-y-1 mb-6">
-              <h3 className="text-2xl sm:text-3xl font-montserrat text-slate-900 tracking-tight">
-                Select Your Plan
-              </h3>
-              <p className="text-slate-500 font-sans text-xs sm:text-sm">
-                Choose the operational blueprint that fits your estate&apos;s
-                needs
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              {/* Option 1: Estate Management */}
-              <button
-                type="button"
-                onClick={() => setSelectedPlan("estate_management")}
-                className={`flex flex-col text-left p-5 sm:p-6 rounded-2xl border-2 transition-all justify-between ${
-                  selectedPlan === "estate_management"
-                    ? "border-indigo-600 bg-indigo-50/20 shadow-lg shadow-indigo-100"
-                    : "border-slate-100 hover:border-slate-200 bg-slate-50/50"
-                }`}
-              >
-                <div>
-                  <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${
-                      selectedPlan === "estate_management"
-                        ? "bg-indigo-600 text-white"
-                        : "bg-slate-200 text-slate-600"
-                    }`}
-                  >
-                    <Home size={18} />
-                  </div>
-                  <h4 className="font-bold text-slate-900 text-sm sm:text-base mb-1">
-                    Estate Management Plan
-                  </h4>
-                  <p className="text-xs text-slate-500 leading-relaxed font-sans">
-                    Full coverage suite to register, manage, and coordinate all
-                    residents, administrative properties, and security stations.
-                  </p>
-                </div>
-                <div className="mt-4 pt-3 border-t border-slate-100/80 w-full">
-                  <span
-                    className={`text-xs font-bold ${
-                      selectedPlan === "estate_management"
-                        ? "text-indigo-600"
-                        : "text-slate-400"
-                    }`}
-                  >
-                    {selectedPlan === "estate_management"
-                      ? "Selected"
-                      : "Choose this Option"}
-                  </span>
-                </div>
-              </button>
-
-              {/* Option 2: Security Only */}
-              <button
-                type="button"
-                onClick={() => setSelectedPlan("security_only")}
-                className={`flex flex-col text-left p-5 sm:p-6 rounded-2xl border-2 transition-all justify-between ${
-                  selectedPlan === "security_only"
-                    ? "border-indigo-600 bg-indigo-50/20 shadow-lg shadow-indigo-100"
-                    : "border-slate-100 hover:border-slate-200 bg-slate-50/50"
-                }`}
-              >
-                <div>
-                  <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${
-                      selectedPlan === "security_only"
-                        ? "bg-indigo-600 text-white"
-                        : "bg-slate-200 text-slate-600"
-                    }`}
-                  >
-                    <ShieldCheck size={18} />
-                  </div>
-                  <h4 className="font-bold text-slate-900 text-sm sm:text-base mb-1">
-                    Security Only Plan
-                  </h4>
-                  <p className="text-xs text-slate-500 leading-relaxed font-sans">
-                    Tailored strictly for gate security operations. Track guard
-                    rosters, process gatepass verifications, and monitor queues.
-                  </p>
-                </div>
-                <div className="mt-4 pt-3 border-t border-slate-100/80 w-full">
-                  <span
-                    className={`text-xs font-bold ${
-                      selectedPlan === "security_only"
-                        ? "text-indigo-600"
-                        : "text-slate-400"
-                    }`}
-                  >
-                    {selectedPlan === "security_only"
-                      ? "Selected"
-                      : "Choose this Option"}
-                  </span>
-                </div>
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowPlanModal(false)}
-              className="w-full py-3.5 bg-slate-950 text-white hover:bg-slate-900 rounded-2xl font-bold text-base transition-all"
-            >
-              Confirm Selection
-            </button>
-          </div>
-        </div>
-      )}
+      <PlanSelectionModal
+        isOpen={showPlanModal}
+        onClose={() => setShowPlanModal(false)}
+        onConfirm={([updatedSelection, duration]) => {
+          setConfiguredPlan(updatedSelection);
+          setPlanDuration(duration);
+        }}
+        allowTrial={true}
+      />
     </div>
   );
 }

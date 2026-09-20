@@ -1,5 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, {
@@ -51,15 +49,17 @@ import { showAccessDeniedToast } from "./Users";
 import {
   GuardAssignmentDropdown,
   RecurringGuardDropdown,
+  UnifiedGuardComboDropdown,
 } from "./ScheduleGuardSelect";
-import { formatUtcDate } from "../services/apis";
+import { formatDate } from "../services/apis";
 import SecurityScheduleDetailView from "./SecurityScheduleDetailView";
-
+import { DeletePromptModal } from "./DeletePromptModal";
 
 export default function SecuritySchedulesPage() {
   const [activeTab, setActiveTab] = useState<"builder" | "calendar">("builder");
   const [schedules, setSchedules] = useState<FetchedSecuritySchedule[]>([]);
   const [scheduleGuards, setScheduleGuards] = useState<ScheduleGuard[]>([]);
+  const [fetchingSchedules, setFetchingSchedues] = useState(false);
   const [selectedScheduleForCalendar, setSelectedScheduleForCalendar] =
     useState<FetchedSecuritySchedule | null>(null);
   const { user, contextEstateId } = useUser();
@@ -72,6 +72,7 @@ export default function SecuritySchedulesPage() {
     if (!contextEstateId) return;
 
     try {
+      setFetchingSchedues(true);
       const res: FetchSchedulesResponse =
         await securityDb.getSchedules(contextEstateId);
       if (res.success) {
@@ -79,11 +80,20 @@ export default function SecuritySchedulesPage() {
         const scheduleGuards: ScheduleGuard[] = res.guardList;
         setSchedules(schedules);
         setScheduleGuards(scheduleGuards);
+
+        if (activeTab === "calendar") {
+          setSelectedScheduleForCalendar((prevSelected) => {
+            if (!prevSelected) return null;
+            return schedules.find((s) => s.id === prevSelected.id) || null;
+          });
+        }
       }
     } catch (err) {
       toast.error("Failed to load schedules");
+    } finally {
+      setFetchingSchedues(false);
     }
-  }, [contextEstateId]);
+  }, [contextEstateId, activeTab]);
 
   useEffect(() => {
     if (!canView) {
@@ -109,10 +119,12 @@ export default function SecuritySchedulesPage() {
         <SecurityScheduleDetailView
           selectedSchedule={selectedScheduleForCalendar}
           guards={scheduleGuards}
+          onSuccess={fetchSchedules}
           onBack={() => {
             setActiveTab("builder");
             setSelectedScheduleForCalendar(null);
           }}
+          loading={fetchingSchedules}
         />
       )}
     </div>
@@ -131,9 +143,11 @@ export function ScheduleBuilderTab({
   setSchedules: React.Dispatch<React.SetStateAction<FetchedSecuritySchedule[]>>;
   onViewCalendar: (sch: FetchedSecuritySchedule) => void;
 }) {
-  const { contextEstateId } = useUser();
+  const { user, contextEstateId } = useUser();
   const [guards, setGuards] = useState<SecurityUser[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Form Basic Info
   const [scheduleName, setScheduleName] = useState("");
@@ -149,11 +163,21 @@ export function ScheduleBuilderTab({
     new Date().toISOString().split("T")[0],
   );
   const [endDate, setEndDate] = useState("");
-  const [useSingleGuard, setUseSingleGuard] = useState(false);
-  const [singleGuardId, setSingleGuardId] = useState("");
+  const [useUnifiedGuardCombo, setUseUnifiedGuardCombo] = useState(false);
+  const [unifiedGuardIds, setUnifiedGuardIds] = useState<string[]>([]);
   const [recurringPeriods, setRecurringPeriods] = useState<ShiftPeriod[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const recurringbottomRef = useRef(null as HTMLDivElement | null);
+
+  const canAdd =
+    user?.permissions?.includes("security_management") ||
+    user?.permissions?.includes("add_security_schedule") ||
+    user?.permissions?.includes("all-access");
+
+  const canDelete =
+    user?.permissions?.includes("security_management") ||
+    user?.permissions?.includes("delete_security_schedule") ||
+    user?.permissions?.includes("all-access");
 
   useEffect(() => {
     if (!contextEstateId) return;
@@ -419,22 +443,28 @@ export function ScheduleBuilderTab({
     }, 100);
   };
 
-  const handleDeleteSchedule = async (id: string) => {
-    if (!id || !contextEstateId) return;
-    const schedule = schedules.find((s) => s.id === id);
-    if (!confirm(`Are you sure you want to delete "${schedule?.name}"?`))
-      return;
+  const handleDeleteSchedule = async () => {
+    if (!deleteId || !contextEstateId) return;
 
+    if (!canDelete) {
+      showAccessDeniedToast();
+      return;
+    }
+    
     try {
-      const res = await securityDb.deleteSchedule(contextEstateId, id);
+      setIsDeleting(true);
+      const res = await securityDb.deleteSchedule(deleteId, contextEstateId!);
       if (res?.success) {
         toast.success("Schedule deleted successfully");
-        setSchedules(schedules.filter((s) => s.id !== id));
+        setSchedules(schedules.filter((s) => s.id !== deleteId));
       } else {
         toast.error("Failed to delete schedule");
       }
     } catch (err) {
       toast.error("Failed to delete schedule");
+    } finally {
+      setIsDeleting(false);
+      setDeleteId(null);
     }
   };
 
@@ -496,6 +526,12 @@ export function ScheduleBuilderTab({
 
   const handleSaveSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!canAdd) {
+      showAccessDeniedToast();
+      return;
+    }
+
     if (!scheduleName) return toast.error("Schedule title is required");
 
     setIsSaving(true);
@@ -646,9 +682,24 @@ export function ScheduleBuilderTab({
         }
       }
 
-      if (useSingleGuard && !singleGuardId) {
-        return toast.error("Please select a guard for the single-guard allocation.");
+      if (useUnifiedGuardCombo && unifiedGuardIds.length === 0) {
+        return toast.error("Please select guards for the unified allocation.");
       }
+
+      if (useUnifiedGuardCombo && unifiedGuardIds.length === 0) {
+        return toast.error("Please select guards for the unified allocation.");
+      }
+
+      // Map unified guard combo to all periods if checkbox is checked
+      const finalRecurringPeriods =
+        mode === "recurring"
+          ? recurringPeriods.map((period) => ({
+              ...period,
+              assignedGuardIds: useUnifiedGuardCombo
+                ? unifiedGuardIds
+                : period.assignedGuardIds || [],
+            }))
+          : [];
 
       // --- 3. PAYLOAD PREPARATION & DATABASE DISPATCH ---
       const newSchedule: Omit<ScheduleDefinition, "id"> = {
@@ -660,9 +711,7 @@ export function ScheduleBuilderTab({
               recurringCadence: cadence,
               startDate,
               endDate,
-              recurringPeriods,
-              useSingleGuardThroughout: useSingleGuard,
-              singleGuardId: useSingleGuard ? singleGuardId : undefined,
+              recurringPeriods: finalRecurringPeriods,
             }),
       };
 
@@ -702,8 +751,8 @@ export function ScheduleBuilderTab({
 
     setStartDate(new Date().toISOString().split("T")[0]);
     setEndDate("");
-    setUseSingleGuard(false);
-    setSingleGuardId("");
+    setUseUnifiedGuardCombo(false);
+    setUnifiedGuardIds([]);
     setRecurringPeriods([]);
   };
 
@@ -1047,7 +1096,7 @@ export function ScheduleBuilderTab({
               <div className="p-3 bg-white rounded-xl border border-slate-200 flex items-center justify-between">
                 <div>
                   <p className="text-xs font-bold text-slate-700">
-                    Assign Single Guard Throughout
+                    Assign Single Combo Throughout
                   </p>
                   <p className="text-[10px] text-slate-400">
                     Automatically attaches one guard to all generated periods.
@@ -1055,30 +1104,18 @@ export function ScheduleBuilderTab({
                 </div>
                 <input
                   type="checkbox"
-                  checked={useSingleGuard}
-                  onChange={(e) => setUseSingleGuard(e.target.checked)}
+                  checked={useUnifiedGuardCombo}
+                  onChange={(e) => setUseUnifiedGuardCombo(e.target.checked)}
                   className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
                 />
               </div>
 
-              {useSingleGuard && (
-                <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                    Select Single Guard
-                  </label>
-                  <select
-                    value={singleGuardId}
-                    onChange={(e) => setSingleGuardId(e.target.value)}
-                    className="w-full mt-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium"
-                  >
-                    <option value="">-- Choose Guard --</option>
-                    {guards.map((g) => (
-                      <option key={g.id} value={g.id}>
-                        {g.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              {useUnifiedGuardCombo && (
+                <UnifiedGuardComboDropdown
+                  guards={guards}
+                  selectedGuardIds={unifiedGuardIds}
+                  onChange={setUnifiedGuardIds}
+                />
               )}
 
               {/* Shift Periods Sequence */}
@@ -1336,7 +1373,7 @@ export function ScheduleBuilderTab({
                       )}
 
                       {/* Guard Selection Dropdown Component */}
-                      {!useSingleGuard && (
+                      {!useUnifiedGuardCombo && (
                         <RecurringGuardDropdown
                           guards={guards}
                           period={period}
@@ -1437,8 +1474,8 @@ export function ScheduleBuilderTab({
                         </span>
                       </p>
                       <p className="text-[11px] text-slate-400">
-                        {formatUtcDate(schedule.start_date)} →{" "}
-                        {formatUtcDate(schedule.end_date)}
+                        {formatDate(schedule.start_date)} →{" "}
+                        {formatDate(schedule.end_date)}
                       </p>
                     </div>
                   )}
@@ -1454,7 +1491,7 @@ export function ScheduleBuilderTab({
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleDeleteSchedule(schedule.id)}
+                    onClick={() => setDeleteId(schedule.id)}
                     className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                   >
                     <Trash2 size={16} />
@@ -1465,6 +1502,15 @@ export function ScheduleBuilderTab({
           )}
         </div>
       )}
+
+      <DeletePromptModal
+        isOpen={deleteId !== null}
+        onClose={() => setDeleteId(null)}
+        onConfirm={() => handleDeleteSchedule()}
+        loading={isDeleting}
+        title="Delete this Schedule?"
+        message="This will permanently remove this schedule and all related shifts."
+      />
     </div>
   );
 }

@@ -110,12 +110,6 @@ export default function SideBar({
       icon: Users,
       url: "/home/tenantmanagement",
     },
-    // {
-    //   id: ViewState.REQUESTS,
-    //   label: "Requests",
-    //   icon: Inbox,
-    //   url: "/home/joinrequestpage",
-    // },
     {
       id: ViewState.SERVICES,
       label: "Services",
@@ -138,7 +132,7 @@ export default function SideBar({
   return (
     <>
       <aside
-        className={`${isOpen ? "" : "hidden"} flex flex-col w-60 p-4 bg-gm-navy h-screen border-r border-slate-100 overflow-y-auto z-50 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]`}
+        className={`${isOpen ? "" : "hidden"} flex flex-col p-4 bg-gm-navy w-60 min-w-60 shrink-0 h-full border-r border-slate-100 overflow-y-auto z-50 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]`}
       >
         <div className="p-8 flex items-center space-x-3">
           <div className="relative w-full h-14 backdrop-blur-md rounded-xl flex items-center justify-center overflow-hidden">
@@ -179,7 +173,7 @@ export default function SideBar({
                 }`}
               >
                 <item.icon
-                  size={22}
+                  size={19}
                   className={`transition-colors ${
                     isActive && !isDisabled ? "text-primary" : "text-white"
                   }`}

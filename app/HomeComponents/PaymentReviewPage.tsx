@@ -233,7 +233,7 @@ export default function PaymentReviewPage() {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar pb-16">
         {filteredPayments.length > 0 ? (
           filteredPayments.map((payment) => (
             <button
@@ -428,9 +428,9 @@ export default function PaymentReviewPage() {
 
   // --- MAIN RENDER ---
   return (
-    <div className="h-[calc(100vh-100px)] w-full flex flex-col overflow-hidden p-4 pb-safe font-sans bg-slate-50/30">
+    <div className="h-full w-full flex flex-col overflow-hidden p-4 pb-safe font-sans bg-slate-50/30">
       {/* Top Header Tabs Area */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 px-1">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 px-1 overflow-hidden">
         <div className="flex gap-1.5 p-1 bg-slate-100 rounded-2xl shadow-inner w-full sm:w-auto overflow-x-auto no-scrollbar">
           <button
             onClick={() => setActiveMainTab("PAYMENTS")}

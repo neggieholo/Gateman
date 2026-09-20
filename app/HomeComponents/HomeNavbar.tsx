@@ -9,45 +9,42 @@ import { checkSession } from "../services/apis";
 const HomeNavbar = () => {
   const {
     user,
-    setUser,
-    isLoading,
-    setIsLoading,
     badgeCount,
-    setPlan,
     contextEstateId,
-    setContextEstateId,
   } = useUser();
   const router = useRouter();
 
-  const [mounted, setMounted] = useState(false);
-
   useEffect(() => {
-    async function cSessionCheck() {
+    const verifySession = async () => {
       try {
-        setMounted(true);
-        setIsLoading(true);
         const res = await checkSession();
-        console.log("Session check data:", res);
-
         if (!res.success || res?.user?.role !== "ADMIN") {
-          console.warn("Session invalid, redirecting...");
+          console.warn("Session invalid on background check, redirecting...");
           window.location.replace("/");
-        } else {
-          setUser(res.user);
-          if (res.user?.estate_ids && res.user.estate_ids.length > 0) {
-            setContextEstateId(res.user.estate_ids[0]);
-            setPlan(res.user.estates[0].plan);
-          }
-          setIsLoading(false);
         }
       } catch (err) {
-        console.error("Session check failed:", err);
+        console.error("Background session check failed:", err);
         window.location.replace("/");
       }
-    }
+    };
 
-    cSessionCheck();
-  }, [setUser, setIsLoading, setContextEstateId, setPlan]);
+    // Run on tab focus
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        verifySession();
+      }
+    };
+
+    // Run periodically every 10 minutes
+    const intervalId = setInterval(verifySession, 10 * 60 * 1000);
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
   const activeEstate = useMemo(() => {
     if (!user?.estates || !contextEstateId) return null;

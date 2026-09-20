@@ -1,9 +1,12 @@
 import {
+  FetchedSecuritySchedule,
+  OverrideProjectionSlotPayload,
   PlanSelectionData,
   PricingConfig,
   ScheduleDefinition,
   SecurityJoinRequest,
   SecurityLog,
+  SecurityDutyLog,
   SecurityUser,
   Tenant,
 } from "./types";
@@ -426,8 +429,8 @@ export const securityDb = {
   updateSchedule: async (
     scheduleId: string,
     estate_id: string,
-    scheduleData: { new_name?: string; new_end_date?: string },
-  ): Promise<ScheduleDefinition> => {
+    endDate: string,
+  ): Promise<FetchedSecuritySchedule> => {
     const res = await fetch(`${baseUrl}/api/security/schedules/${scheduleId}`, {
       method: "PUT",
       headers: {
@@ -435,7 +438,7 @@ export const securityDb = {
       },
       body: JSON.stringify({
         estate_id,
-        ...scheduleData,
+        endDate,
       }),
       credentials: "include",
     });
@@ -450,20 +453,37 @@ export const securityDb = {
     const data = await res.json();
     const s = data.schedule;
 
-    return {
-      id: s.id,
-      name: s.name,
-      mode: s.mode,
-      specificDateGroups: s.specific_date_groups,
-      recurringCadence: s.recurring_cadence,
-      startDate: s.start_date,
-      endDate: s.end_date,
-      recurringPeriods: s.recurring_periods,
-      useSingleGuardThroughout: s.use_single_guard_throughout,
-      singleGuardId: s.single_guard_id,
-    };
+    return s as FetchedSecuritySchedule;
   },
 
+  overrideProjectionSlot: async ({
+    projectionId,
+    estate_id,
+    periodId,
+    cycle,
+    assignedGuardIds,
+  }: OverrideProjectionSlotPayload) => {
+    const res = await fetch(
+      `${baseUrl}/api/security/schedules/projection-override${projectionId}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          estate_id,
+          periodId,
+          cycle,
+          assignedGuardIds,
+        }),
+        credentials: "include",
+      },
+    );
+
+    if (!res.ok) {
+      throw new Error(`Failed to override projection slot: ${res.statusText}`);
+    }
+
+    return res.json();
+  },
   // 14. Update guard slot reassignment
   assignSlotGuard: async (payload: {
     scheduleId: string;
@@ -471,6 +491,8 @@ export const securityDb = {
     periodId: string;
     assignedGuardIds: string[];
     dateStr?: string;
+    startDate?: string;
+    endDate?: string;
   }) => {
     const res = await fetch(
       `${baseUrl}/api/security/schedules/${payload.scheduleId}/assign-slot`,
@@ -497,6 +519,18 @@ export const securityDb = {
     }
 
     return await res.json();
+  },
+
+  getSecurityDutyLogs: async (estate_id: string) => {
+    const res = await fetch(`${baseUrl}/api/security/duty-logs/${estate_id}`, {
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Could not fetch security duty logs");
+    }
+    const data = await res.json();
+    return data;
   },
 
   // 13. Delete a security schedule

@@ -4,14 +4,13 @@ import SideBar from "@/app/HomeComponents/SideBar";
 import React from "react";
 import { X } from "lucide-react";
 import { useUser } from "../UserContext";
-import SecuritySideBar from "../HomeComponents/SecuritySideBar";
 
 export default function HomeLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { isSidebarOpen, setIsSidebarOpen, plan } = useUser();
+  const { isSidebarOpen, setIsSidebarOpen } = useUser();
 
   function closeAfterNavClick() {
     setIsSidebarOpen(false);

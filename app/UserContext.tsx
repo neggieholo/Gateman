@@ -49,7 +49,7 @@ const UserContext = createContext<UnifiedUserContextType | undefined>(
 export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [notifications, setNotifications] = useState<notification[]>([]);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
   const [contextEstateId, setContextEstateId] = useState<string | null>(null);

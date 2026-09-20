@@ -796,7 +796,7 @@ export const formatTime = (timeStr: string) => {
   return `${formattedHours}:${minutes} ${ampm}`;
 };
 
-export const formatDate = (dateStr: string) => {
+export const formatDate = (dateStr: string | null | undefined) => {
   if (!dateStr) return "N/A";
   const date = new Date(dateStr);
   const year = date.getFullYear();
@@ -1148,6 +1148,7 @@ export const getBookingStatusBadge = (status: BookingStatus) => {
       };
   }
 };
+
 
 export const fetchSecurityStats = async (
   id: string,

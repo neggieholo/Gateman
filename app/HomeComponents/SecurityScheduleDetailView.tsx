@@ -14,6 +14,9 @@ import {
   UserX,
   Eye,
   Grid,
+  Activity,
+  LoaderCircle,
+  Loader2,
 } from "lucide-react";
 import {
   FetchedSecuritySchedule,
@@ -23,20 +26,26 @@ import {
 import { useUser } from "../UserContext";
 import { securityDb } from "../services/database";
 import toast from "react-hot-toast";
-import { formatUtcDate } from "../services/apis";
+import { formatDate } from "../services/apis";
+import { DeletePromptModal } from "./DeletePromptModal";
+import { showAccessDeniedToast } from "./Users";
 
 interface InteractiveCalendarTabProps {
   selectedSchedule: FetchedSecuritySchedule | null;
   guards: ScheduleGuard[];
+  onSuccess: () => void;
   onBack?: () => void;
+  loading: boolean;
 }
 
 export default function SecurityScheduleDetailView({
   selectedSchedule: initialSchedule,
   guards: initialGuards,
+  onSuccess,
   onBack,
+  loading,
 }: InteractiveCalendarTabProps) {
-  const { contextEstateId } = useUser();
+  const { user, contextEstateId } = useUser();
   const [guards, setGuards] = useState<ScheduleGuard[] | null>(null);
   const [schedule, setSchedule] = useState<FetchedSecuritySchedule | null>(
     null,
@@ -44,7 +53,18 @@ export default function SecurityScheduleDetailView({
   const [isEditing, setIsEditing] = useState(false);
   const [viewMode, setViewMode] = useState<"details" | "projection">("details");
   const [newEndDate, setNewEndDate] = useState("");
-  const [newScheduleName, setNewScheduleName] = useState("");
+  const [newScheduleName, setNewScheduleName] = useState(schedule?.name || "");
+  const [loadingAction, setLoadingAtion] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const [projectionEditSlot, setprojectionEditSlot] = useState<{
+    projectionId: string;
+    dateStr: string;
+    cycle: "current" | "next" | null;
+    periodId: string | null;
+    guardIds: string[];
+  } | null>(null);
 
   const [editingSlot, setEditingSlot] = useState<{
     dateStr: string;
@@ -52,43 +72,78 @@ export default function SecurityScheduleDetailView({
     currentGuardIds: string[];
   } | null>(null);
 
+  const canEdit =
+    user?.permissions?.includes("security_management") ||
+    user?.permissions?.includes("edit_security_schedule") ||
+    user?.permissions?.includes("all-access");
+
+  const canDelete =
+    user?.permissions?.includes("security_management") ||
+    user?.permissions?.includes("delete_security_schedule") ||
+    user?.permissions?.includes("all-access");
+
+  const originalEndDateFormatted = schedule?.end_date
+    ? String(schedule.end_date).split("T")[0]
+    : "";
+
+  const endDateDifferent = originalEndDateFormatted !== newEndDate;
+
   useEffect(() => {
     setSchedule(initialSchedule);
     setGuards(initialGuards || null);
   }, [initialSchedule, initialGuards]);
 
+  useEffect(() => {
+    if (schedule) {
+      setNewScheduleName(schedule.name || "");
+
+      // Safely format ISO or Date strings to YYYY-MM-DD for <input type="date" />
+      const formattedEndDate =
+        schedule.end_date || schedule.end_date
+          ? String(schedule.end_date || schedule.end_date).split("T")[0]
+          : "";
+
+      setNewEndDate(formattedEndDate);
+    }
+  }, [schedule, isEditing]);
   const guardList = guards || [];
 
-  const handleDelete = async () => {
-    if (!schedule || !contextEstateId) return;
-    if (!confirm(`Are you sure you want to delete "${schedule.name}"?`)) return;
-
-    try {
-      const res = await securityDb.deleteSchedule(contextEstateId, schedule.id);
-      if (res?.success) {
-        toast.success("Schedule deleted successfully");
-        if (onBack) onBack();
-      } else {
-        toast.error("Failed to delete schedule");
-      }
-    } catch (err) {
-      toast.error("Failed to delete schedule");
-    }
-  };
-
+  // 2. Save Handler
   const handleSaveInternalEdit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!canEdit) {
+      showAccessDeniedToast();
+      return;
+    }
+
     if (!schedule || !contextEstateId) return;
 
     try {
-      await securityDb.updateSchedule(schedule.id, contextEstateId, {
-        new_name: newScheduleName,
-        new_end_date: newEndDate,
-      });
+      setLoadingAtion(true);
+      const updatedData = await securityDb.updateSchedule(
+        schedule.id,
+        contextEstateId,
+        newEndDate,
+      );
+
+      // Build the refreshed schedule object
+      const updatedSchedule: FetchedSecuritySchedule = {
+        ...schedule,
+        end_date: updatedData.end_date || newEndDate,
+        projection: updatedData.projection ?? schedule.projection,
+      };
+
+      // Update local state and propagate to parent list
+      setSchedule(updatedSchedule);
+      onSuccess();
+
       toast.success("Schedule updated successfully");
       setIsEditing(false);
     } catch (err) {
       toast.error("Failed to save changes");
+    } finally {
+      setLoadingAtion(false);
     }
   };
 
@@ -96,7 +151,13 @@ export default function SecurityScheduleDetailView({
   const handleSaveSlotReassignment = async (updatedGuardIds: string[]) => {
     if (!schedule || !contextEstateId || !editingSlot) return;
 
+    if (!canEdit) {
+      showAccessDeniedToast();
+      return;
+    }
+
     try {
+      setLoadingAtion(true);
       const response = await securityDb.assignSlotGuard({
         scheduleId: schedule.id,
         estate_id: contextEstateId,
@@ -106,17 +167,20 @@ export default function SecurityScheduleDetailView({
       });
 
       if (response.success) {
-        setSchedule((prev) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            specific_date_groups:
-              response.specific_date_groups ?? prev.specific_date_groups,
-            recurring_periods:
-              response.recurring_periods ?? prev.recurring_periods,
-            projection: response.projection ?? prev.projection,
-          };
-        });
+        // 1. Build the updated schedule object directly
+        const updatedSchedule: FetchedSecuritySchedule = {
+          ...schedule,
+          specific_date_groups:
+            response.specific_date_groups ?? schedule.specific_date_groups,
+          recurring_periods:
+            response.recurring_periods ?? schedule.recurring_periods,
+          projection: response.projection ?? schedule.projection,
+        };
+
+        // 2. Update local state
+        setSchedule(updatedSchedule);
+
+        onSuccess();
 
         toast.success("Guard assignment updated");
       }
@@ -124,6 +188,62 @@ export default function SecurityScheduleDetailView({
       toast.error("Failed to update guard assignment");
     } finally {
       setEditingSlot(null);
+      setLoadingAtion(false);
+    }
+  };
+
+  const handleProjectionSlotUpdate = async () => {
+    if (!schedule || !contextEstateId || !projectionEditSlot) return;
+
+    if (!canEdit) {
+      showAccessDeniedToast();
+      return;
+    }
+
+    try {
+      setLoadingAtion(true);
+      const response = await securityDb.overrideProjectionSlot({
+        projectionId: projectionEditSlot.projectionId!,
+        estate_id: contextEstateId,
+        periodId: projectionEditSlot.periodId!,
+        cycle: projectionEditSlot.cycle!,
+        assignedGuardIds: projectionEditSlot.guardIds,
+      });
+
+      if (response.success) {
+        toast.success("Guard assignment updated");
+        onSuccess();
+      }
+    } catch (err) {
+      toast.error("Failed to update guard assignment");
+    } finally {
+      setprojectionEditSlot(null);
+      setLoadingAtion(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!schedule || !contextEstateId || !deleteId) return;
+
+    if (!canDelete) {
+      showAccessDeniedToast();
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      const res = await securityDb.deleteSchedule(deleteId, contextEstateId);
+      if (res?.success) {
+        toast.success("Schedule deleted successfully");
+        if (onBack) onBack();
+      } else {
+        toast.error("Failed to delete schedule");
+      }
+    } catch (err) {
+      toast.error("Failed to delete schedule");
+    } finally {
+      setIsDeleting(false);
+      setDeleteId(null);
     }
   };
 
@@ -149,20 +269,23 @@ export default function SecurityScheduleDetailView({
     );
   }
 
-  const allAttachedGuardIds = !schedule.use_single_guard_throughout
-    ? Array.from(
-        new Set(
-          schedule.mode === "specific"
-            ? schedule.specific_date_groups?.flatMap((g) =>
-                g.periods.flatMap((p) => p.assignedGuardIds),
-              ) || []
-            : schedule.recurring_periods?.flatMap((p) => p.assignedGuardIds) ||
-                [],
-        ),
-      )
-    : schedule.single_guard_id
-      ? [schedule.single_guard_id]
-      : [];
+  const allAttachedGuardIds = Array.from(
+    new Set(
+      schedule.mode === "specific"
+        ? schedule.specific_date_groups?.flatMap((g) =>
+            g.periods.flatMap((p) => p.assignedGuardIds),
+          ) || []
+        : schedule.recurring_periods?.flatMap((p) => p.assignedGuardIds) || [],
+    ),
+  );
+
+  if (loading) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <LoaderCircle className="animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-12">
@@ -229,9 +352,9 @@ export default function SecurityScheduleDetailView({
               </label>
               <input
                 type="text"
+                readOnly
                 value={newScheduleName || ""}
-                onChange={(e) => setNewScheduleName(e.target.value)}
-                className="w-full mt-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:bg-white"
+                className="w-full mt-1 px-4 py-2.5 bg-slate-100 text-slate-500 border border-slate-200 rounded-xl text-sm font-medium cursor-not-allowed"
               />
             </div>
 
@@ -260,9 +383,22 @@ export default function SecurityScheduleDetailView({
             </button>
             <button
               type="submit"
-              className="flex items-center gap-1.5 px-6 py-2.5 bg-blue-600 text-white font-montserrat font-bold text-xs uppercase tracking-wider rounded-xl hover:bg-blue-700"
+              disabled={!endDateDifferent || loadingAction}
+              className={`flex items-center gap-1.5 px-6 py-2.5 text-white font-montserrat font-bold text-xs uppercase tracking-wider rounded-xl transition-all ${
+                !endDateDifferent || loadingAction
+                  ? "bg-blue-300 cursor-not-allowed"
+                  : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
+              }`}
             >
-              <Save size={14} /> Save Changes
+              {loadingAction ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                </>
+              ) : (
+                <>
+                  <Save size={14} /> Save Changes
+                </>
+              )}
             </button>
           </div>
         </form>
@@ -283,8 +419,8 @@ export default function SecurityScheduleDetailView({
                 <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
                   <Clock size={12} />
                   {schedule.mode === "recurring"
-                    ? `${formatUtcDate(schedule.start_date)} to ${formatUtcDate(schedule.end_date) || "Ongoing"}`
-                    : `Start Date: ${formatUtcDate(schedule.specific_date_groups?.[0]?.date) || "N/A"}`}
+                    ? `${formatDate(schedule.start_date)} to ${formatDate(schedule.end_date) || "Ongoing"}`
+                    : `Start Date: ${formatDate(schedule.specific_date_groups?.[0]?.date) || "N/A"}`}
                 </p>
               </div>
 
@@ -296,7 +432,7 @@ export default function SecurityScheduleDetailView({
                   <Edit size={14} /> Edit
                 </button>
                 <button
-                  onClick={handleDelete}
+                  onClick={() => setDeleteId(schedule.id)}
                   className="flex items-center gap-1.5 px-3 py-2 bg-rose-50 text-rose-600 font-bold text-xs rounded-xl hover:bg-rose-100 transition-all cursor-pointer"
                 >
                   <Trash2 size={14} /> Delete
@@ -422,33 +558,19 @@ export default function SecurityScheduleDetailView({
 
                                   {/* Assigned Guards */}
                                   <div className="flex flex-wrap gap-1 pt-0.5">
-                                    {schedule.use_single_guard_throughout ? (
-                                      <span className="text-[10px] text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-md">
-                                        👤{" "}
-                                        {guardList.find(
-                                          (g) =>
-                                            g.id === schedule.single_guard_id,
-                                        )?.name || "Assigned Guard"}
-                                      </span>
-                                    ) : p.assignedGuardIds?.length === 0 ? (
-                                      <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-md flex items-center gap-1">
-                                        <UserX size={10} /> Unassigned Slot
-                                      </span>
-                                    ) : (
-                                      p.assignedGuardIds.map((gId) => {
-                                        const guard = guardList.find(
-                                          (g) => g.id === gId,
-                                        );
-                                        return (
-                                          <span
-                                            key={gId}
-                                            className="text-[10px] font-bold bg-white text-slate-700 border border-slate-200 px-2 py-0.5 rounded-md"
-                                          >
-                                            👤 {guard ? guard.name : "Guard"}
-                                          </span>
-                                        );
-                                      })
-                                    )}
+                                    {p.assignedGuardIds.map((gId) => {
+                                      const guard = guardList.find(
+                                        (g) => g.id === gId,
+                                      );
+                                      return (
+                                        <span
+                                          key={gId}
+                                          className="text-[10px] font-bold bg-white text-slate-700 border border-slate-200 px-2 py-0.5 rounded-md"
+                                        >
+                                          👤 {guard ? guard.name : "Guard"}
+                                        </span>
+                                      );
+                                    })}
                                   </div>
                                 </div>
                               );
@@ -487,14 +609,7 @@ export default function SecurityScheduleDetailView({
                           </button>
                         </div>
                         <div className="flex flex-wrap gap-1 pt-1">
-                          {schedule.use_single_guard_throughout ? (
-                            <span className="text-[10px] text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-md">
-                              👤{" "}
-                              {guardList.find(
-                                (g) => g.id === schedule.single_guard_id,
-                              )?.name || "Assigned Guard"}
-                            </span>
-                          ) : p.assignedGuardIds?.length === 0 ? (
+                          {p.assignedGuardIds?.length === 0 ? (
                             <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-md">
                               Unassigned Cycle Slot
                             </span>
@@ -561,58 +676,73 @@ export default function SecurityScheduleDetailView({
                 const renderShiftCard = (
                   shift: ProjectionShift,
                   index: number,
+                  cycle: "current" | "next",
                 ) => {
                   // Handle single guard override vs multi-guard array
-                  const guardIds = schedule.use_single_guard_throughout
-                    ? schedule.single_guard_id
-                      ? [schedule.single_guard_id]
-                      : []
-                    : shift.assigned_guard_ids || [];
+                  const guardIds = shift.assigned_guard_ids || [];
 
                   return (
                     <div
                       key={shift.period_id || index}
                       className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2.5"
                     >
-                      <div className="flex justify-between items-start border-b border-slate-200/60 pb-2">
-                        <span className="text-xs font-bold text-slate-800">
-                          🗓️ {shift.start_date}
-                          {shift.start_date !== shift.end_date &&
-                            ` ➔ ${shift.end_date}`}
-                        </span>
-                        <span className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
-                          {shift.label || "Shift"}
-                        </span>
-                      </div>
+                      <div className="flex gap-2border-b border-slate-200/60 pb-2">
+                        <div className="flex justify-between items-start border-b border-slate-200/60 pb-2">
+                          <span className="text-xs font-bold text-slate-800">
+                            🗓️ {shift.start_date}
+                            {shift.start_date !== shift.end_date &&
+                              ` ➔ ${shift.end_date}`}
+                          </span>
+                          <span className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                            {shift.label || "Shift"}
+                          </span>
+                        </div>
 
-                      <p className="text-[11px] font-medium text-slate-500">
-                        ⏰ {shift.start_time} - {shift.end_time}
-                      </p>
+                        <p className="text-[11px] font-medium text-slate-500">
+                          ⏰ {shift.start_time} - {shift.end_time}
+                        </p>
 
-                      <div className="space-y-1 pt-1 border-t border-slate-100">
-                        <span className="text-[10px] font-bold uppercase text-slate-400 block">
-                          Assigned Personnel:
-                        </span>
-                        <div className="flex flex-wrap gap-1">
-                          {guardIds.length === 0 ? (
-                            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">
-                              Unassigned
-                            </span>
-                          ) : (
-                            guardIds.map((id) => {
-                              const guard = guardList.find((g) => g.id === id);
-                              return (
-                                <span
-                                  key={id}
-                                  className="text-[10px] font-bold bg-white text-slate-700 border border-slate-200 px-2 py-0.5 rounded-md"
-                                >
-                                  👤 {guard ? guard.name : "Guard"}
-                                </span>
-                              );
-                            })
-                          )}
+                        <div className="space-y-1 pt-1 border-t border-slate-100">
+                          <span className="text-[10px] font-bold uppercase text-slate-400 block">
+                            Assigned Personnel:
+                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {guardIds.length === 0 ? (
+                              <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">
+                                Unassigned
+                              </span>
+                            ) : (
+                              guardIds.map((id) => {
+                                const guard = guardList.find(
+                                  (g) => g.id === id,
+                                );
+                                return (
+                                  <span
+                                    key={id}
+                                    className="text-[10px] font-bold bg-white text-slate-700 border border-slate-200 px-2 py-0.5 rounded-md"
+                                  >
+                                    👤 {guard ? guard.name : "Guard"}
+                                  </span>
+                                );
+                              })
+                            )}
+                          </div>
                         </div>
                       </div>
+                      <button
+                        onClick={() =>
+                          setprojectionEditSlot({
+                            projectionId: proj.id,
+                            dateStr: shift.start_date,
+                            cycle: cycle,
+                            periodId: shift.period_id,
+                            guardIds: shift.assigned_guard_ids,
+                          })
+                        }
+                        className="text-blue-600 hover:text-blue-800 cursor-pointer p-0.5"
+                      >
+                        <Edit2 size={12} />
+                      </button>
                     </div>
                   );
                 };
@@ -627,8 +757,8 @@ export default function SecurityScheduleDetailView({
                           Current Shift Cycle
                         </h5>
                         <span className="text-xs font-bold text-slate-500">
-                          {formatUtcDate(proj.current_cycle_start_date)} to{" "}
-                          {formatUtcDate(proj.current_cycle_end_date)}
+                          {formatDate(proj.current_cycle_start_date)} to{" "}
+                          {formatDate(proj.current_cycle_end_date)}
                         </span>
                       </div>
 
@@ -639,7 +769,7 @@ export default function SecurityScheduleDetailView({
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                           {currentShifts.map((shift, idx) =>
-                            renderShiftCard(shift, idx),
+                            renderShiftCard(shift, idx, "current"),
                           )}
                         </div>
                       )}
@@ -654,15 +784,14 @@ export default function SecurityScheduleDetailView({
                             Next Shift Cycle
                           </h5>
                           <span className="text-xs font-bold text-slate-500">
-                            {formatUtcDate(proj.next_cycle_start_date) || "N/A"}{" "}
-                            to{" "}
-                            {formatUtcDate(proj.next_cycle_end_date) || "N/A"}
+                            {formatDate(proj.next_cycle_start_date) || "N/A"} to{" "}
+                            {formatDate(proj.next_cycle_end_date) || "N/A"}
                           </span>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                           {nextShifts.map((shift, idx) =>
-                            renderShiftCard(shift, idx),
+                            renderShiftCard(shift, idx, "next"),
                           )}
                         </div>
                       </div>
@@ -730,17 +859,107 @@ export default function SecurityScheduleDetailView({
 
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
               <button
+                disabled={loadingAction}
                 onClick={() =>
                   handleSaveSlotReassignment(editingSlot.currentGuardIds)
                 }
                 className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold uppercase tracking-wider cursor-pointer"
               >
-                Done & Save
+                {loadingAction ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  </>
+                ) : (
+                  "Done & Save"
+                )}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {projectionEditSlot && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white border border-slate-200 p-6 rounded-3xl w-full max-w-md space-y-4 shadow-xl">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <h4 className="font-montserrat font-black text-sm text-slate-800 uppercase">
+                Reassign Guard Personnel
+              </h4>
+              <button
+                onClick={() => setprojectionEditSlot(null)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500 font-medium">
+              Update guard assignments for shift on{" "}
+              <strong className="text-slate-800">
+                {projectionEditSlot.dateStr}
+              </strong>
+              .
+            </p>
+
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {guardList.map((g) => {
+                const isSelected = projectionEditSlot.guardIds.includes(g.id);
+                return (
+                  <button
+                    key={g.id}
+                    onClick={() => {
+                      const updatedIds = isSelected
+                        ? projectionEditSlot.guardIds.filter(
+                            (id) => id !== g.id,
+                          )
+                        : [...projectionEditSlot.guardIds, g.id];
+                      setprojectionEditSlot({
+                        ...projectionEditSlot,
+                        guardIds: updatedIds,
+                      });
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-blue-50 border-blue-200 text-blue-700"
+                        : "bg-slate-50 border-slate-100 text-slate-500"
+                    }`}
+                  >
+                    <span>{g.name}</span>
+                    {isSelected && (
+                      <CheckCircle2 size={14} className="text-blue-600" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                onClick={handleProjectionSlotUpdate}
+                disabled={loadingAction}
+                className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold uppercase tracking-wider cursor-pointer"
+              >
+                {loadingAction ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  </>
+                ) : (
+                  "Done & Save"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <DeletePromptModal
+        isOpen={deleteId !== null}
+        onClose={() => setDeleteId(null)}
+        onConfirm={() => handleDelete()}
+        loading={isDeleting}
+        title="Delete this Schedule?"
+        message="This will permanently remove this schedule and all related shifts."
+      />
     </div>
   );
 }

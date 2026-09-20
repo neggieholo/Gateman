@@ -356,3 +356,38 @@ export const plansList = [
   "facility_bookings",
   "services_dispatch",
 ];
+
+type verifyingField =
+  | "email"
+  | "phone"
+  | "mfa_email"
+  | "disable_mfa_email"
+  | "disable_mfa_totp"
+  | null;
+
+export const VERIFYING_FIELD_MESSAGES: Record<
+  NonNullable<verifyingField>,
+  { title: string; subtitle: string }
+> = {
+  email: {
+    title: "Verify your Email",
+    subtitle: "Enter the code sent to your email address",
+  },
+  mfa_email: {
+    title: "Verify Email Security Code",
+    subtitle: "Enter the verification code sent to your email",
+  },
+  disable_mfa_email: {
+    title: "Disable Email Protection",
+    subtitle: "Enter the code sent to your email to disable 2FA",
+  },
+  phone: {
+    title: "Verify your Phone",
+    subtitle: "Enter the code sent to your phone number",
+  },
+  disable_mfa_totp: {
+    title: "Authenticator App Verification",
+    subtitle:
+      "Enter the 6-digit code from your authenticator app to disable 2FA",
+  },
+};

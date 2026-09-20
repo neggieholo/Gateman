@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
@@ -51,6 +52,9 @@ const AdminAlertManager = () => {
 
   // Form States
   const [selectedImage, setSelectedImage] = useState<any>(null);
+  const [selectedPostImage, setSelectedPostImage] = useState<string | null>(
+    null,
+  );
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [targetResidents, setTargetResidents] = useState(true);
@@ -661,20 +665,25 @@ const AdminAlertManager = () => {
                 <h3 className="text-xl sm:text-2xl font-montserrat font-black text-slate-800 tracking-tight leading-snug truncate block w-full mb-2">
                   {selectedPost.title}
                 </h3>
-                <p className="text-slate-600 text-sm leading-relaxed mb-4 max-h-24 overflow-y-auto font-medium">
-                  {selectedPost.content}
-                </p>
+                <div className="flex-col gap-2">
+                  <p className="text-slate-600 text-sm leading-relaxed mb-4 max-h-24 overflow-y-auto font-medium">
+                    {selectedPost.content}
+                  </p>
 
-                {/* {selectedPost.image_url && (
-                  <div className="mb-4 overflow-hidden rounded-xl border border-slate-200/80 bg-slate-100">
-                    <img
-                      src={selectedPost.image_url}
-                      alt={selectedPost.title || "Alert attachment"}
-                      className="w-full max-h-72 object-cover block"
-                      loading="lazy"
-                    />
-                  </div>
-                )} */}
+                  {selectedPost.image_url && (
+                    <div
+                      className="flex items-center my-3 bg-indigo-50 self-start px-2 py-1 rounded-md w-fit cursor-pointer"
+                      onClick={() =>
+                        setSelectedPostImage(selectedPost.image_url || null)
+                      }
+                    >
+                      <ImageIcon size={14} color="#4f46e5" />
+                      <p className="text-xs font-bold ml-1 font-sans text-indigo-600">
+                        View Image
+                      </p>
+                    </div>
+                  )}
+                </div>
 
                 <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium text-slate-400 bg-slate-50/80 p-2.5 rounded-xl border border-slate-100">
                   <div className="flex items-center gap-1">
@@ -788,7 +797,7 @@ const AdminAlertManager = () => {
                               </button>
                             )}
                           </div>
-                          <p className="text-slate-700 text-sm leading-relaxed font-medium break-words">
+                          <p className="text-slate-700 text-sm leading-relaxed font-medium wrap-break-word">
                             {comment.content}
                           </p>
                           <div className="mt-2 pt-1.5 border-t border-slate-50 flex items-center">
@@ -930,6 +939,16 @@ const AdminAlertManager = () => {
                           <p className="text-slate-500 text-xs font-medium line-clamp-2 mb-3.5 pr-2 leading-relaxed">
                             {post.content}
                           </p>
+                          {post.image_url ? (
+                            <div className="flex items-center my-3 bg-indigo-50 self-start px-2 py-1 rounded-md w-fit">
+                              <ImageIcon size={14} color="#4f46e5" />
+                              <p className="text-xs font-bold ml-1 font-sans text-indigo-600">
+                                Image attached
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="my-3" />
+                          )}
 
                           <div className="flex items-center gap-4 text-[10px] text-slate-400 font-medium font-oswald tracking-wide">
                             <span className="uppercase text-slate-400">
@@ -1002,6 +1021,29 @@ const AdminAlertManager = () => {
           )}
         </div>
       </div>
+
+      {selectedPostImage && (
+        <div
+          onClick={() => setSelectedPostImage(null)}
+          className="fixed inset-0 z-60 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs cursor-zoom-out animate-in fade-in duration-150"
+        >
+          <div className="relative max-w-[90vw] max-h-[85vh] animate-in zoom-in-95 duration-150">
+            {/* Close button indicator helper for touch screens */}
+            <button
+              onClick={() => setSelectedPostImage(null)}
+              className="absolute -top-12 right-0 p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all border border-white/10"
+            >
+              <X size={16} />
+            </button>
+            <img
+              src={selectedPost?.image_url}
+              alt={`${selectedPost?.title} expanded image`}
+              className="max-w-full max-h-[80vh] rounded-2xl object-contain border border-slate-800 shadow-2xl select-none"
+              onClick={(e) => e.stopPropagation()} // Stop overlay click collapse when clicking image directly
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

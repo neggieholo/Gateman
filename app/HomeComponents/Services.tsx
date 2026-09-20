@@ -150,6 +150,27 @@ export default function ServicesManagementPage() {
       return;
     }
 
+    if (!serviceName.trim()) {
+      toast.error("Please enter a service name");
+      return;
+    }
+
+    // Check if vendor list is empty
+    if (vendorList.length === 0) {
+      toast.error("Please add at least one vendor");
+      return;
+    }
+
+    // Check for any vendor missing a name or phone number
+    const hasInvalidVendor = vendorList.some(
+      (v) => !v.name.trim() || !v.phone.trim(),
+    );
+
+    if (hasInvalidVendor) {
+      toast.error("Each vendor must have both a name and a phone number.");
+      return;
+    }
+
     setSubmitting(true);
     const url = editingService
       ? `${baseUrl}/api/services/${editingService.id}`
@@ -159,15 +180,12 @@ export default function ServicesManagementPage() {
     const payload = {
       service_name: serviceName,
       vendors: vendorList.filter(
-        (v) =>
-          v.name.trim() !== "" &&
-          v.phone.trim() !== "" &&
-          v.email.trim() !== "",
+        (v) => v.name.trim() !== "" && v.phone.trim() !== "",
       ),
       estate_id: contextEstateId,
     };
 
-    // console.log("Service edit Payload:", payload);
+    console.log("Service edit Payload:", payload);
 
     try {
       const res = await fetch(url, {

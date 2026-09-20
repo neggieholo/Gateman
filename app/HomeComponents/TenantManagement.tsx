@@ -72,20 +72,10 @@ export default function UnifiedResidentPortal() {
     user?.permissions?.includes("delete_resident_account") ||
     user?.permissions?.includes("all-access");
 
-  // const canEditStatus =
-  //   user?.permissions?.includes("residents_management") ||
-  //   user?.permissions?.includes("modify_resident_status") ||
-  //   user?.permissions?.includes("all-access");
-
   const canViewLogs =
     user?.permissions?.includes("residents_management") ||
     user?.permissions?.includes("view_resident_logs") ||
     user?.permissions?.includes("all-access");
-
-  // const canViewPosts =
-  //   user?.permissions?.includes("community_management") ||
-  //   user?.permissions?.includes("view_community_posts") ||
-  //   user?.permissions?.includes("all-access");
 
   const canViewRecords =
     user?.permissions?.includes("estate_administration") ||
@@ -96,11 +86,6 @@ export default function UnifiedResidentPortal() {
     user?.permissions?.includes("notifications_management") ||
     user?.permissions?.includes("send_notifications") ||
     user?.permissions?.includes("all-access");
-
-  // const canViewRecords =
-  //   user?.permissions?.includes("estate_administration") ||
-  //   user?.permissions?.includes("view_estate_records") ||
-  //   user?.permissions?.includes("all-access");
 
   useEffect(() => {
     if (showRequests) {
@@ -275,7 +260,7 @@ export default function UnifiedResidentPortal() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-100px)] overflow-hidden p-4 font-sans">
+    <div className="flex flex-col h-full p-4 font-sans">
       {/* --- MASTER TAB NAVIGATION --- */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 px-2">
         <div className="flex gap-2 p-1.5 bg-slate-100 rounded-4xl shadow-inner max-w-full overflow-x-auto custom-scrollbar">
@@ -386,7 +371,7 @@ export default function UnifiedResidentPortal() {
       </div>
 
       {/* --- CONTENT AREA --- */}
-      <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-w-0">
+      <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-0">
         {activeTab === "REQUESTS" && (
           <div className="animate-in fade-in duration-500 h-full min-w-0">
             <JoinRequestsPage onApprove={fetchData} />
@@ -622,7 +607,7 @@ export default function UnifiedResidentPortal() {
 
             {/* 4. RESIDENT DIRECTORY GRID CARDS LAYOUT (Shows if no selection active) */}
             {!selectedTenant && filteredTenants.length > 0 && (
-              <div className="flex flex-col gap-3 min-w-0">
+              <div className="flex flex-col gap-3 min-h-0 overflow-hidden pb-16">
                 {filteredTenants.map((t) => (
                   <button
                     key={t.id}

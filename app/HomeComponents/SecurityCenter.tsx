@@ -11,6 +11,7 @@ import {
   FileText,
   ShieldAlert,
   Calendar,
+  ClockCheck,
 } from "lucide-react";
 import GatePassesView from "./GatePassView";
 import SecurityJoinRequestsPage from "./SecurityJoinRequestPage";
@@ -20,6 +21,7 @@ import SecurityReportsView from "./SecurityReportsView";
 import UserLogsPage from "./UsersLogsPage";
 import { useUser } from "../UserContext";
 import SecuritySchedulesPage from "./SecuritySchedules";
+import SecurityDutyLogsPage from "./SecurityDutyLogs";
 
 export default function SecurityManagement() {
   const { user } = useUser();
@@ -31,6 +33,7 @@ export default function SecurityManagement() {
     | "gatepasses"
     | "logs"
     | "schedules"
+    | "attendance"
   >("requests");
 
   const tabs = [
@@ -71,7 +74,7 @@ export default function SecurityManagement() {
     },
     {
       id: "logs",
-      label: "Logs",
+      label: "Activity Logs",
       icon: FileText,
       color: "text-slate-600",
       bg: "bg-purple-50",
@@ -82,6 +85,13 @@ export default function SecurityManagement() {
       icon: Calendar,
       color: "text-cyan-600",
       bg: "bg-cyan-50",
+    },
+    {
+      id: "attendance",
+      label: "Attendance",
+      icon: ClockCheck,
+      color: "text-lime-600",
+      bg: "bg-lime-50",
     },
   ];
 
@@ -133,6 +143,8 @@ export default function SecurityManagement() {
           {activeTab === "logs" && <UserLogsPage role="SECURITY" />}
 
           {activeTab === "schedules" && <SecuritySchedulesPage />}
+
+          {activeTab === "attendance" && <SecurityDutyLogsPage />}
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center p-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200/80 max-w-xl mx-auto my-8">

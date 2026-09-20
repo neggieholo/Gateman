@@ -36,7 +36,7 @@ import TotpMfaSetupComponent from "./AuthenticatorSetup";
 import { DeletePromptModal } from "./DeletePromptModal";
 import { useRouter } from "next/navigation";
 import { showAccessDeniedToast } from "./Users";
-import { ADDON_MODULES } from "../services/data";
+import { ADDON_MODULES, VERIFYING_FIELD_MESSAGES } from "../services/data";
 import { BASELINE_MODULES } from "../LandingPageComponents/PlanSelectionModal";
 import { SubscriptionModal } from "./SubscriptionUpdateModal";
 import NewEstateRegisterModal from "./NewEstateRegisterModal";
@@ -80,17 +80,13 @@ export default function Settings() {
     code: string;
   }>({ name: "", code: "" });
   const [accountNumber, setAccountNumber] = useState(
-    activeEstate?.bank_account_number
-      ? activeEstate.bank_account_number
-      : "Not set",
+    activeEstate?.bank_account_number || "Not Set",
   );
   const [accountName, setAccountName] = useState(
-    activeEstate?.bank_account_name
-      ? activeEstate.bank_account_name
-      : "Not set",
+    activeEstate?.bank_account_name || "Not Set",
   );
   const [bankName, setBankName] = useState(
-    activeEstate?.bank_name ? activeEstate.bank_name : "Not set",
+    activeEstate?.bank_name || "Not Set",
   );
   const [isResolving, setIsResolving] = useState(false);
   const [externalUrl, setExternalUrl] = useState(
@@ -99,6 +95,7 @@ export default function Settings() {
   const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]);
   const [metadata, setMetadata] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
+  const [requestingOtp, setRequestingOtp] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -106,7 +103,12 @@ export default function Settings() {
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [showRegEstateModal, setShowRegEstateModal] = useState(false);
   const [verifyingField, setVerifyingField] = useState<
-    "email" | "phone" | "mfa_email" | null
+    | "email"
+    | "phone"
+    | "mfa_email"
+    | "disable_mfa_email"
+    | "disable_mfa_totp"
+    | null
   >(null);
 
   const [emergencyContacts, setEmergencyContacts] = useState<
@@ -177,18 +179,18 @@ export default function Settings() {
         adminName: user.name || (isEditing ? "" : "Not set"),
         email: user.email || (isEditing ? "" : "Not set"),
         phone: user.phone_number || (isEditing ? "" : undefined),
-        phone_verified: true,
+        phone_verified: user.phone_verified,
+        email_verified: user.email_verified,
         mfa_enabled: user.mfa_enabled,
         mfa_type: user.mfa_type,
-        email_verified: true,
         avatar: user?.avatar || undefined,
         mfa_secret: "",
       });
 
       setPaymentMethod(activeEstate?.payment_type || "manual");
-      setAccountNumber(activeEstate?.bank_account_number || "Not set");
-      setAccountName(activeEstate?.bank_account_name || "Not set");
-      setBankName(activeEstate?.bank_name || "Not set");
+      setAccountNumber(activeEstate?.bank_account_number || "");
+      setAccountName(activeEstate?.bank_account_name || "");
+      setBankName(activeEstate?.bank_name || "");
       setExternalUrl(activeEstate?.external_api_url || "");
       setEmergencyContacts(activeEstate.emergency_contacts || []);
     }
@@ -223,39 +225,6 @@ export default function Settings() {
     });
   };
 
-  const handleRequestOtp = async (
-    target: string,
-    type: "email" | "phone" | "mfa_email",
-  ) => {
-    if (type === "phone") {
-      if (target) {
-        if (!isValidPhoneNumber(target)) {
-          toast.error(
-            "Invalid phone number format. Please check the number and country code.",
-          );
-          return;
-        }
-      }
-    }
-    setVerifyingField(type);
-    setOtpLoading(true);
-    setError(null);
-    try {
-      const apiType = type === "mfa_email" ? "email" : type;
-      const otpRes = await sendPofileChangeOtpApi(target, apiType);
-      if (otpRes.success) {
-        setMetadata(otpRes.metadata);
-        setShowOtpInput(true);
-      } else {
-        toast.error(otpRes.message);
-        setError(otpRes.message || "Failed to send OTP");
-      }
-    } catch (err) {
-      setError("Network error");
-    } finally {
-      setOtpLoading(false);
-    }
-  };
 
   const handleOtpChange = (value: string, index: number) => {
     const cleanValue = value.replace(/[^0-9]/g, "").slice(-1); // Only last char
@@ -280,14 +249,113 @@ export default function Settings() {
     }
   };
 
+  const handleDisableEmailMfa = () => {
+    if (!profile.email_verified) {
+      toast.error("Please verify your email address first.");
+      return;
+    }
+    handleRequestOtp(profile.email, "disable_mfa_email");
+  };
+  
+  const handleRequestOtp = async (
+    target: string,
+    type:
+      | "email"
+      | "phone"
+      | "mfa_email"
+      | "disable_mfa_email"
+      | "disable_mfa_totp",
+  ) => {
+    if (type === "phone") {
+      if (target) {
+        if (!isValidPhoneNumber(target)) {
+          toast.error(
+            "Invalid phone number format. Please check the number and country code.",
+          );
+          return;
+        }
+      }
+    }
+    setVerifyingField(type);
+    setOtpLoading(true);
+    setError(null);
+    setRequestingOtp(true);
+    try {
+      const apiType =
+        type === "mfa_email" || type === "disable_mfa_email" ? "email" : type;
+      const otpRes = await sendPofileChangeOtpApi(target, apiType);
+      if (otpRes.success) {
+        setMetadata(otpRes.metadata);
+        setShowOtpInput(true);
+      } else {
+        toast.error(otpRes.message);
+        setError(otpRes.message || "Failed to send OTP");
+      }
+    } catch (err) {
+      setError("Network error");
+    } finally {
+      setOtpLoading(false);
+      setRequestingOtp(false);
+    }
+  };
+
+  const handleVerifyTotp = async (tokenString: string) => {
+    if (!tokenString || tokenString.length !== 6) {
+      setError("Please enter a valid 6-digit code.");
+      return;
+    }
+    setError(null);
+
+    try {
+      const res = await fetch(`${baseUrl}/api/admin/verify-totp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          otp: tokenString,
+        }),
+        credentials: "include",
+      });
+
+      const data = await res.json();
+      return data;
+    } catch (err) {
+      setError("Verification failed.");
+      toast.error("Verification failed.");
+    }
+  };
+
   const handleOtpVerify = async (finalOtp: string) => {
     setOtpLoading(true);
     try {
+      if (verifyingField === "disable_mfa_totp") {
+        const res = await handleVerifyTotp(finalOtp);
+        if (res?.success) {
+          setMfaTotpEnabled(false);
+          setActiveMfaMode("NONE");
+          setProfile((prev) => ({
+            ...prev,
+            mfa_enabled: false,
+            mfa_type: "NONE",
+          }));
+          setShowOtpInput(false);
+          setOtp(["", "", "", "", "", ""]);
+          setVerifyingField(null);
+        } else {
+          toast.error("TOTP failed to be verified");
+        }
+        return;
+      }
+
       const targetValue =
-        verifyingField === "mfa_email" || verifyingField === "email"
+        verifyingField === "mfa_email" ||
+        verifyingField === "email" ||
+        verifyingField === "disable_mfa_email"
           ? profile.email
           : profile.phone;
-      const apiType = verifyingField === "mfa_email" ? "email" : verifyingField;
+      const apiType =
+        verifyingField === "mfa_email" || verifyingField === "disable_mfa_email"
+          ? "email"
+          : verifyingField;
       const res = await fetch(`${baseUrl}/api/admin/verify-otp-only`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -308,6 +376,14 @@ export default function Settings() {
             ...prev,
             mfa_enabled: true,
             mfa_type: "EMAIL",
+          }));
+        } else if (verifyingField === "disable_mfa_email") {
+          setMfaEmailEnabled(false);
+          setActiveMfaMode("NONE");
+          setProfile((prev) => ({
+            ...prev,
+            mfa_enabled: false,
+            mfa_type: "NONE",
           }));
         } else if (verifyingField) {
           setProfile((prev) => ({
@@ -508,6 +584,7 @@ export default function Settings() {
     }
     setSaving(true);
     const payload = {
+      estate_id: contextEstateId,
       config: {
         admin_name: profile.adminName,
         email: profile.email,
@@ -1251,6 +1328,23 @@ export default function Settings() {
                   ? "Protection Disabled"
                   : `${activeMfaMode} Guard Active`}
               </span>
+              {activeMfaMode !== "NONE" && (
+                <button
+                  type="button"
+                  disabled={!isEditing}
+                  onClick={() => {
+                    if (activeMfaMode === "EMAIL") {
+                      handleDisableEmailMfa();
+                    } else if (activeMfaMode === "TOTP") {
+                      setShowOtpInput(true);
+                      setVerifyingField("disable_mfa_totp");
+                    }
+                  }}
+                  className="px-3 py-1 rounded-sm text-[9px] font-oswald border shadow-2xl font-black uppercase tracking-wider bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors"
+                >
+                  Disable Protection
+                </button>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1284,14 +1378,26 @@ export default function Settings() {
                     </span>
                   )}
                 </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-800 font-sans">
-                    Email Verification
-                  </h4>
-                  <p className="text-[10px] text-slate-400 mt-0.5 leading-tight font-sans">
-                    Requires 6-digit email OTP confirmation on sensitive
-                    operations.
-                  </p>
+                <div className="flex justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-800 font-sans">
+                      Email Verification
+                    </h4>
+                    <p className="text-[10px] text-slate-400 mt-0.5 leading-tight font-sans">
+                      Requires 6-digit email OTP confirmation on sensitive
+                      operations.
+                    </p>
+                  </div>
+                  {requestingOtp &&
+                    verifyingField &&
+                    ["mfa_email", "disable_mfa_email"].includes(
+                      verifyingField,
+                    ) && (
+                      <div className="flex items-center gap-2 text-indigo-600 font-sans text-xs font-bold">
+                        <div className="w-5 h-5 border-2 border-indigo-600/30 border-t-indigo-600 rounded-full animate-spin" />
+                        <span>Requesting OTP...</span>
+                      </div>
+                    )}
                 </div>
               </button>
 
@@ -1319,13 +1425,20 @@ export default function Settings() {
                     </span>
                   )}
                 </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-800 font-sans">
-                    Authenticator App
-                  </h4>
-                  <p className="text-[10px] text-slate-400 mt-0.5 leading-tight font-sans">
-                    Use apps like Google Authenticator or Authy for 2FA.
-                  </p>
+                <div className="flex justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-800 font-sans">
+                      Authenticator App
+                    </h4>
+                    <p className="text-[10px] text-slate-400 mt-0.5 leading-tight font-sans">
+                      Use apps like Google Authenticator or Authy for 2FA.
+                    </p>
+                  </div>
+                  {requestingOtp && verifyingField === "disable_mfa_totp" && (
+                    <div>
+                      <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    </div>
+                  )}
                 </div>
               </button>
 
@@ -1395,15 +1508,28 @@ export default function Settings() {
                   <Phone size={32} />
                 )}
               </div>
-              <h3 className="text-xl sm:text-2xl font-montserrat font-bold text-slate-900">
-                Verify your {verifyingField}
-              </h3>
-              <p className="text-slate-500 font-sans text-sm">
-                Enter the code sent to <br />
-                <span className="font-semibold text-slate-900 break-all">
-                  {verifyingField === "email" ? profile.email : profile.phone}
-                </span>
-              </p>
+              {verifyingField && (
+                <>
+                  <h3 className="text-xl sm:text-2xl font-montserrat font-bold text-slate-900">
+                    {VERIFYING_FIELD_MESSAGES[verifyingField].title}
+                  </h3>
+                  <p className="text-slate-500 font-sans text-sm">
+                    {VERIFYING_FIELD_MESSAGES[verifyingField].subtitle}
+                  </p>
+                </>
+              )}
+
+              {/* Target Address Display (only for email/phone flows, hidden for TOTP) */}
+              {verifyingField && verifyingField !== "disable_mfa_totp" && (
+                <p className="text-xs font-sans text-slate-400 mt-1">
+                  Target:{" "}
+                  <span className="font-semibold text-slate-700 break-all">
+                    {verifyingField.includes("email")
+                      ? profile.email
+                      : profile.phone}
+                  </span>
+                </p>
+              )}
             </div>
 
             <div className="flex justify-center gap-2 mb-8 overflow-x-auto py-1">
