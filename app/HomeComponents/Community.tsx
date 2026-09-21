@@ -67,6 +67,7 @@ const AdminAlertManager = () => {
   const [uploadingComment, setUploadingComment] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [notificationType, setNotificationType] = useState("announcement");
+  const [expandDescription, setExpandDescription] = useState(false);
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
   const canView =
@@ -641,7 +642,9 @@ const AdminAlertManager = () => {
         </div>
 
         {/* RIGHT HISTORICAL LOG STREAM VIEWS */}
-        <div className="lg:col-span-2 h-[calc(100vh-250px)] p-1 flex flex-col min-w-0">
+        <div
+          className={`lg:col-span-2 ${selectedPost ? "max-h-[120vh]" : "h-[calc(100vh-300px)]"} p-1 flex flex-col min-w-0`}
+        >
           {selectedPost ? (
             /* --- EXPANDED DETAIL COMPONENT VIEW --- */
             <div className="bg-white rounded-2xl border border-slate-200/70 shadow-2xs overflow-hidden flex flex-col h-full min-w-0 animate-fade-in">
@@ -650,6 +653,7 @@ const AdminAlertManager = () => {
                   onClick={() => {
                     setSelectedPost(null);
                     setActiveSelectedPostTab("comments");
+                    setExpandDescription(false);
                   }}
                   className="flex items-center gap-1.5 text-slate-500 hover:text-blue-600 font-montserrat font-bold text-xs uppercase tracking-wider transition-colors min-w-0"
                 >
@@ -665,27 +669,57 @@ const AdminAlertManager = () => {
                 <h3 className="text-xl sm:text-2xl font-montserrat font-black text-slate-800 tracking-tight leading-snug truncate block w-full mb-2">
                   {selectedPost.title}
                 </h3>
-                <div className="flex-col gap-2">
-                  <p className="text-slate-600 text-sm leading-relaxed mb-4 max-h-24 overflow-y-auto font-medium">
-                    {selectedPost.content}
-                  </p>
 
-                  {selectedPost.image_url && (
-                    <div
-                      className="flex items-center my-3 bg-indigo-50 self-start px-2 py-1 rounded-md w-fit cursor-pointer"
-                      onClick={() =>
-                        setSelectedPostImage(selectedPost.image_url || null)
-                      }
-                    >
-                      <ImageIcon size={14} color="#4f46e5" />
-                      <p className="text-xs font-bold ml-1 font-sans text-indigo-600">
-                        View Image
-                      </p>
+                {/* LARGER IMAGE DIRECTLY UNDER THE TITLE */}
+                {selectedPost.image_url && (
+                  <div
+                    className="relative my-3 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 cursor-pointer group shrink-0"
+                    onClick={() =>
+                      setSelectedPostImage(selectedPost.image_url || null)
+                    }
+                  >
+                    <img
+                      src={selectedPost.image_url}
+                      alt={selectedPost.title}
+                      className="w-full h-48 sm:h-56 object-cover group-hover:scale-102 transition-transform duration-200"
+                    />
+                    <div className="absolute inset-0 bg-slate-900/10 group-hover:bg-slate-900/0 transition-colors flex items-end p-2">
+                      <span className="bg-black/60 backdrop-blur-xs text-white text-[10px] font-montserrat font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-sm">
+                        <ImageIcon size={12} /> Click to enlarge
+                      </span>
                     </div>
-                  )}
+                  </div>
+                )}
+
+                {/* DESCRIPTION WITH MAX WORD COUNT LIMIT */}
+                <div className="flex-col gap-2">
+                  <p className="text-slate-600 text-sm leading-relaxed mb-1 font-medium">
+                    {(() => {
+                      const words = selectedPost.content
+                        ? selectedPost.content.split(/\s+/)
+                        : [];
+                      const MAX_WORDS = 100;
+                      if (words.length <= MAX_WORDS || expandDescription) {
+                        return selectedPost.content;
+                      }
+                      return words.slice(0, MAX_WORDS).join(" ") + "...";
+                    })()}
+                  </p>
+                  {selectedPost.content &&
+                    selectedPost.content.split(/\s+/).length > 100 && (
+                      <button
+                        type="button"
+                        onClick={() => setExpandDescription(!expandDescription)}
+                        className="text-blue-600 hover:text-blue-800 font-montserrat font-bold text-xs uppercase tracking-wider mb-4 transition-colors"
+                      >
+                        {expandDescription
+                          ? "Show less"
+                          : "Read full description"}
+                      </button>
+                    )}
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium text-slate-400 bg-slate-50/80 p-2.5 rounded-xl border border-slate-100">
+                <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium text-slate-400 bg-slate-50/80 p-2.5 rounded-xl border border-slate-100 mt-2">
                   <div className="flex items-center gap-1">
                     <span>Author:</span>
                     <button
@@ -753,9 +787,19 @@ const AdminAlertManager = () => {
                               </p>
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className="text-sm font-montserrat font-bold text-slate-800 truncate block w-full">
+                              <button
+                                onClick={() => {
+                                  router.push(
+                                    `/home/tenantmanagement?author_id=${like.user_id}`,
+                                  );
+                                }}
+                                className="font-montserrat text-sm font-bold text-blue-600 hover:text-blue-800 hover:underline transition-all"
+                              >
                                 {like.author_name}
-                              </p>
+                              </button>
+                              {/* <p className="text-sm font-montserrat font-bold text-slate-800 truncate block w-full">
+                                {like.author_name}
+                              </p> */}
                               <p className="text-[10px] text-slate-400 font-oswald font-medium tracking-wide">
                                 LIKED{" "}
                                 {getRelativeTime(like.created_at).toUpperCase()}
@@ -785,9 +829,16 @@ const AdminAlertManager = () => {
                           className="bg-white p-3.5 rounded-xl border border-slate-200/60 shadow-3xs min-w-0"
                         >
                           <div className="flex justify-between items-start gap-4 mb-1 min-w-0">
-                            <p className="font-montserrat font-bold text-xs text-blue-600 truncate flex-1">
-                              {comment.author_name}
-                            </p>
+                            <button
+                              onClick={() => {
+                                router.push(
+                                  `/home/tenantmanagement?author_id=${selectedPost.author_id}`,
+                                );
+                              }}
+                              className="font-montserrat text-sm font-bold text-blue-600 hover:text-blue-800 hover:underline transition-all"
+                            >
+                              {selectedPost.author_name}
+                            </button>
                             {comment.user_id === user?.id && (
                               <button
                                 onClick={() => handleDeleteComment(comment.id)}
@@ -913,7 +964,6 @@ const AdminAlertManager = () => {
                 </div>
               )}
 
-              {/* SYSTEM DISPATCH SCROLL SECTOR TRACK */}
               <div className="space-y-3 overflow-y-auto p-0.5 flex-1 custom-scrollbar">
                 {activeTab === "communication" ? (
                   filteredPosts.length > 0 ? (
@@ -936,19 +986,36 @@ const AdminAlertManager = () => {
                               </div>
                             )}
                           </div>
-                          <p className="text-slate-500 text-xs font-medium line-clamp-2 mb-3.5 pr-2 leading-relaxed">
-                            {post.content}
-                          </p>
+
+                          {/* SMALL THUMBNAIL WHEN UNSELECTED */}
                           {post.image_url ? (
-                            <div className="flex items-center my-3 bg-indigo-50 self-start px-2 py-1 rounded-md w-fit">
-                              <ImageIcon size={14} color="#4f46e5" />
-                              <p className="text-xs font-bold ml-1 font-sans text-indigo-600">
+                            <div className="flex items-center gap-2 my-2.5 bg-slate-50 border border-slate-200/80 p-1.5 rounded-lg w-fit">
+                              <img
+                                src={post.image_url}
+                                alt="Thumbnail"
+                                className="w-16 h-16 object-cover rounded-md shrink-0 border border-slate-200"
+                              />
+                              {/* <p className="text-[11px] font-semibold text-indigo-600 font-sans pr-1">
                                 Image attached
-                              </p>
+                              </p> */}
                             </div>
                           ) : (
                             <div className="my-3" />
                           )}
+
+                          <p className="text-slate-500 text-xs font-medium line-clamp-2 mb-3.5 pr-2 leading-relaxed">
+                            {(() => {
+                              const MAX_WORDS = 20; // Adjust max word count limit as needed
+                              const words = post.content
+                                ? post.content.trim().split(/\s+/)
+                                : [];
+                              if (words.length <= MAX_WORDS)
+                                return post.content;
+                              return (
+                                words.slice(0, MAX_WORDS).join(" ") + "..."
+                              );
+                            })()}
+                          </p>
 
                           <div className="flex items-center gap-4 text-[10px] text-slate-400 font-medium font-oswald tracking-wide">
                             <span className="uppercase text-slate-400">

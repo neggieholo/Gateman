@@ -24,6 +24,7 @@ import {
   Sparkles,
   Zap,
   ArrowRight,
+  LocateIcon,
 } from "lucide-react";
 import "react-phone-number-input/style.css";
 import PhoneInput, { isValidPhoneNumber } from "react-phone-number-input";
@@ -119,6 +120,7 @@ export default function Settings() {
   const [profile, setProfile] = useState({
     estateName: activeEstate?.estate_name || "Not set",
     estateCode: activeEstate?.estate_code,
+    street_address: activeEstate?.street_address,
     adminName: user?.name || "Not set",
     email: user?.email || "Not set",
     phone: user?.phone_number || undefined,
@@ -176,6 +178,7 @@ export default function Settings() {
       setProfile({
         estateName: activeEstate.estate_name || "Not set",
         estateCode: activeEstate.estate_code,
+        street_address: activeEstate?.street_address,
         adminName: user.name || (isEditing ? "" : "Not set"),
         email: user.email || (isEditing ? "" : "Not set"),
         phone: user.phone_number || (isEditing ? "" : undefined),
@@ -638,6 +641,7 @@ export default function Settings() {
     setProfile({
       estateName: activeEstate?.estate_name || "Not set",
       estateCode: activeEstate?.estate_code,
+      street_address: activeEstate?.street_address,
       adminName: user?.name || "Not set",
       email: user?.email || "Not set",
       phone: user?.phone_number || "Not set",
@@ -963,20 +967,28 @@ export default function Settings() {
               </div>
             </div>
 
-            {canViewInfo && (
-              <div className="space-y-2">
-                <label className="text-[10px] font-oswald font-black text-slate-400 uppercase tracking-widest">
-                  Public Estate ID
-                </label>
-                <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl font-sans font-black text-indigo-600 text-sm sm:text-base">
-                  <code>{profile.estateCode}</code>
-                </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-oswald font-black text-slate-400 uppercase tracking-widest">
+                Public Estate ID
+              </label>
+              <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl font-sans font-black text-indigo-600 text-sm sm:text-base">
+                <code>{profile.estateCode}</code>
               </div>
-            )}
+            </div>
+          </div>
+
+          <div className="space-y-2 flex flex-col justify-end w-full">
+            <label className="text-[10px] font-oswald font-black text-slate-400 uppercase tracking-widest">
+              Estate Street Address
+            </label>
+            <div className="p-4 bg-slate-100 rounded-2xl font-sans font-bold text-slate-500 flex items-center gap-2 text-sm sm:text-base break-all flex-wrap">
+              <LocateIcon size={14} className="shrink-0" />{" "}
+              {profile.street_address}
+            </div>
           </div>
 
           <button
-            className="w-full flex items-center justify-between p-4 hover:bg-emerald-50 rounded-2xl transition-colors group cursor-pointer"
+            className="flex items-center justify-between p-4 hover:bg-emerald-50 rounded-2xl transition-colors group cursor-pointer w-fit"
             onClick={() => setIsPermissionsOpen(true)}
           >
             <div className="flex items-center gap-3">

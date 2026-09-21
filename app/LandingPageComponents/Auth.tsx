@@ -51,6 +51,7 @@ export default function Auth() {
   const [name, setName] = useState("");
   const [state, setState] = useState("");
   const [lga, setLga] = useState("");
+  const [address, setAddress] = useState("");
   const [adminName, setAdminName] = useState("");
   const [showPlanModal, setShowPlanModal] = useState(false);
   // const [town, setTown] = useState('');
@@ -223,6 +224,7 @@ export default function Auth() {
         name,
         state,
         lga,
+        address,
         configuredPlan,
         planDuration,
         trimmedEmail,
@@ -915,9 +917,9 @@ export default function Auth() {
                 </div>
 
                 {/* Town Input */}
-                {/* <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">
-                    Town / Street Address
+                <div>
+                  <label className="block text-sm  font-oswald text-slate-700 mb-1.5 ml-1">
+                    Street Address
                   </label>
                   <div className="relative">
                     <MapPin
@@ -927,13 +929,13 @@ export default function Auth() {
                     <input
                       type="text"
                       required
-                      value={town}
-                      onChange={(e) => setTown(e.target.value)}
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
                       className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-100 text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block outline-none font-medium"
                       placeholder="e.g. 12 Chevron Drive"
                     />
                   </div>
-                </div> */}
+                </div>
               </div>
             )}
 

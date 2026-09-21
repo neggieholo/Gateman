@@ -50,6 +50,8 @@ export default function UnifiedResidentPortal() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [filterType, setFilterType] = useState<"all" | "co_user">("all");
+
   const { user, contextEstateId } = useUser();
 
   const canView =
@@ -110,6 +112,7 @@ export default function UnifiedResidentPortal() {
     try {
       const tenantData = await db.getAllTenants(contextEstateId);
       setTenants(tenantData);
+      console.log("Tenants:", tenantData[1]);
 
       if (authorId) {
         const targetTenant = tenantData.find((t) => t.id === authorId);
@@ -150,15 +153,47 @@ export default function UnifiedResidentPortal() {
       .join(" | ");
   };
 
-  const filteredTenants = tenants.filter((t) => {
-    const searchLower = searchQuery.toLowerCase();
-    const locationString = getResidentLocationsString(t).toLowerCase();
+  const filteredTenants = tenants.filter((tenant) => {
+    // 1. Filter by active estate context first
+    if (contextEstateId && !tenant.estate_ids?.includes(contextEstateId)) {
+      return false;
+    }
 
-    return (
-      t.name?.toLowerCase().includes(searchLower) ||
-      t.email?.toLowerCase().includes(searchLower) ||
-      locationString.includes(searchLower)
+    // 2. Co-User Check (Checks sub-users array OR parent account link)
+    const hasSubCoUsers = (tenant.sub_users || []).some((subId) =>
+      tenants.some(
+        (item) =>
+          item.id === subId && item.estate_ids?.includes(contextEstateId!),
+      ),
     );
+
+    const isLinkedCoUser = Boolean(
+      tenant.parent_account_id &&
+      tenants.some(
+        (item) =>
+          item.id === tenant.parent_account_id &&
+          item.estate_ids?.includes(contextEstateId!),
+      ),
+    );
+
+    const isCoUserAccount = hasSubCoUsers || isLinkedCoUser;
+
+    // Apply Filter: "co_user" tab shows only accounts with linked co-users
+    if (filterType === "co_user" && !isCoUserAccount) return false;
+
+    // 3. Search Query Filter
+    if (searchQuery) {
+      const searchLower = searchQuery.toLowerCase();
+      const locationString = getResidentLocationsString(tenant).toLowerCase();
+
+      const matchesName = tenant.name?.toLowerCase().includes(searchLower);
+      const matchesEmail = tenant.email?.toLowerCase().includes(searchLower);
+      const matchesLocation = locationString.includes(searchLower);
+
+      return matchesName || matchesEmail || matchesLocation;
+    }
+
+    return true;
   });
 
   const handleDelete = async (id: string) => {
@@ -231,18 +266,18 @@ export default function UnifiedResidentPortal() {
   }, [selectedTenant, contextEstateId]);
 
   // 🌟 Handles diving deeper into a Parent Account
-  const handleNavigateToParent = (parentId: string) => {
-    const parentTenant = tenants.find((t) => t.id === parentId);
-    if (parentTenant) {
+  const handleNavigateToRelatedAccount = (id: string) => {
+    const targetTenant = tenants.find(
+      (t) => t.id === id && t.estate_ids.includes(contextEstateId!),
+    );
+
+    if (targetTenant) {
       if (selectedTenant) {
-        // Save sub-account into trace state before jumping profiles
         setHistoryStack((prev) => [...prev, selectedTenant]);
       }
-      setSelectedTenant(parentTenant);
+      setSelectedTenant(targetTenant);
     } else {
-      toast.error(
-        "Parent account record data entry could not be found in active rosters.",
-      );
+      toast.error("Account does not belong to the active estate.");
     }
   };
 
@@ -352,11 +387,41 @@ export default function UnifiedResidentPortal() {
             REGISTER TENANT
           </button>
         </div>
+      </div>
 
-        {activeTab === "TENANTS" && !selectedTenant && (
-          <div className="relative group w-full sm:w-72">
+      {activeTab === "TENANTS" && !selectedTenant && (
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mb-6 w-full">
+          {/* Filter Type Pills */}
+          <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 rounded-2xl w-fit shrink-0">
+            <button
+              type="button"
+              onClick={() => setFilterType("all")}
+              className={`px-4 py-2 rounded-xl text-xs font-montserrat font-bold transition-all ${
+                filterType === "all"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              All Residents
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterType("co_user")}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-montserrat font-bold transition-all ${
+                filterType === "co_user"
+                  ? "bg-amber-500 text-white shadow-sm"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-amber-300"></span>
+              Co-Users
+            </button>
+          </div>
+
+          {/* Search Box Wrapper */}
+          <div className="relative w-full sm:w-72">
             <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
               size={18}
             />
             <input
@@ -364,11 +429,11 @@ export default function UnifiedResidentPortal() {
               placeholder="Quick find resident..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all text-slate-700"
+              className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-2xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-slate-700 shadow-sm"
             />
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* --- CONTENT AREA --- */}
       <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-0">
@@ -398,205 +463,237 @@ export default function UnifiedResidentPortal() {
             )}
 
             {/* 2. TENANT DETAIL VIEW (Shows if selected, but NOT viewing logs) */}
-            {selectedTenant && !viewIndividualLogs && (
-              <div className="bg-white rounded-[3rem] border border-slate-100 p-4 sm:p-8 animate-in slide-in-from-right duration-300 min-w-0">
-                {/* 🌟 Adaptive Back Button Execution Element */}
-                <button
-                  onClick={handleGoBack}
-                  className="flex items-center gap-2 text-slate-500 hover:text-slate-800 mb-8 font-montserrat font-bold transition-colors"
-                >
-                  <ArrowLeft size={20} />{" "}
-                  {historyStack.length > 0
-                    ? "Back to Sub-Account"
-                    : "Back to Directory"}
-                </button>
+            {selectedTenant &&
+              !viewIndividualLogs &&
+              (() => {
+                // Filter sub-accounts to ONLY include valid objects matching the active estate
+                const availableSubAccounts = (selectedTenant?.sub_users || [])
+                  .map((subId) => tenants.find((t) => t.id === subId))
+                  .filter(
+                    (sub): sub is Tenant =>
+                      sub !== undefined &&
+                      Boolean(sub?.estate_ids?.includes(contextEstateId!)),
+                  );
 
-                <div className="flex flex-col lg:flex-row gap-12 min-w-0">
-                  {/* Profile Sidebar */}
-                  <div className="w-full lg:w-1/3 flex flex-col items-center bg-slate-50 rounded-[2.5rem] p-6 sm:p-10 border border-slate-100 shrink-0 min-w-0">
-                    <img
-                      src={
-                        contextEstateId && selectedTenant.avatar
-                          ? selectedTenant.avatar[contextEstateId]
-                          : `https://ui-avatars.com/api/?name=${selectedTenant.name}`
-                      }
-                      className="w-full max-w-[20rem] aspect-square rounded-[2.5rem] object-cover shadow-2xl border-4 border-white mb-6 shrink-0"
-                      alt=""
-                    />
-                    <h2 className="text-2xl sm:text-3xl font-montserrat font-black text-slate-900 mb-1 text-center wrap-break-word w-full px-1">
-                      {selectedTenant.name}
-                    </h2>
+                // Find parent account matching the active estate
+                const parentAccount = tenants.find(
+                  (t) =>
+                    t.id === selectedTenant?.parent_account_id &&
+                    t.estate_ids?.includes(contextEstateId!),
+                );
 
-                    {/* Dynamic Sub-Account Flag & Parent Redirection Engine Link */}
-                    {selectedTenant.parent_account_id && (
-                      <div className="w-full mt-2 flex flex-col items-center p-4 bg-amber-50/70 border border-amber-200/60 rounded-2xl text-center shrink-0">
-                        <span className="text-[10px] bg-amber-500 text-white font-oswald font-bold tracking-widest px-2 py-0.5 rounded-md uppercase mb-2">
-                          Sub-Account
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleNavigateToParent(
-                              selectedTenant.parent_account_id,
-                            )
+                return (
+                  <div className="bg-white rounded-[3rem] border border-slate-100 p-4 sm:p-8 animate-in slide-in-from-right duration-300 min-w-0">
+                    {/* Adaptive Back Button */}
+                    <button
+                      onClick={handleGoBack}
+                      className="flex items-center gap-2 text-slate-500 hover:text-slate-800 mb-8 font-montserrat font-bold transition-colors"
+                    >
+                      <ArrowLeft size={20} /> Back
+                    </button>
+
+                    <div className="flex flex-col lg:flex-row gap-12 min-w-0">
+                      {/* Profile Sidebar */}
+                      <div className="w-full lg:w-1/3 flex flex-col items-center bg-slate-50 rounded-[2.5rem] p-6 sm:p-10 border border-slate-100 shrink-0 min-w-0">
+                        <img
+                          src={
+                            contextEstateId && selectedTenant.avatar
+                              ? selectedTenant.avatar[contextEstateId]
+                              : `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedTenant.name)}`
                           }
-                          className="flex items-center gap-1 text-xs text-amber-800 font-bold hover:text-indigo-600 transition-colors"
-                        >
-                          <GitMerge size={12} className="shrink-0" /> View
-                          Parent Account
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Info Grid */}
-                  <div className="flex-1 space-y-8 min-w-0">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 min-w-0">
-                      <div className="p-6 bg-white border border-slate-100 rounded-3xl flex flex-col justify-center min-w-0">
-                        <p className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-widest mb-1">
-                          Email
-                        </p>
-                        <p className="text-base sm:text-xl font-medium text-slate-800 mt-1 truncate block w-full">
-                          {selectedTenant.email}
-                        </p>
-                      </div>
-                      <div className="p-6 bg-white border border-slate-100 rounded-3xl flex flex-col justify-center min-w-0">
-                        <p className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-widest mb-1">
-                          Phone
-                        </p>
-                        <p className="text-base sm:text-xl font-oswald font-medium tracking-wide text-slate-800 mt-1 truncate block w-full">
-                          {selectedTenant.phone || "No Phone"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="p-6 bg-white border border-slate-100 rounded-3xl flex flex-col justify-center min-w-0">
-                      <p className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-widest mb-1">
-                        Assigned Locations
-                      </p>
-                      <div className="flex items-start gap-2 mt-1 min-w-0">
-                        <MapPin
-                          size={16}
-                          className="text-indigo-500 shrink-0 mt-1"
+                          className="w-full max-w-[20rem] aspect-square rounded-[2.5rem] object-cover shadow-2xl border-4 border-white mb-6 shrink-0"
+                          alt=""
                         />
-                        <p className="text-base font-medium text-slate-800 leading-tight min-w-0 flex-1">
-                          {getResidentLocationsString(selectedTenant)}
-                        </p>
-                      </div>
-                    </div>
+                        <h2 className="text-2xl sm:text-3xl font-montserrat font-black text-slate-900 mb-1 text-center wrap-break-word w-full px-1">
+                          {selectedTenant.name}
+                        </h2>
 
-                    <section className="min-w-0 w-full">
-                      <h4 className="text-slate-400 text-[10px] font-oswald font-bold uppercase tracking-widest mb-6 px-1">
-                        Rent Contracts
-                      </h4>
+                        {/* Parent Account Banner */}
+                        {parentAccount && (
+                          <div className="w-full mt-2 flex flex-col items-center p-4 bg-amber-50/70 border border-amber-200/60 rounded-2xl text-center shrink-0">
+                            <span className="text-[10px] bg-amber-500 text-white font-oswald font-bold tracking-widest px-2 py-0.5 rounded-md uppercase mb-2">
+                              Sub Account
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleNavigateToRelatedAccount(parentAccount.id)
+                              }
+                              className="flex items-center gap-1 text-xs text-amber-800 font-bold hover:text-indigo-600 transition-colors"
+                            >
+                              <GitMerge size={12} className="shrink-0" /> View
+                              Parent Account
+                            </button>
+                          </div>
+                        )}
 
-                      <div className="space-y-3 min-w-0">
-                        <h4 className="text-xs font-montserrat font-black text-slate-400 uppercase tracking-wider flex items-center gap-1 shrink-0">
-                          <Home size={14} /> Assigned Locations & Contracts
-                        </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-w-0">
-                          {locations && locations.length > 0 ? (
-                            locations.map((blockGroup: any, idx: number) => (
-                              <div
-                                key={idx}
-                                className="border border-slate-100 rounded-xl p-4 bg-slate-50/50 space-y-3 min-w-0"
-                              >
-                                <div className="text-sm font-oswald font-bold text-slate-900 bg-slate-200/60 px-3 py-1 rounded-lg w-fit uppercase tracking-wide">
-                                  Block: {blockGroup.block}
-                                </div>
-                                <div className="space-y-2 min-w-0">
-                                  {blockGroup.units?.map(
-                                    (unitItem: any, uIdx: number) => (
-                                      <div
-                                        key={uIdx}
-                                        className="flex justify-between items-center bg-white p-3 border border-slate-100 rounded-lg shadow-sm min-w-0 gap-2"
-                                      >
-                                        <span className="text-sm font-medium text-slate-700 truncate">
-                                          Unit {unitItem.unit}
-                                        </span>
-                                        {unitItem.contract_url ? (
-                                          <a
-                                            href={unitItem.contract_url}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="flex items-center gap-1.5 text-xs text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg font-montserrat font-bold transition-all shrink-0"
-                                          >
-                                            <FileText size={14} /> View Contract{" "}
-                                            <ExternalLink size={12} />
-                                          </a>
-                                        ) : (
-                                          <span className="text-xs text-amber-500 italic font-medium shrink-0">
-                                            No Contract Doc
-                                          </span>
-                                        )}
-                                      </div>
-                                    ),
-                                  )}
-                                </div>
-                              </div>
-                            ))
-                          ) : (
-                            <div className="col-span-1 md:col-span-2 p-4 border border-dashed border-slate-200 rounded-xl text-center text-sm text-slate-400 italic bg-slate-50/50">
-                              No active contract assets found for this estate
-                              context.
+                        {/* Sub-Accounts Banner (Checked via .length > 0) */}
+                        {availableSubAccounts.length > 0 && (
+                          <div className="w-full mt-2 flex flex-col items-center p-4 bg-emerald-50/70 border border-emerald-200/60 rounded-2xl text-center shrink-0">
+                            <span className="text-[10px] bg-emerald-500 text-white font-oswald font-bold tracking-widest px-2 py-0.5 rounded-md uppercase mb-2">
+                              Main Account
+                            </span>
+                            <div className="flex flex-wrap gap-3 justify-center">
+                              {availableSubAccounts.map((sub) => (
+                                <button
+                                  type="button"
+                                  key={sub.id}
+                                  onClick={() =>
+                                    handleNavigateToRelatedAccount(sub.id)
+                                  }
+                                  className="flex items-center gap-1 text-xs text-emerald-800 font-bold hover:text-indigo-600 transition-colors"
+                                >
+                                  <GitMerge size={12} className="shrink-0" />{" "}
+                                  View Subaccount ({sub.name})
+                                </button>
+                              ))}
                             </div>
-                          )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Info Grid */}
+                      <div className="flex-1 space-y-8 min-w-0">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 min-w-0">
+                          <div className="p-6 bg-white border border-slate-100 rounded-3xl flex flex-col justify-center min-w-0">
+                            <p className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-widest mb-1">
+                              Email
+                            </p>
+                            <p className="text-base sm:text-xl font-medium text-slate-800 mt-1 truncate block w-full">
+                              {selectedTenant.email}
+                            </p>
+                          </div>
+                          <div className="p-6 bg-white border border-slate-100 rounded-3xl flex flex-col justify-center min-w-0">
+                            <p className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-widest mb-1">
+                              Phone
+                            </p>
+                            <p className="text-base sm:text-xl font-oswald font-medium tracking-wide text-slate-800 mt-1 truncate block w-full">
+                              {selectedTenant.phone || "No Phone"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="p-6 bg-white border border-slate-100 rounded-3xl flex flex-col justify-center min-w-0">
+                          <p className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-widest mb-1">
+                            Assigned Locations
+                          </p>
+                          <div className="flex items-start gap-2 mt-1 min-w-0">
+                            <MapPin
+                              size={16}
+                              className="text-indigo-500 shrink-0 mt-1"
+                            />
+                            <p className="text-base font-medium text-slate-800 leading-tight min-w-0 flex-1">
+                              {getResidentLocationsString(selectedTenant)}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Contracts Section */}
+                        <section className="min-w-0 w-full">
+                          <h4 className="text-xs font-montserrat font-black text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-4 shrink-0">
+                            <Home size={14} /> Assigned Locations & Contracts
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-w-0">
+                            {locations && locations.length > 0 ? (
+                              locations.map((blockGroup: any, idx: number) => (
+                                <div
+                                  key={idx}
+                                  className="border border-slate-100 rounded-xl p-4 bg-slate-50/50 space-y-3 min-w-0"
+                                >
+                                  <div className="text-sm font-oswald font-bold text-slate-900 bg-slate-200/60 px-3 py-1 rounded-lg w-fit uppercase tracking-wide">
+                                    Block: {blockGroup.block}
+                                  </div>
+                                  <div className="space-y-2 min-w-0">
+                                    {blockGroup.units?.map(
+                                      (unitItem: any, uIdx: number) => (
+                                        <div
+                                          key={uIdx}
+                                          className="flex justify-between items-center bg-white p-3 border border-slate-100 rounded-lg shadow-sm min-w-0 gap-2"
+                                        >
+                                          <span className="text-sm font-medium text-slate-700 truncate">
+                                            Unit {unitItem.unit}
+                                          </span>
+                                          {unitItem.contract_url ? (
+                                            <a
+                                              href={unitItem.contract_url}
+                                              target="_blank"
+                                              rel="noreferrer"
+                                              className="flex items-center gap-1.5 text-xs text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg font-montserrat font-bold transition-all shrink-0"
+                                            >
+                                              <FileText size={14} /> View
+                                              Contract{" "}
+                                              <ExternalLink size={12} />
+                                            </a>
+                                          ) : (
+                                            <span className="text-xs text-amber-500 italic font-medium shrink-0">
+                                              No Contract Doc
+                                            </span>
+                                          )}
+                                        </div>
+                                      ),
+                                    )}
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="col-span-1 md:col-span-2 p-4 border border-dashed border-slate-200 rounded-xl text-center text-sm text-slate-400 italic bg-slate-50/50">
+                                No active contract assets found for this estate
+                                context.
+                              </div>
+                            )}
+                          </div>
+                        </section>
+
+                        {/* Action Buttons */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-8 shrink-0">
+                          <button
+                            type="button"
+                            className="py-3.5 px-4 bg-slate-800 text-white rounded-2xl font-montserrat font-black text-[11px] uppercase tracking-wider hover:bg-slate-900 transition-all active:scale-95 shadow-sm text-center"
+                            onClick={() => setViewIndividualLogs(true)}
+                          >
+                            View Logs
+                          </button>
+                          <button
+                            type="button"
+                            className="py-3.5 px-4 bg-emerald-600 text-white rounded-2xl font-montserrat font-black text-[11px] uppercase tracking-wider hover:bg-emerald-700 transition-all active:scale-95 shadow-sm text-center"
+                            onClick={() => {
+                              if (!canViewRecords) {
+                                showAccessDeniedToast();
+                                return;
+                              }
+                              router.push(
+                                `/home/payments?resident_=${selectedTenant.name}`,
+                              );
+                            }}
+                          >
+                            Payment History
+                          </button>
+                          <button
+                            type="button"
+                            className="py-3.5 px-4 bg-indigo-600 text-white rounded-2xl font-montserrat font-black text-[11px] uppercase tracking-wider hover:bg-indigo-700 transition-all active:scale-95 shadow-sm text-center"
+                            onClick={() => {
+                              if (!canSendNotification) {
+                                showAccessDeniedToast();
+                                return;
+                              }
+                              setOpenMessagePortal(true);
+                            }}
+                          >
+                            Notify
+                          </button>
+                          <button
+                            type="button"
+                            className="py-3.5 px-4 bg-rose-600 text-white rounded-2xl font-montserrat font-black text-[11px] uppercase tracking-wider hover:bg-rose-700 transition-all active:scale-95 shadow-sm text-center"
+                            onClick={() => handleDelete(selectedTenant.id)}
+                          >
+                            Remove Resident
+                          </button>
                         </div>
                       </div>
-                    </section>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-8 shrink-0">
-                      {/* 1. View Logs */}
-                      <button
-                        type="button"
-                        className="py-3.5 px-4 bg-gm-navy/60 text-white rounded-2xl font-montserrat font-black text-[11px] uppercase tracking-wider hover:bg-gm-navy/80 transition-all active:scale-95 shadow-sm text-center"
-                        onClick={() => setViewIndividualLogs(true)}
-                      >
-                        View Logs
-                      </button>
-
-                      {/* 2. Payment History */}
-                      <button
-                        type="button"
-                        className="py-3.5 px-4 bg-emerald-600 text-white rounded-2xl font-montserrat font-black text-[11px] uppercase tracking-wider hover:bg-emerald-700 transition-all active:scale-95 shadow-sm text-center"
-                        onClick={() => {
-                          if (!canViewRecords) {
-                            showAccessDeniedToast();
-                            return;
-                          }
-                          router.push(
-                            `/home/payments?resident_=${selectedTenant.name}`,
-                          );
-                        }}
-                      >
-                        Payment History
-                      </button>
-                      <button
-                        type="button"
-                        className="py-3.5 px-4 bg-indigo-600 text-white rounded-2xl font-montserrat font-black text-[11px] uppercase tracking-wider hover:bg-indigo-700 transition-all active:scale-95 shadow-sm text-center"
-                        onClick={() => {
-                          if (!canSendNotification) {
-                            showAccessDeniedToast();
-                            return;
-                          }
-                          setOpenMessagePortal(true);
-                        }}
-                      >
-                        Notify
-                      </button>
-
-                      {/* 5. Remove Resident */}
-                      <button
-                        type="button"
-                        className="py-3.5 px-4 bg-rose-600 text-white rounded-2xl font-montserrat font-black text-[11px] uppercase tracking-wider hover:bg-rose-700 transition-all active:scale-95 shadow-sm text-center"
-                        onClick={() => handleDelete(selectedTenant.id)}
-                      >
-                        Remove Resident
-                      </button>
                     </div>
                   </div>
-                </div>
-              </div>
-            )}
+                );
+              })()}
 
             {/* 3. EMPTY STATE (Shows if directory is empty and no selection active) */}
             {!selectedTenant && filteredTenants.length === 0 && (
@@ -607,42 +704,68 @@ export default function UnifiedResidentPortal() {
 
             {/* 4. RESIDENT DIRECTORY GRID CARDS LAYOUT (Shows if no selection active) */}
             {!selectedTenant && filteredTenants.length > 0 && (
-              <div className="flex flex-col gap-3 min-h-0 overflow-hidden pb-16">
-                {filteredTenants.map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => {
-                      setSelectedTenant(t);
-                      setHistoryStack([]);
-                    }}
-                    className="group flex items-center gap-4 bg-white p-3 sm:p-4 rounded-2xl border border-slate-100 hover:border-indigo-200 hover:shadow-lg transition-all relative overflow-hidden text-left min-w-0 w-full"
-                  >
-                    {/* Avatar Container */}
-                    <div className="relative shrink-0">
-                      <img
-                        src={
-                          contextEstateId && t.avatar
-                            ? t.avatar[contextEstateId]
-                            : `https://ui-avatars.com/api/?name=${t.name}`
-                        }
-                        className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl object-cover border-2 border-white shadow-sm group-hover:scale-105 transition-transform"
-                        alt=""
-                      />
-                      {t.parent_account_id && (
-                        <span className="absolute -top-1 -left-1 bg-amber-500 text-[8px] font-oswald font-bold tracking-widest text-white px-1.5 py-0.5 rounded-md uppercase shadow-sm">
-                          Sub
-                        </span>
-                      )}
-                    </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0 overflow-hidden pb-16 p-3">
+                {filteredTenants.map((t) => {
+                  const availableSubAccounts = (t?.sub_users || [])
+                    .map((subId) =>
+                      tenants.find((tenant) => tenant.id === subId),
+                    )
+                    .filter(
+                      (sub): sub is Tenant =>
+                        sub !== undefined &&
+                        sub.estate_ids.includes(contextEstateId!),
+                    );
 
-                    {/* Details Section */}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-montserrat font-black text-sm sm:text-base text-slate-900 group-hover:text-indigo-600 transition-colors truncate">
-                        {t.name}
-                      </h3>
-                    </div>
-                  </button>
-                ))}
+                  // Find parent account matching active estate
+                  const parentAccount = tenants.find(
+                    (tenant) =>
+                      tenant.id === t.parent_account_id &&
+                      tenant.estate_ids.includes(contextEstateId!),
+                  );
+
+                  // Check length for sub-accounts, or existence of parent account
+                  const hasCoUser =
+                    availableSubAccounts.length > 0 || Boolean(parentAccount);
+
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => {
+                        setSelectedTenant(t);
+                        setHistoryStack([]);
+                      }}
+                      className="group flex items-center gap-4 bg-white p-3 sm:p-4 rounded-2xl border border-slate-100 hover:border-indigo-200 hover:shadow-lg transition-all relative overflow-hidden text-left min-w-0 w-full"
+                    >
+                      {/* Avatar Container */}
+                      <div className="relative shrink-0">
+                        <img
+                          src={
+                            contextEstateId && t.avatar
+                              ? t.avatar[contextEstateId]
+                              : `https://ui-avatars.com/api/?name=${t.name}`
+                          }
+                          className="w-12 h-12 sm:w-20 sm:h-20 rounded-xl object-cover border-2 border-white shadow-sm group-hover:scale-105 transition-transform"
+                          alt=""
+                        />
+                        {hasCoUser && (
+                          <span className="absolute -top-1 -left-1 bg-amber-500 text-[8px] font-oswald font-bold tracking-widest text-white px-1.5 py-0.5 rounded-md uppercase shadow-sm">
+                            Co-user
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Details Section */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-montserrat font-black text-sm sm:text-base text-slate-900 group-hover:text-indigo-600 transition-colors truncate">
+                          {t.name}
+                        </h3>
+                        <span className="inline-flex items-center text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                          {getResidentLocationsString(t)}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </>

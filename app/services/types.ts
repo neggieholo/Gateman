@@ -24,7 +24,7 @@ export interface EstateProfile {
   id: string;
   estate_name: string;
   estate_code: string;
-  address: string;
+  street_address: string;
   state: string;
   lga: string;
   town: string;

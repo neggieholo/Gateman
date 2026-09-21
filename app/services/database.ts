@@ -6,7 +6,6 @@ import {
   ScheduleDefinition,
   SecurityJoinRequest,
   SecurityLog,
-  SecurityDutyLog,
   SecurityUser,
   Tenant,
 } from "./types";
@@ -51,6 +50,7 @@ export const db = {
     name: string,
     state: string,
     lga: string,
+    address: string,
     selectedPlan: PlanSelectionData,
     planDuration: number,
     email?: string,
