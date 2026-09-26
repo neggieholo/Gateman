@@ -17,6 +17,7 @@ import {
   Activity,
   LoaderCircle,
   Loader2,
+  Calendar,
 } from "lucide-react";
 import {
   FetchedSecuritySchedule,
@@ -29,6 +30,7 @@ import toast from "react-hot-toast";
 import { formatDate } from "../services/apis";
 import { DeletePromptModal } from "./DeletePromptModal";
 import { showAccessDeniedToast } from "./Users";
+import { DAY_NAMES } from "../services/data";
 
 interface InteractiveCalendarTabProps {
   selectedSchedule: FetchedSecuritySchedule | null;
@@ -411,7 +413,7 @@ export default function SecurityScheduleDetailView({
                 <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
                   {schedule.mode === "specific"
                     ? "Specific Dates"
-                    : "Recurring Cycle"}
+                    : `Recurring Cycle - ${schedule.recurring_cadence}`}
                 </span>
                 <h3 className="font-montserrat font-black text-slate-800 text-xl mt-1">
                   {schedule.name}
@@ -439,6 +441,41 @@ export default function SecurityScheduleDetailView({
                 </button>
               </div>
             </div>
+
+            {schedule.mode === "recurring" &&
+              schedule.recurring_cadence === "weekday" && (
+                <div className="space-y-1.5 w-full max-w-full overflow-hidden">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1">
+                    <Calendar size={12} /> Selected Days (
+                    {schedule.recurring_periods?.length || 0})
+                  </span>
+
+                  {/* Horizontal scrolling container */}
+                  <div className="flex flex-nowrap gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+                    {!schedule.recurring_periods ||
+                    schedule.recurring_periods.length === 0 ? (
+                      <span className="text-xs text-slate-400 italic">
+                        No shifts
+                      </span>
+                    ) : (
+                      schedule.recurring_periods.map((period, idx) => {
+                        const dayName =
+                          DAY_NAMES[period.startTimeDayOffset] ||
+                          period.label ||
+                          `Day ${period.startTimeDayOffset + 1}`;
+                        return (
+                          <span
+                            key={period.id || idx}
+                            className="text-xs font-bold bg-slate-50 text-slate-700 border border-slate-200/60 px-2.5 py-1 rounded-lg shrink-0"
+                          >
+                            {dayName}
+                          </span>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
 
             {/* ATTACHED GUARDS SUMMARY */}
             <div className="space-y-1.5 w-full max-w-full overflow-hidden">
@@ -686,12 +723,12 @@ export default function SecurityScheduleDetailView({
                       key={shift.period_id || index}
                       className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2.5"
                     >
-                      <div className="flex gap-2border-b border-slate-200/60 pb-2">
+                      <div className="flex gap-2 border-b border-slate-200/60 pb-2 items-start justify-evenly">
                         <div className="flex justify-between items-start border-b border-slate-200/60 pb-2">
                           <span className="text-xs font-bold text-slate-800">
-                            🗓️ {shift.start_date}
+                            🗓️ {formatDate(shift.start_date)}
                             {shift.start_date !== shift.end_date &&
-                              ` ➔ ${shift.end_date}`}
+                              ` ➔ ${formatDate(shift.end_date)}`}
                           </span>
                           <span className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
                             {shift.label || "Shift"}
@@ -702,7 +739,7 @@ export default function SecurityScheduleDetailView({
                           ⏰ {shift.start_time} - {shift.end_time}
                         </p>
 
-                        <div className="space-y-1 pt-1 border-t border-slate-100">
+                        <div className="space-y-1 border-t border-slate-100">
                           <span className="text-[10px] font-bold uppercase text-slate-400 block">
                             Assigned Personnel:
                           </span>

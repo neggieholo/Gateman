@@ -187,7 +187,7 @@ export default function PaymentReviewPage() {
 
     if (response.success) {
       if (response.payment_items) {
-        setPaymentItems(response.payment_items); 
+        setPaymentItems(response.payment_items);
       }
       setIsItemModalOpen(false);
     } else {
@@ -401,15 +401,19 @@ export default function PaymentReviewPage() {
               label="Date"
               value={new Date(payment.payment_date).toLocaleDateString()}
             />
-            <DetailBox
+            {/* <DetailBox
               icon={<Hash size={16} />}
               label="Reference"
               value={payment.transaction_reference}
-            />
+            /> */}
             <DetailBox
               icon={<Wallet size={16} />}
               label="Payment Type"
-              value={payment.payment_type}
+              value={
+                payment.payment_type === "bank_transfer"
+                  ? "Bank Transfer"
+                  : "Card"
+              }
             />
           </div>
 

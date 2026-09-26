@@ -51,9 +51,10 @@ import {
   RecurringGuardDropdown,
   UnifiedGuardComboDropdown,
 } from "./ScheduleGuardSelect";
-import { formatDate } from "../services/apis";
+import { formatDate, getShiftEndDateLabel } from "../services/apis";
 import SecurityScheduleDetailView from "./SecurityScheduleDetailView";
 import { DeletePromptModal } from "./DeletePromptModal";
+import { DAY_NAMES } from "../services/data";
 
 export default function SecuritySchedulesPage() {
   const [activeTab, setActiveTab] = useState<"builder" | "calendar">("builder");
@@ -148,6 +149,15 @@ export function ScheduleBuilderTab({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [presetShiftType, setPresetShiftType] = useState<
+    "day" | "night" | "standard"
+  >("standard");
+  const [dayPresetStart, setDayPresetStart] = useState("");
+  const [dayPresetEnd, setDayPresetEnd] = useState("");
+
+  // Night Shift preset state
+  const [nightPresetStart, setNightPresetStart] = useState("");
+  const [nightPresetEnd, setNightPresetEnd] = useState("");
 
   // Form Basic Info
   const [scheduleName, setScheduleName] = useState("");
@@ -168,6 +178,8 @@ export function ScheduleBuilderTab({
   const [recurringPeriods, setRecurringPeriods] = useState<ShiftPeriod[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const recurringbottomRef = useRef(null as HTMLDivElement | null);
+  const [selectedDays, setSelectedDays] = useState<number[]>([]);
+  const [isDayPickerOpen, setIsDayPickerOpen] = useState(false);
 
   const canAdd =
     user?.permissions?.includes("security_management") ||
@@ -309,6 +321,22 @@ export function ScheduleBuilderTab({
     }, 100);
   };
 
+  const createPeriodsFromSelectedDays = (
+    dayOffsets: number[],
+  ): ShiftPeriod[] => {
+    return dayOffsets
+      .sort((a, b) => a - b) // Keep them in chronological order
+      .map((offset) => ({
+        id: uuidv4(),
+        label: `${DAY_NAMES[offset]} Shift`,
+        startTime: "08:00",
+        endTime: "16:00",
+        startTimeDayOffset: offset,
+        endTimeDayOffset: offset,
+        assignedGuardIds: [],
+      }));
+  };
+
   const createInitialPeriodsForCadence = (
     selectedCadence: RecurringCadence,
   ): ShiftPeriod[] => {
@@ -336,10 +364,14 @@ export function ScheduleBuilderTab({
   const handleCadenceChange = (newCadence: RecurringCadence) => {
     resetForm();
     setCadence(newCadence);
-    if (startDate) {
-      setEndDate(calculateEndDateForCadence(startDate, newCadence));
+    if (newCadence === "weekday") {
+      setIsDayPickerOpen(true);
+    } else {
+      if (startDate) {
+        setEndDate(calculateEndDateForCadence(startDate, newCadence));
+      }
+      setRecurringPeriods(createInitialPeriodsForCadence(newCadence));
     }
-    setRecurringPeriods(createInitialPeriodsForCadence(newCadence));
   };
 
   const handleDeleteRecurringPeriod = (id: string) => {
@@ -403,6 +435,14 @@ export function ScheduleBuilderTab({
         .padStart(2, "0")}:${(endMins % 60).toString().padStart(2, "0")}`;
     }
 
+    if (presetShiftType === "day") {
+      newStartTime = dayPresetStart;
+      newEndTime = dayPresetEnd;
+    } else if (presetShiftType === "night") {
+      newStartTime = nightPresetStart;
+      newEndTime = nightPresetEnd;
+    }
+
     // Check overnight wrap
     const isOvernight =
       (newStartTime >= newEndTime && newEndTime !== "00:00") ||
@@ -450,7 +490,7 @@ export function ScheduleBuilderTab({
       showAccessDeniedToast();
       return;
     }
-    
+
     try {
       setIsDeleting(true);
       const res = await securityDb.deleteSchedule(deleteId, contextEstateId!);
@@ -634,26 +674,44 @@ export function ScheduleBuilderTab({
           const first = recurringPeriods[0];
           const last = recurringPeriods[recurringPeriods.length - 1];
 
-          const [firstStartH, firstStartM] = first.startTime
-            .split(":")
-            .map(Number);
-          const [lastEndH, lastEndM] = last.endTime.split(":").map(Number);
+          const isSundayMondayWrap =
+            cadence === "weekday" &&
+            first.startTimeDayOffset === 0 &&
+            last.startTimeDayOffset === 6;
 
-          const totalCycleDays =
-            maxDays > 0
-              ? maxDays
-              : last.endTimeDayOffset - first.startTimeDayOffset;
+          // Determine if the final shift extends past midnight
+          const isLastOvernight =
+            last.endTimeDayOffset > last.startTimeDayOffset ||
+            (last.startTime >= last.endTime && last.endTime !== "00:00") ||
+            last.endTime === "00:00";
 
-          const firstStartAbs =
-            first.startTimeDayOffset * 1440 + (firstStartH * 60 + firstStartM);
-          const lastEndAbs =
-            (last.endTimeDayOffset - totalCycleDays) * 1440 +
-            (lastEndH * 60 + lastEndM);
+          // Only check rollover boundary overlaps if it's applicable and the last shift is overnight
+          if (
+            (cadence !== "weekday" || isSundayMondayWrap) &&
+            isLastOvernight
+          ) {
+            const [firstStartH, firstStartM] = first.startTime
+              .split(":")
+              .map(Number);
+            const [lastEndH, lastEndM] = last.endTime.split(":").map(Number);
 
-          if (lastEndAbs > firstStartAbs) {
-            return toast.error(
-              `Cycle Rollover Overlap: Shift "${last.label}" ends at ${last.endTime}, which overlaps with Shift "${first.label}" starting at ${first.startTime} in the next repeating cycle.`,
-            );
+            const totalCycleDays =
+              maxDays > 0
+                ? maxDays
+                : last.endTimeDayOffset - first.startTimeDayOffset;
+
+            const firstStartAbs =
+              first.startTimeDayOffset * 1440 +
+              (firstStartH * 60 + firstStartM);
+            const lastEndAbs =
+              (last.endTimeDayOffset - totalCycleDays) * 1440 +
+              (lastEndH * 60 + lastEndM);
+
+            if (lastEndAbs > firstStartAbs) {
+              return toast.error(
+                `Cycle Rollover Overlap: Shift "${last.label}" ends at ${last.endTime}, which overlaps with Shift "${first.label}" starting at ${first.startTime} in the next repeating cycle.`,
+              );
+            }
           }
         }
 
@@ -680,10 +738,6 @@ export function ScheduleBuilderTab({
             }, requiring an End Date of at least ${minEndDateStr}.`,
           );
         }
-      }
-
-      if (useUnifiedGuardCombo && unifiedGuardIds.length === 0) {
-        return toast.error("Please select guards for the unified allocation.");
       }
 
       if (useUnifiedGuardCombo && unifiedGuardIds.length === 0) {
@@ -742,8 +796,41 @@ export function ScheduleBuilderTab({
     }
   };
 
+  const handleToggleDayPreset = () => {
+    if (presetShiftType === "day") {
+      setPresetShiftType("standard");
+      return;
+    }
+    if (!dayPresetStart || !dayPresetEnd) {
+      return toast.error(
+        "Please set both Start and End times for Day Shift preset before selecting it.",
+        {
+          id: "day_preset_error",
+        },
+      );
+    }
+    setPresetShiftType("day");
+  };
+
+  const handleToggleNightPreset = () => {
+    if (presetShiftType === "night") {
+      setPresetShiftType("standard");
+      return;
+    }
+    if (!nightPresetStart || !nightPresetEnd) {
+      return toast.error(
+        "Please set both Start and End times for Night Shift preset before selecting it.",
+        {
+          id: "night_preset_error",
+        },
+      );
+    }
+    setPresetShiftType("night");
+  };
+
   const resetForm = () => {
     setScheduleName("");
+    setSelectedDays([]);
 
     // Specific Dates State
     setSpecificGroups([]);
@@ -817,38 +904,49 @@ export function ScheduleBuilderTab({
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">
               Schedule Mode
             </label>
-            <div className="flex gap-6">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="scheduleMode"
-                  checked={mode === "specific"}
-                  onChange={() => {
-                    setMode("specific");
-                    resetForm();
-                  }}
-                  className="w-4 h-4 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-xs font-bold text-slate-700">
-                  Specific Dates
-                </span>
-              </label>
+            <div className="w-full justify-between flex">
+              <div className="flex gap-6">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="scheduleMode"
+                    checked={mode === "specific"}
+                    onChange={() => {
+                      setMode("specific");
+                      resetForm();
+                    }}
+                    className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-xs font-bold text-slate-700">
+                    Specific Dates
+                  </span>
+                </label>
 
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="scheduleMode"
-                  checked={mode === "recurring"}
-                  onChange={() => {
-                    setMode("recurring");
-                    resetForm();
-                  }}
-                  className="w-4 h-4 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-xs font-bold text-slate-700">
-                  Recurring Cycle
-                </span>
-              </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="scheduleMode"
+                    checked={mode === "recurring"}
+                    onChange={() => {
+                      setMode("recurring");
+                      resetForm();
+                    }}
+                    className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-xs font-bold text-slate-700">
+                    Recurring Cycle
+                  </span>
+                </label>
+              </div>
+              {cadence === "weekday" && (
+                <button
+                  type="button"
+                  onClick={() => setIsDayPickerOpen(true)}
+                  className="mt-2 text-xs font-semibold text-indigo-600 hover:text-indigo-800 underline flex items-center gap-1"
+                >
+                  Edit Selected Days ({selectedDays.length} active)
+                </button>
+              )}
             </div>
           </div>
 
@@ -893,7 +991,7 @@ export function ScheduleBuilderTab({
                       <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                         <div className="flex items-center gap-2">
                           <span className="font-montserrat font-black text-xs text-blue-600">
-                            🗓️ {group.date}
+                            🗓️ {formatDate(group.date)}
                           </span>
                           {addedDays > 0 && (
                             <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-bold rounded-full flex items-center gap-1">
@@ -966,19 +1064,31 @@ export function ScheduleBuilderTab({
                                       : "border-slate-200"
                                   }`}
                                 />
-                                <input
-                                  type="time"
-                                  value={period.endTime}
-                                  onChange={(e) =>
-                                    updateSpecificPeriod(
-                                      groupIdx,
-                                      periodIdx,
-                                      e.target.value,
-                                      "endTime",
-                                    )
-                                  }
-                                  className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs"
-                                />
+                                <div className="flex flex-col gap-1">
+                                  <input
+                                    type="time"
+                                    value={period.endTime}
+                                    onChange={(e) =>
+                                      updateSpecificPeriod(
+                                        groupIdx,
+                                        periodIdx,
+                                        e.target.value,
+                                        "endTime",
+                                      )
+                                    }
+                                    className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs"
+                                  />
+                                  {period.endTimeDayOffset >
+                                    period.startTimeDayOffset && (
+                                    <span className="text-[10px] font-bold text-indigo-600">
+                                      Ends:{" "}
+                                      {getShiftEndDateLabel(
+                                        startDate,
+                                        period.endTimeDayOffset,
+                                      )}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
 
                               {/* Delete Period Button */}
@@ -1060,6 +1170,7 @@ export function ScheduleBuilderTab({
                     className="w-full mt-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium"
                   >
                     <option value="daily">Daily (Freestyle)</option>
+                    <option value="weekday">Day of Week</option>
                     <option value="weekly">Weekly (7-Day Cycle)</option>
                     <option value="bi-weekly">Bi-Weekly (14-Day Cycle)</option>
                     <option value="tri-weekly">
@@ -1120,20 +1231,94 @@ export function ScheduleBuilderTab({
 
               {/* Shift Periods Sequence */}
               <div className="space-y-3 pt-2">
-                <div className="flex justify-between items-center">
+                <div className="sticky top-0 z-10 bg-slate-50 py-2 backdrop-blur-xs flex justify-between items-center border-b border-slate-200/60">
                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                     Shift Periods Sequence ({recurringPeriods.length} Shifts)
                   </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      addRecurringPeriod();
-                      updateDailyEndDate();
-                    }}
-                    className="px-3 py-1 bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer hover:bg-slate-700"
-                  >
-                    <Plus size={12} /> Add Period Slot
-                  </button>
+                  {cadence !== "weekday" && (
+                    <div className="flex flex-wrap items-center gap-3">
+                      {cadence === "daily" && (
+                        <div className="flex flex-wrap items-center gap-3">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            Set Preset Time (Optional)
+                          </label>
+                          {/* Day Shift Preset Box */}
+                          <div className="flex items-center gap-1.5 bg-white border border-slate-200 px-2 py-1 rounded-xl shadow-2xs">
+                            <input
+                              type="checkbox"
+                              checked={presetShiftType === "day"}
+                              onChange={handleToggleDayPreset}
+                              className="w-3.5 h-3.5 text-amber-500 rounded focus:ring-amber-400 cursor-pointer"
+                            />
+                            <span className="text-[10px] font-bold text-slate-600">
+                              Day:
+                            </span>
+                            <input
+                              type="time"
+                              value={dayPresetStart}
+                              onChange={(e) =>
+                                setDayPresetStart(e.target.value)
+                              }
+                              className="px-1 py-0.5 text-[10px] bg-slate-50 border border-slate-200 rounded-md"
+                            />
+                            <span className="text-[10px] text-slate-400">
+                              -
+                            </span>
+                            <input
+                              type="time"
+                              value={dayPresetEnd}
+                              onChange={(e) => setDayPresetEnd(e.target.value)}
+                              className="px-1 py-0.5 text-[10px] bg-slate-50 border border-slate-200 rounded-md"
+                            />
+                          </div>
+
+                          {/* Night Shift Preset Box */}
+                          <div className="flex items-center gap-1.5 bg-white border border-slate-200 px-2 py-1 rounded-xl shadow-2xs">
+                            <input
+                              type="checkbox"
+                              checked={presetShiftType === "night"}
+                              onChange={handleToggleNightPreset}
+                              className="w-3.5 h-3.5 text-indigo-600 rounded focus:ring-indigo-500 cursor-pointer"
+                            />
+                            <span className="text-[10px] font-bold text-slate-600">
+                              Night:
+                            </span>
+                            <input
+                              type="time"
+                              value={nightPresetStart}
+                              onChange={(e) =>
+                                setNightPresetStart(e.target.value)
+                              }
+                              className="px-1 py-0.5 text-[10px] bg-slate-50 border border-slate-200 rounded-md"
+                            />
+                            <span className="text-[10px] text-slate-400">
+                              -
+                            </span>
+                            <input
+                              type="time"
+                              value={nightPresetEnd}
+                              onChange={(e) =>
+                                setNightPresetEnd(e.target.value)
+                              }
+                              className="px-1 py-0.5 text-[10px] bg-slate-50 border border-slate-200 rounded-md"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Add Period Slot Button */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          addRecurringPeriod();
+                          updateDailyEndDate();
+                        }}
+                        className="px-3 py-1.5 bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer hover:bg-slate-700 shadow-xs"
+                      >
+                        <Plus size={12} /> Add Period Slot
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {recurringPeriods.map((period, idx) => {
@@ -1161,6 +1346,11 @@ export function ScheduleBuilderTab({
                   }
 
                   let hasRolloverOverlap = false;
+
+                  const isOvernight =
+                    period.startTime >= period.endTime &&
+                    period.endTime !== "00:00";
+
                   if (
                     isLastPeriod &&
                     firstPeriod &&
@@ -1186,15 +1376,23 @@ export function ScheduleBuilderTab({
                       firstPeriod.startTimeDayOffset * 1440 +
                       (firstStartH * 60 + firstStartM);
 
-                    hasRolloverOverlap =
-                      currEndNormalized > firstStartNormalized;
+                    const isSundayMondayWrap =
+                      cadence === "weekday" &&
+                      firstPeriod.startTimeDayOffset === 0 &&
+                      period.startTimeDayOffset === 6;
+
+                    if (cadence === "weekday") {
+                      hasRolloverOverlap =
+                        currEndNormalized > firstStartNormalized &&
+                        isSundayMondayWrap &&
+                        isOvernight;
+                    } else {
+                      hasRolloverOverlap =
+                        currEndNormalized > firstStartNormalized && isOvernight;
+                    }
                   }
 
                   const hasOverlap = hasSequentialOverlap || hasRolloverOverlap;
-
-                  const isOvernight =
-                    period.startTime >= period.endTime &&
-                    period.endTime !== "00:00";
 
                   return (
                     <div
@@ -1296,7 +1494,11 @@ export function ScheduleBuilderTab({
                           <input
                             type="number"
                             min="1"
-                            max={cadence !== "daily" ? maxDays : undefined}
+                            max={
+                              cadence !== "daily" && cadence !== "weekday"
+                                ? maxDays || 7
+                                : undefined
+                            }
                             value={(period.startTimeDayOffset ?? 0) + 1}
                             onChange={(e) => {
                               const rawUserVal =
@@ -1511,6 +1713,81 @@ export function ScheduleBuilderTab({
         title="Delete this Schedule?"
         message="This will permanently remove this schedule and all related shifts."
       />
+
+      {isDayPickerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-5">
+            <div>
+              <h3 className="text-base font-bold text-slate-800">
+                Select Recurrence Days
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Choose which days of the week this shift schedule applies to.
+              </p>
+            </div>
+
+            {/* DAY CHECKBOXES / TOGGLES */}
+            <div className="grid grid-cols-2 gap-2">
+              {DAY_NAMES.map((dayName, index) => {
+                const isSelected = selectedDays.includes(index);
+                return (
+                  <button
+                    key={dayName}
+                    type="button"
+                    onClick={() => {
+                      setSelectedDays((prev) =>
+                        isSelected
+                          ? prev.filter((d) => d !== index)
+                          : [...prev, index],
+                      );
+                    }}
+                    className={`flex items-center justify-between p-3 rounded-xl border text-xs font-semibold transition-all ${
+                      isSelected
+                        ? "border-indigo-600 bg-indigo-50 text-indigo-700"
+                        : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
+                    }`}
+                  >
+                    <span>{dayName}</span>
+                    <span
+                      className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                        isSelected
+                          ? "border-indigo-600 bg-indigo-600 text-white"
+                          : "border-slate-300"
+                      }`}
+                    >
+                      {isSelected && "✓"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* MODAL ACTIONS */}
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsDayPickerOpen(false)}
+                className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={selectedDays.length === 0}
+                onClick={() => {
+                  setRecurringPeriods(
+                    createPeriodsFromSelectedDays(selectedDays),
+                  );
+                  setIsDayPickerOpen(false);
+                }}
+                className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-xl shadow-sm"
+              >
+                Confirm ({selectedDays.length} Days)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

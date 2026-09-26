@@ -391,3 +391,13 @@ export const VERIFYING_FIELD_MESSAGES: Record<
       "Enter the 6-digit code from your authenticator app to disable 2FA",
   },
 };
+
+export const DAY_NAMES = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+]; 

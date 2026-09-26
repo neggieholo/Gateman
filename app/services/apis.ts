@@ -1340,3 +1340,14 @@ export const formatUtcDate = (dateStr?: string | null): string => {
 
   return `${year}-${month}-${day}`;
 };
+
+export const getShiftEndDateLabel = (baseDateStr: string, dayOffset: number) => {
+  if (!baseDateStr) return "";
+  const date = new Date(baseDateStr);
+  date.setDate(date.getDate() + dayOffset);
+  return date.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+};

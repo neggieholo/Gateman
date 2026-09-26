@@ -19,7 +19,12 @@ import {
   CreditCard,
   Calendar,
 } from "lucide-react";
-import { EstateFacility, LocationBooking, Tenant } from "../services/types";
+import {
+  DateBookingSummary,
+  EstateFacility,
+  LocationBooking,
+  Tenant,
+} from "../services/types";
 import {
   getEventAtLocationDate,
   createLocation,
@@ -62,6 +67,10 @@ export default function LocationsView({
   const [currentCalendarDate, setCurrentCalendarDate] = useState<Date>(
     new Date(),
   );
+  const [formDurationHours, setFormDurationHours] = useState<number | "">("");
+  const [formDurationMinutes, setFormDurationMinutes] = useState<number | "">(
+    "",
+  );
 
   // Modal & Form States
   const [showModal, setShowModal] = useState<"create" | "edit" | null>(null);
@@ -97,12 +106,9 @@ export default function LocationsView({
 
   // Maps individual date strings ("YYYY-MM-DD") to an ARRAY of event contexts
   const performanceReservationMap = useMemo(() => {
-    if (!selectedLoc)
-      return new Map<string, Array<{ title: string; banner: string | null }>>();
-    const activeDatesMap = new Map<
-      string,
-      Array<{ title: string; banner: string | null }>
-    >();
+    if (!selectedLoc) return new Map<string, DateBookingSummary>();
+
+    const activeDatesMap = new Map<string, DateBookingSummary>();
 
     let bookedData = selectedLoc.event_booked_on;
     if (typeof bookedData === "string") {
@@ -116,23 +122,45 @@ export default function LocationsView({
 
     if (bookedData && typeof bookedData === "object") {
       Object.values(bookedData).forEach((bookingContext: any) => {
-        if (bookingContext && typeof bookingContext === "object") {
-          const { event_title, event_banner_url, dates } = bookingContext;
+        if (bookingContext && Array.isArray(bookingContext.dates)) {
+          bookingContext.dates.forEach((item: any) => {
+            const rawDate = typeof item === "string" ? item : item?.date;
+            if (!rawDate) return;
 
-          if (Array.isArray(dates)) {
-            dates.forEach((d: string) => {
-              const cleanDate = d.split("T")[0];
-              const existing = activeDatesMap.get(cleanDate) || [];
-              existing.push({
-                title: event_title,
-                banner: event_banner_url || null,
+            let cleanDate = rawDate.split("T")[0];
+
+            // Ensure uniform DD-MM-YYYY date format
+            if (
+              cleanDate.includes("-") &&
+              cleanDate.split("-")[0].length === 4
+            ) {
+              const [yyyy, mm, dd] = cleanDate.split("-");
+              cleanDate = `${dd}-${mm}-${yyyy}`;
+            }
+
+            const bookingDetail = {
+              residentId: item?.resident_id || "",
+              startTime: item?.start_time || "",
+              endTime: item?.end_time || "",
+            };
+
+            const existing = activeDatesMap.get(cleanDate);
+
+            if (existing) {
+              existing.count += 1;
+              existing.bookings.push(bookingDetail);
+            } else {
+              activeDatesMap.set(cleanDate, {
+                count: 1,
+                date: cleanDate,
+                bookings: [bookingDetail],
               });
-              activeDatesMap.set(cleanDate, existing);
-            });
-          }
+            }
+          });
         }
       });
     }
+
     return activeDatesMap;
   }, [selectedLoc]);
 
@@ -210,6 +238,7 @@ export default function LocationsView({
           : data.booking
             ? [data.booking]
             : [];
+        console.log("Active booking:", data.booking);
         setActiveDateBookings(bookingsList);
       } catch (err) {
         console.error("Failed fetching slot context:", err);
@@ -220,7 +249,7 @@ export default function LocationsView({
     };
 
     fetchActiveSlotContent();
-  }, [selectedDateStr, selectedLoc, canManageFacility]);
+  }, [selectedDateStr, selectedLoc, canManageFacility, contextEstateId]);
 
   const currentActiveBooking = useMemo(() => {
     return activeDateBookings[currentBookingIndex] || null;
@@ -275,6 +304,8 @@ export default function LocationsView({
     setFormIsPaid(false);
     setBookingRate("");
     setBookingRange("per_hour");
+    setFormDurationHours("");
+    setFormDurationMinutes("");
     setShowModal("create");
   };
 
@@ -287,6 +318,8 @@ export default function LocationsView({
     setFormIsActive(loc.is_active);
     setFormIsPaid(loc.isPaid || false);
     setBookingRate(loc.bookingRate || "");
+    setFormDurationHours(loc.booking_duration_hours ?? ""); // <--- ADD
+    setFormDurationMinutes(loc.booking_duration_minutes ?? "");
     setBookingRange(loc.bookingRateUnit || "per_hour");
     setShowModal("edit");
   };
@@ -314,6 +347,10 @@ export default function LocationsView({
         formIsPaid && formBookingRate !== ""
           ? Number(formBookingRate)
           : undefined,
+      bookingDurationHours:
+        formDurationHours !== "" ? Number(formDurationHours) : undefined,
+      bookingDurationMinutes:
+        formDurationMinutes !== "" ? Number(formDurationMinutes) : undefined,
       bookingRateUnit: formIsPaid ? formBookingrange : undefined,
     };
 
@@ -377,14 +414,14 @@ export default function LocationsView({
   }, [currentActiveBooking?.resident_id, tenants]);
 
   const formattedLocations = useMemo(() => {
-    if (!tenantMatch?.locations) return [];
-    return Object.values(tenantMatch.locations)
+    if (!tenantMatch?.locations[contextEstateId!]) return [];
+    return Object.values(tenantMatch.locations[contextEstateId!])
       .flat()
       .map((loc) => {
         const unitsStr = Array.isArray(loc.unit) ? loc.unit.join(", ") : "";
         return `${loc.block}: ${unitsStr}`;
       });
-  }, [tenantMatch]);
+  }, [tenantMatch, contextEstateId]);
 
   if (selectedLoc) {
     return (
@@ -495,11 +532,12 @@ export default function LocationsView({
                 }
 
                 const isSelected = selectedDateStr === cell.dateStr;
-                const dayEvents =
-                  performanceReservationMap.get(cell.dateStr) || [];
-                const hasEvents = dayEvents.length > 0;
+                const daySummary = performanceReservationMap.get(
+                  cell.dateStr.split("-").reverse().join("-"),
+                );
+                const bookingCount = daySummary ? daySummary.count : 0;
+                const hasEvents = bookingCount > 0;
                 const isDisabled = cell.isOutsideAllowedRange;
-                const firstBanner = dayEvents.find((e) => e.banner)?.banner;
 
                 return (
                   <button
@@ -514,29 +552,12 @@ export default function LocationsView({
                           : "bg-white border-slate-200/70 text-slate-700 hover:border-slate-400"
                     }`}
                   >
-                    {hasEvents && firstBanner && !isDisabled && (
-                      <div className="absolute inset-0 w-full h-full z-0">
-                        <img
-                          src={firstBanner}
-                          alt=""
-                          className="w-full h-full object-cover"
-                        />
-                        <div
-                          className={`absolute inset-0 ${isSelected ? "bg-blue-600/40" : "bg-slate-900/40"}`}
-                        />
-                      </div>
-                    )}
-
-                    <span
-                      className={`relative z-10 mt-1 pl-1.5 self-start font-oswald font-bold text-xs ${
-                        hasEvents && firstBanner && !isSelected
-                          ? "text-white font-black drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]"
-                          : ""
-                      }`}
-                    >
+                    {/* Day Number (Top Left) */}
+                    <span className="relative z-10 mt-1 pl-1.5 self-start font-oswald font-bold text-xs">
                       {cell.date.getDate()}
                     </span>
 
+                    {/* Booking Count Badge (Bottom Center of Cell) */}
                     {hasEvents && (
                       <div className="relative z-10 mb-1 flex items-center justify-center w-full px-1">
                         <span
@@ -546,8 +567,7 @@ export default function LocationsView({
                               : "bg-amber-500 text-white border-amber-600/50"
                           }`}
                         >
-                          {dayEvents.length}{" "}
-                          {dayEvents.length === 1 ? "Evt" : "Evts"}
+                          {bookingCount} {bookingCount === 1 ? "Evt" : "Evts"}
                         </span>
                       </div>
                     )}
@@ -610,7 +630,7 @@ export default function LocationsView({
                     className="animate-spin text-blue-600 mb-2"
                   />
                   <p className="text-[10px] font-montserrat font-bold uppercase tracking-wider">
-                    Syncing Log Matrix...
+                    loading...
                   </p>
                 </div>
               ) : currentActiveBooking ? (
@@ -626,8 +646,8 @@ export default function LocationsView({
                     </div>
 
                     {/* Profile Section: Avatar, Name & Location */}
-                    <div className="flex items-center gap-3.5 bg-slate-50/60 p-3 rounded-xl border border-slate-200/50 min-w-0">
-                      <div className="w-14 h-14 rounded-xl bg-white border border-slate-200 shadow-3xs flex items-center justify-center shrink-0 overflow-hidden text-slate-600 font-montserrat font-black text-lg">
+                    <div className="flex flex-col items-center gap-3.5 bg-slate-50/60 p-3 rounded-xl border border-slate-200/50 min-w-0 ">
+                      <div className="w-[50%] h-[50%] rounded-xl bg-white border border-slate-200 shadow-3xs flex items-center justify-center shrink-0 overflow-hidden text-slate-600 font-montserrat font-black text-lg">
                         {user &&
                         contextEstateId &&
                         tenantMatch?.avatar?.[String(contextEstateId)] ? (
@@ -668,22 +688,6 @@ export default function LocationsView({
                         <span className="text-sm font-semibold text-slate-800 truncate font-sans tracking-wide">
                           {currentActiveBooking.start_time} -{" "}
                           {currentActiveBooking.end_time}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200/30 min-w-0">
-                        <Calendar
-                          size={16}
-                          className="text-blue-600 shrink-0"
-                        />
-                        <span className="font-montserrat text-xs font-bold text-slate-700 truncate tracking-tight">
-                          {currentActiveBooking.start_date
-                            ? formatDate(currentActiveBooking.start_date)
-                            : ""}{" "}
-                          to{" "}
-                          {currentActiveBooking.end_date
-                            ? formatDate(currentActiveBooking.end_date)
-                            : ""}
                         </span>
                       </div>
                     </div>
@@ -746,6 +750,7 @@ export default function LocationsView({
         {filteredLocations.length > 0 ? (
           filteredLocations.map((loc) => {
             let bookedData = loc.event_booked_on;
+
             if (typeof bookedData === "string") {
               try {
                 bookedData = JSON.parse(bookedData);
@@ -754,15 +759,19 @@ export default function LocationsView({
               }
             }
 
-            const totalDays = Object.values(bookedData || {}).reduce(
-              (acc: number, bookingContext: any) => {
-                if (bookingContext && Array.isArray(bookingContext.dates)) {
-                  return acc + bookingContext.dates.length;
-                }
-                return acc;
-              },
-              0,
-            );
+            // 1. Total Booking Records (Number of UUID keys = 5)
+            const totalBookings =
+              bookedData && typeof bookedData === "object"
+                ? Object.keys(bookedData).length
+                : 0;
+
+            // 2. Total Booked Days (Sum of all date items inside arrays = 6)
+            const totalBookedDays =
+              bookedData && typeof bookedData === "object"
+                ? Object.values(bookedData).flatMap(
+                    (evt: any) => evt?.dates || [],
+                  ).length
+                : 0;
 
             return (
               <div
@@ -788,6 +797,7 @@ export default function LocationsView({
                       >
                         {loc.is_active ? "Active" : "Inactive"}
                       </span>
+
                       {loc.isPaid && (
                         <span className="text-[9px] font-oswald uppercase tracking-wider font-bold px-1.5 py-0.2 bg-amber-50 text-amber-600 border border-amber-100 rounded">
                           Paid (₦{loc.bookingRate})
@@ -802,12 +812,17 @@ export default function LocationsView({
                 </div>
 
                 <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 border-t sm:border-t-0 border-slate-100 pt-2 sm:pt-0">
-                  <div className="bg-slate-50 border border-slate-200/40 p-2 px-3 rounded-xl text-center sm:text-right min-w-[5rem]">
+                  <div className="bg-slate-50 border border-slate-200/40 p-2 px-3 rounded-xl text-center sm:text-right min-w-28">
                     <p className="text-[9px] font-oswald font-bold uppercase text-slate-400 tracking-wider">
                       Reservations
                     </p>
-                    <p className="text-sm font-oswald font-bold text-slate-700 mt-0.5">
-                      {totalDays} {totalDays === 1 ? "Day" : "Days"}
+                    <p className="text-xs font-oswald font-bold text-slate-700 mt-0.5">
+                      {totalBookings}{" "}
+                      {totalBookings === 1 ? "Booking" : "Bookings"}
+                    </p>
+                    <p className="text-[10px] font-sans font-medium text-slate-500">
+                      ({totalBookedDays}{" "}
+                      {totalBookedDays === 1 ? "Day" : "Days"} total)
                     </p>
                   </div>
 
@@ -915,6 +930,57 @@ export default function LocationsView({
                   }}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-medium bg-slate-50 outline-none focus:border-blue-500 transition-colors text-slate-700 font-sans"
                 />
+              </div>
+
+              {/* Booking Time Duration Section */}
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-montserrat font-bold text-slate-700 uppercase tracking-wider">
+                  Booking Duration (Optional)
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="Hours (e.g. 2)"
+                      value={formDurationHours}
+                      onChange={(e) =>
+                        setFormDurationHours(
+                          e.target.value === ""
+                            ? ""
+                            : Math.max(0, parseInt(e.target.value) || 0),
+                        )
+                      }
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-blue-500"
+                    />
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      Hours
+                    </span>
+                  </div>
+                  <div>
+                    <input
+                      type="number"
+                      min="0"
+                      max="59"
+                      placeholder="Minutes (e.g. 30)"
+                      value={formDurationMinutes}
+                      onChange={(e) => {
+                        const val =
+                          e.target.value === ""
+                            ? ""
+                            : Math.max(
+                                0,
+                                Math.min(59, parseInt(e.target.value) || 0),
+                              );
+                        setFormDurationMinutes(val);
+                      }}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-blue-500"
+                    />
+                    <span className="text-[10px] text-slate-400 font-medium font-sans">
+                      Minutes (0–59)
+                    </span>
+                  </div>
+                </div>
               </div>
 
               {/* Premium Billing Configurations */}

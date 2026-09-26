@@ -1,17 +1,13 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useUser } from "@/app/UserContext";
 import { useRouter } from "next/navigation";
 import { checkSession } from "../services/apis";
 // import Link from 'next/link';
 
 const HomeNavbar = () => {
-  const {
-    user,
-    badgeCount,
-    contextEstateId,
-  } = useUser();
+  const { user, badgeCount, contextEstateId } = useUser();
   const router = useRouter();
 
   useEffect(() => {

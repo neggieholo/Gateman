@@ -186,40 +186,23 @@ export default function BookingsReviewPage() {
       const data = await approveBooking(id, verdict, contextEstateId!);
 
       if (data.success) {
-        setAllbookings((prev) =>
-          prev.map((e) => {
-            if (e.id !== id) return e;
-
-            let newStatus = e.status;
-
-            if (verdict === "REJECTED") {
-              newStatus = "REJECTED";
-            } else if (verdict === "APPROVED") {
-              // 1. Paid booking awaiting initial review -> Send to PAYMENT_PENDING to allow payment
-              if (e.is_paid && e.status === "PENDING_APPROVAL") {
-                newStatus = "PAYMENT_PENDING";
-              }
-              // 2. Paid booking with submitted payment -> Final approval to APPROVED
-              else if (e.is_paid && e.status === "PAYMENT_SUBMITTED") {
-                newStatus = "APPROVED";
-              }
-              // 3. Unpaid / Free booking -> Direct approval to APPROVED
-              else {
-                newStatus = "APPROVED";
-              }
-            }
-
-            return { ...e, status: newStatus };
-          }),
-        );
-
-        if (data.updatedLocation) {
-          setfacilities((prevLocs) =>
-            prevLocs.map((loc) =>
-              loc.id === data.updatedLocation.id ? data.updatedLocation : loc,
-            ),
-          );
+        await fetchData();
+        
+        switch (verdict) {
+          case "APPROVED":
+            setStatusFilter("APPROVED");
+            break;
+          case "PAYMENT_PENDING":
+            setStatusFilter("PAYMENT_PENDING");
+            break;
+          case "REJECTED":
+            setStatusFilter("REJECTED");
+            break;
+          default:
+            setStatusFilter("ALL");
+            break;
         }
+        
         setSelectedBooking(null);
       } else {
         toast.error(data.error || "Update failed");
@@ -320,7 +303,11 @@ export default function BookingsReviewPage() {
 
                     <div className="text-right hidden sm:block shrink-0 pl-4">
                       <p className="text-[10px] font-oswald font-semibold text-slate-500 uppercase tracking-wide">
-                        DATE: {formatToLocalDateString(booking.start_date)}
+                        DATE:{" "}
+                        {formatToLocalDateString(booking.start_date)
+                          .split("-")
+                          .reverse()
+                          .join("-")}
                       </p>
                       <div className="flex items-center justify-end mt-1">
                         <span
@@ -368,9 +355,6 @@ export default function BookingsReviewPage() {
       formatToLocalDateString(booking.end_date) !==
         formatToLocalDateString(booking.start_date);
 
-    const start = new Date(formatToLocalDateString(booking.start_date));
-    const end = new Date(formatToLocalDateString(booking.end_date));
-
     const tenantMatch = useMemo(() => {
       if (!booking.resident_id || !tenants) return null;
       return (
@@ -378,17 +362,17 @@ export default function BookingsReviewPage() {
           (t) => t.id.toString() === booking.resident_id.toString(),
         ) || null
       );
-    }, [booking.resident_id, tenants]);
+    }, [booking.resident_id]);
 
     const formattedLocations = useMemo(() => {
-      if (!tenantMatch?.locations) return [];
-      return Object.values(tenantMatch.locations)
+      if (!tenantMatch?.locations[contextEstateId!]) return [];
+      return Object.values(tenantMatch.locations[contextEstateId!])
         .flat()
         .map((loc) => {
           const unitsStr = Array.isArray(loc.unit) ? loc.unit.join(", ") : "";
           return `${loc.block}: ${unitsStr}`;
         });
-    }, [tenantMatch]);
+    }, [tenantMatch, contextEstateId]);
 
     const resolvedVenueName = useMemo(() => {
       const match = facilities.find(
@@ -397,33 +381,10 @@ export default function BookingsReviewPage() {
       return match ? match.name : "Not Specified";
     }, [booking.venue_id]);
 
-    const excludedDatesList = useMemo(() => {
-      if (
-        !booking.booked_dates ||
-        !Array.isArray(booking.booked_dates) ||
-        booking.booked_dates.length === 0
-      ) {
-        return [];
-      }
-      const excluded: string[] = [];
-      const bookedSet = new Set(
-        booking.booked_dates.map((d) => formatToLocalDateString(d)),
-      );
-
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        const currentStr = d.toISOString().split("T")[0];
-        if (!bookedSet.has(currentStr)) {
-          excluded.push(currentStr);
-        }
-      }
-      return excluded;
-    }, [booking.start_date, booking.end_date, booking.booked_dates]);
-
     const badge = getBookingStatusBadge(booking.status);
     const isApproved = booking.status === "APPROVED";
     const isRejected = booking.status === "REJECTED";
 
-    // Quick helper to handle reference copy
     const handleCopyRef = (ref: string) => {
       navigator.clipboard.writeText(ref);
       setCopied(true);
@@ -452,14 +413,12 @@ export default function BookingsReviewPage() {
                 <button
                   disabled={!!loadingAction}
                   onClick={() => {
-                    // If paid and pending initial review -> allow payment phase
                     if (
                       booking.is_paid &&
                       booking.status === "PENDING_APPROVAL"
                     ) {
                       handleUpdateStatus(booking.id, "PAYMENT_PENDING");
                     } else {
-                      // Unpaid/free OR paid with submitted payment -> send final approval
                       handleUpdateStatus(booking.id, "APPROVED");
                     }
                   }}
@@ -483,7 +442,7 @@ export default function BookingsReviewPage() {
               {!isRejected && (
                 <button
                   disabled={!!loadingAction}
-                  onClick={() => handleUpdateStatus(booking.id, "REJECTED")} 
+                  onClick={() => handleUpdateStatus(booking.id, "REJECTED")}
                   className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-5 py-3 bg-rose-50 text-rose-600 border border-rose-100/60 rounded-xl font-montserrat font-bold text-xs uppercase tracking-wider hover:bg-rose-100 transition-all disabled:opacity-40 shadow-3xs active:scale-98"
                 >
                   {loadingAction === "rejecting" ? (
@@ -553,7 +512,7 @@ export default function BookingsReviewPage() {
               </p>
             </div>
 
-            {/* NEW: Payment Verification Panel (Rendered if ANY payment proof/ref exists) */}
+            {/* Payment Verification Panel */}
             {hasPaymentDetails && (
               <div className="p-4 bg-purple-50/40 border border-purple-200/60 rounded-2xl space-y-3">
                 <div className="flex items-center justify-between border-b border-purple-100 pb-2">
@@ -568,7 +527,6 @@ export default function BookingsReviewPage() {
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                  {/* Clickable Thumbnail / Document Preview */}
                   {booking.payment_url ? (
                     <a
                       href={booking.payment_url}
@@ -576,13 +534,11 @@ export default function BookingsReviewPage() {
                       rel="noopener noreferrer"
                       className="group relative w-24 h-24 sm:w-28 sm:h-28 rounded-xl bg-slate-900 border border-purple-200 overflow-hidden shrink-0 flex items-center justify-center shadow-xs hover:shadow-md transition-all"
                     >
-                      {/* Render Image or File Fallback */}
                       <img
                         src={booking.payment_url}
                         alt="Payment Receipt"
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-90 group-hover:opacity-100"
                         onError={(e) => {
-                          // Fallback if payment_url is a document/PDF rather than a direct image
                           (e.target as HTMLElement).style.display = "none";
                         }}
                       />
@@ -602,7 +558,6 @@ export default function BookingsReviewPage() {
                     </div>
                   )}
 
-                  {/* Transaction Reference & Quick Actions */}
                   <div className="flex-1 space-y-2 min-w-0 w-full">
                     <div>
                       <label className="text-[10px] font-oswald font-bold text-slate-400 uppercase tracking-wide block">
@@ -651,47 +606,68 @@ export default function BookingsReviewPage() {
               </div>
             )}
 
-            {/* Details Grid */}
+            {/* General Overview Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0">
               <DetailBox
                 icon={<Calendar size={18} />}
-                label="Requested Booking Date"
+                label="Booking Span"
                 value={
                   isMultiDay
-                    ? `${formatToLocalDateString(booking.start_date)} to ${formatToLocalDateString(booking.end_date)}`
+                    ? `${formatToLocalDateString(booking.start_date).split("-").reverse().join("-")} to ${formatToLocalDateString(booking.end_date).split("-").reverse().join("-")}`
                     : formatToLocalDateString(booking.start_date)
+                        .split("-")
+                        .reverse()
+                        .join("-")
                 }
               />
               <DetailBox
-                icon={<Clock size={18} />}
-                label="Reservation Timeframe Window"
-                value={`${booking.start_time} - ${booking.end_time}`}
-              />
-              <DetailBox
                 icon={<MapPin size={18} />}
-                label="Target Venue Resource Location"
+                label="Target Venue"
                 value={resolvedVenueName}
               />
             </div>
 
-            {/* Excluded Dates */}
-            {excludedDatesList.length > 0 && (
-              <div className="p-4 bg-rose-50/30 border border-rose-100/60 rounded-xl min-w-0">
-                <span className="text-[10px] font-oswald font-bold text-rose-600 uppercase tracking-wider block mb-2">
-                  Blackout/Excluded Dates:
+            {/* Explicit Requested Date Slots */}
+            <div className="p-4 bg-slate-50 border border-slate-200/60 rounded-2xl min-w-0 space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                <span className="text-[10px] font-oswald font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <Calendar size={14} className="text-blue-600" /> Requested
+                  Date Slots
                 </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {excludedDatesList.map((d) => (
-                    <span
-                      key={d}
-                      className="text-xs font-oswald font-bold bg-white border border-rose-200/50 text-rose-600 px-2.5 py-1 rounded-md shadow-3xs"
+                <span className="text-[10px] font-montserrat font-semibold text-slate-400">
+                  Total: {booking.booked_dates?.length || 0} slot(s)
+                </span>
+              </div>
+
+              {booking.booked_dates && booking.booked_dates.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {booking.booked_dates.map((slot, index) => (
+                    <div
+                      key={index}
+                      className="p-2.5 bg-white border border-slate-200/70 rounded-xl flex items-center justify-between shadow-3xs"
                     >
-                      {d}
-                    </span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-blue-600 shrink-0" />
+                        <span className="text-xs font-oswald font-bold text-slate-800">
+                          {formatToLocalDateString(slot.date)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 text-[11px] font-mono text-slate-500 bg-slate-100/70 px-2 py-0.5 rounded-md border border-slate-200/40">
+                        <Clock size={12} className="text-slate-400 shrink-0" />
+                        <span>
+                          {slot.start_time} - {slot.end_time}
+                        </span>
+                      </div>
+                    </div>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="text-xs text-slate-400 italic font-medium p-1">
+                  No date slots specified. Default window: {booking.start_time}{" "}
+                  - {booking.end_time}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>

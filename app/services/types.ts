@@ -546,15 +546,23 @@ export interface LocationBooking {
   end_date: string;
   start_time: string; // HH:mm:ss
   end_time: string;
-  booked_dates: string[];
+  booked_dates: BookedDateSlot[];
 
   is_paid: boolean;
   status: BookingStatus;
 
   transaction_ref?: string;
   payment_url?: string;
+  is_expired: boolean;
 
   created_at: string;
+}
+
+export interface BookedDateSlot {
+  date: string;
+  start_time: string;
+  end_time: string;
+  resident_id?: string;
 }
 
 export interface EstateFacility {
@@ -566,13 +574,14 @@ export interface EstateFacility {
   event_booked_on: Record<
     string,
     {
-      venue_name: string;
-      dates: string[];
+      dates: BookedDateSlot[];
     }
   >;
   capacity?: number;
   isPaid?: boolean;
   bookingRate?: number;
+  booking_duration_hours: number;
+  booking_duration_minutes: number;
   bookingRateUnit?: "per_hour" | "per_day" | "per_event";
   is_active: boolean;
   created_at: string;
@@ -851,7 +860,12 @@ export interface GuardLocation {
 
 // --- TYPES ---
 export type ScheduleMode = "specific" | "recurring";
-export type RecurringCadence = "daily" | "weekly" | "bi-weekly" | "tri-weekly";
+export type RecurringCadence =
+  | "daily"
+  | "weekday"
+  | "weekly"
+  | "bi-weekly"
+  | "tri-weekly";
 
 export interface ShiftPeriod {
   id: string;
@@ -912,7 +926,7 @@ export interface FetchedSecuritySchedule {
   name: string;
   mode: "specific" | "recurring";
   specific_date_groups?: DateShiftGroup[];
-  recurring_cadence?: "daily" | "weekly" | "monthly" | "custom";
+  recurring_cadence?: "daily"| "weekday" | "weekly" | "monthly" | "custom";
   start_date?: string;
   end_date?: string;
   recurring_periods?: ShiftPeriod[];
@@ -979,4 +993,14 @@ export interface SecurityDutyLog {
   actual_checkout_time: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface DateBookingSummary {
+  count: number;
+  date: string;
+  bookings: Array<{
+    residentId: string;
+    startTime: string;
+    endTime: string;
+  }>;
 }
