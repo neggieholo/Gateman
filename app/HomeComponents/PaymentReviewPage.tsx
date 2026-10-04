@@ -117,7 +117,7 @@ export default function PaymentReviewPage() {
       const matchesStatus = statusFilter === "ALL" || p.status === statusFilter;
       const matchesSearch =
         p.resident_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.transaction_reference
+        p.category
           ?.toLowerCase()
           .includes(searchQuery.toLowerCase());
       return matchesStatus && matchesSearch;
@@ -229,7 +229,7 @@ export default function PaymentReviewPage() {
           className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-montserrat font-bold text-xs hover:bg-indigo-100 transition-all"
         >
           <ListPlus size={16} />
-          Manage Dropdown Options
+          Manage Payment Categories
         </button>
       </div>
 

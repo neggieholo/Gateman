@@ -58,6 +58,7 @@ export default function Auth() {
   const [mfaType, setMfaType] = useState<"EMAIL" | "TOTP" | "NONE">("NONE");
   const [otpLoading, setOtpLoading] = useState(false);
   const [metadata, setMetadata] = useState("");
+  const [address, setAddress] = useState("");
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -225,6 +226,7 @@ export default function Auth() {
         lga,
         configuredPlan,
         planDuration,
+        address,
         trimmedEmail,
         password,
         enteredOtp,
