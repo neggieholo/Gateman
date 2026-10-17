@@ -9,6 +9,7 @@ import {
   formatDate,
   formatTime,
   logActivityApi,
+  isOvernightSchedule,
 } from "../services/apis";
 import {
   Calendar,
@@ -80,203 +81,297 @@ export default function GatePassesView() {
   };
 
   const getMultiEntryStatus = (invite: Invitation) => {
-    if (invite.is_cancelled) {
-      return {
-        label: "CANCELLED",
-        container: "bg-rose-50 border border-rose-100",
-        text: "text-rose-600",
-      };
-    }
-
-    const now = new Date();
-    const toLocalDateStr = (d: any): string => {
-      if (!d) return "";
-      return new Date(d).toLocaleDateString("en-CA");
-    };
-
-    const todayStr = toLocalDateStr(now);
-    const checkinDateStr = toLocalDateStr(invite.actual_checkin_date);
-    const checkoutDateStr = toLocalDateStr(invite.actual_checkout_date);
-
-    const [startH, startM] = invite.start_time.split(":");
-    const [endH, endM] = invite.end_time.split(":");
-
-    const todayStart = new Date();
-    todayStart.setHours(parseInt(startH), parseInt(startM), 0, 0);
-
-    const todayEnd = new Date();
-    todayEnd.setHours(parseInt(endH), parseInt(endM), 0, 0);
-
-    const overallExpiry = new Date(invite.end_date);
-    overallExpiry.setHours(parseInt(endH), parseInt(endM), 0);
-    if (now > overallExpiry) {
-      return {
-        label: "EXPIRED",
-        container: "bg-slate-50 border border-slate-200/60",
-        text: "text-slate-400",
-      };
-    }
-
-    if (invite.excluded_dates?.includes(todayStr)) {
-      return {
-        label: "NOT ALLOWED TODAY",
-        container: "bg-amber-50 border border-amber-100",
-        text: "text-amber-600",
-      };
-    }
-
-    if (checkinDateStr && checkinDateStr < todayStr) {
-      if (!checkoutDateStr || checkoutDateStr < checkinDateStr) {
+      const isOverNight = isOvernightSchedule(invite.start_time, invite.end_time);
+  
+      if (invite.is_cancelled) {
         return {
-          label: "OVERSTAYED (PAST)",
-          container: "bg-red-50 border border-red-100",
-          text: "text-red-600",
+          label: "CANCELLED",
+          container: "bg-rose-100",
+          text: "text-rose-700",
         };
       }
-    }
-
-    const isCheckedInToday = checkinDateStr === todayStr;
-    const isCheckedOutToday = checkoutDateStr === todayStr;
-
-    if (isCheckedInToday && !isCheckedOutToday) {
-      if (now > todayEnd) {
+  
+      const now = new Date();
+  
+      const toLocalDateStr = (d: any): string => {
+        if (!d) return "";
+        return new Date(d).toLocaleDateString("en-CA");
+      };
+  
+      const todayStr = toLocalDateStr(now);
+      const checkinDateStr = toLocalDateStr(invite.actual_checkin_date);
+      const checkoutDateStr = toLocalDateStr(invite.actual_checkout_date);
+  
+      const startDate = toLocalDateStr(invite.start_date);
+      const endDate = toLocalDateStr(invite.end_date);
+  
+      // Setup today's time window.
+      const [startH, startM] = invite.start_time.split(":").map(Number);
+      const [endH, endM] = invite.end_time.split(":").map(Number);
+  
+      const todayStart = new Date(now);
+      todayStart.setHours(startH, startM, 0, 0);
+  
+      const todayEnd = new Date(now);
+      todayEnd.setHours(endH, endM, 0, 0);
+  
+      // 1. GLOBAL EXPIRY: end_date + end_time is the exact final expiry.
+      const overallExpiry = new Date(invite.end_date);
+      overallExpiry.setHours(endH, endM, 0, 0);
+  
+      if (now >= overallExpiry) {
         return {
-          label: "OVERSTAYED TODAY",
-          container: "bg-red-50 border border-red-100/80",
-          text: "text-red-600",
+          label: "EXPIRED",
+          container: "bg-rose-50",
+          text: "text-rose-500",
         };
       }
-      return {
-        label: "INSIDE",
-        container: "bg-emerald-50 border border-emerald-100",
-        text: "text-emerald-600",
-      };
-    }
-
-    if (isCheckedOutToday) {
-      return {
-        label: "DEPARTED TODAY",
-        container: "bg-blue-50 border border-blue-100",
-        text: "text-blue-600",
-      };
-    }
-
-    if (!isCheckedInToday && now > todayEnd) {
-      return {
-        label: "EXPIRED TODAY",
-        container: "bg-rose-50 border border-rose-100/50",
-        text: "text-rose-500",
-      };
-    }
-
-    const startDate = toLocalDateStr(invite.start_date);
-    const endDate = toLocalDateStr(invite.end_date);
-
-    if (startDate && endDate && todayStr >= startDate && todayStr <= endDate) {
-      if (now < todayStart) {
+  
+      // 2. EXCLUSION CHECK.
+      if (invite.excluded_dates?.includes(todayStr)) {
         return {
-          label: "NOT ARRIVED TODAY",
-          container: "bg-slate-50 border border-slate-100",
+          label: "NOT ALLOWED TODAY",
+          container: "bg-amber-100",
+          text: "text-amber-700",
+        };
+      }
+  
+      // 3. OVERSTAYED FROM A PREVIOUS DAY.
+      if (checkinDateStr && checkinDateStr < todayStr) {
+        if (!checkoutDateStr || checkoutDateStr < checkinDateStr) {
+          return {
+            label: "OVERSTAYED (PAST)",
+            container: "bg-red-100",
+            text: "text-red-700",
+          };
+        }
+      }
+  
+      const isCheckedInToday = checkinDateStr === todayStr;
+      const isCheckedOutToday = checkoutDateStr === todayStr;
+  
+      // Determine whether the current time falls within today's window
+      // or the overnight window that started yesterday.
+      const previousDayStart = new Date(todayStart);
+      previousDayStart.setDate(previousDayStart.getDate() - 1);
+  
+      const previousDayEnd = new Date(now);
+      previousDayEnd.setHours(endH, endM, 0, 0);
+  
+      const isWithinPreviousOvernightWindow =
+        isOverNight && now >= previousDayStart && now <= previousDayEnd;
+  
+      const isWithinTodayWindow = isOverNight
+        ? now >= todayStart || now <= todayEnd
+        : now >= todayStart && now <= todayEnd;
+  
+      const isWithinWindow =
+        isWithinTodayWindow || isWithinPreviousOvernightWindow;
+  
+      // 4. GUEST CURRENTLY INSIDE.
+      if (isCheckedInToday && !isCheckedOutToday) {
+        if (!isWithinWindow) {
+          return {
+            label: "OVERSTAYED TODAY",
+            container: "bg-red-100",
+            text: "text-red-700",
+          };
+        }
+  
+        return {
+          label: "INSIDE",
+          container: "bg-emerald-100",
+          text: "text-emerald-700",
+        };
+      }
+  
+      // 5. DEPARTED TODAY.
+      if (isCheckedOutToday) {
+        return {
+          label: "DEPARTED TODAY",
+          container: "bg-blue-100",
+          text: "text-blue-700",
+        };
+      }
+  
+      // 6. CHECK THE INVITATION DATE RANGE.
+      if (startDate && todayStr < startDate) {
+        return {
+          label: "UPCOMING",
+          container: "bg-slate-50",
           text: "text-slate-400",
         };
       }
-      return {
-        label: "READY FOR ENTRY",
-        container: "bg-indigo-50 border border-indigo-100/80",
-        text: "text-indigo-600",
-      };
-    }
-
-    return {
-      label: "UPCOMING",
-      container: "bg-slate-50/50 border border-slate-100",
-      text: "text-slate-400",
-    };
-  };
-
-  const getStatusDetails = (
-    status: string,
-    isExpired: boolean,
-    startDate: string,
-    isCancelled: boolean,
-    startTime: string,
-  ) => {
-    if (isCancelled) {
-      return {
-        label: "CANCELLED",
-        container: "bg-rose-50 border border-rose-100",
-        text: "text-rose-600",
-      };
-    }
-
-    const now = new Date();
-    const start = new Date(startDate);
-    const today = new Date(new Date().setHours(0, 0, 0, 0));
-    const startDay = new Date(start.setHours(0, 0, 0, 0));
-
-    if (status === "pending" && today < startDay) {
-      return {
-        label: "UPCOMING",
-        container: "bg-indigo-50 border border-indigo-100/40",
-        text: "text-indigo-500",
-      };
-    }
-
-    if (status === "pending" && isExpired) {
-      return {
-        label: "EXPIRED",
-        container: "bg-slate-50 border border-slate-200/60",
-        text: "text-slate-400",
-      };
-    }
-
-    if (status === "pending") {
-      const [startH, startM] = startTime.split(":");
-      const todayStartTime = new Date();
-      todayStartTime.setHours(parseInt(startH), parseInt(startM), 0, 0);
-
-      if (now >= todayStartTime) {
+  
+      if (endDate && todayStr > endDate) {
         return {
-          label: "READY FOR ENTRY",
-          container: "bg-indigo-50 border border-indigo-100/80",
-          text: "text-indigo-600",
+          label: "EXPIRED",
+          container: "bg-rose-50",
+          text: "text-rose-500",
         };
       }
-
+  
+      // 7. READY FOR ENTRY DURING AN OVERNIGHT WINDOW.
+      // For example, 8 PM–6 AM: after midnight, the window
+      // that started yesterday is still active until 6 AM.
+      if (isWithinPreviousOvernightWindow) {
+        return {
+          label: "READY FOR ENTRY",
+          container: "bg-indigo-100",
+          text: "text-indigo-700",
+        };
+      }
+  
+      // 8. NOT ARRIVED TODAY.
+      if (startDate && endDate && todayStr >= startDate && todayStr <= endDate) {
+        if (isWithinTodayWindow) {
+          return {
+            label: "READY FOR ENTRY",
+            container: "bg-indigo-100",
+            text: "text-indigo-700",
+          };
+        }
+  
+        if (now < todayStart) {
+          return {
+            label: "NOT YET READY TODAY",
+            container: "bg-slate-100",
+            text: "text-slate-500",
+          };
+        }
+  
+        return {
+          label: "EXPIRED TODAY",
+          container: "bg-rose-50",
+          text: "text-rose-400",
+        };
+      }
+  
       return {
-        label: "NOT ARRIVED",
-        container: "bg-slate-50 border border-slate-100",
-        text: "text-slate-500",
+        label: "UPCOMING",
+        container: "bg-slate-50",
+        text: "text-slate-400",
       };
-    }
-
-    switch (status) {
-      case "checked_in":
+    };
+  
+    const getStatusDetails = (
+      status: string,
+      isExpired: boolean,
+      startDate: string,
+      isCancelled: boolean,
+      startTime: string,
+      endDate: string,
+      endTime: string,
+    ) => {
+      if (isCancelled) {
         return {
-          label: "INSIDE",
-          container: "bg-emerald-50 border border-emerald-100",
-          text: "text-emerald-600",
+          label: "CANCELLED",
+          container: "bg-rose-100",
+          text: "text-rose-700",
         };
-      case "checked_out":
+      }
+  
+      const now = new Date();
+  
+      const [startYear, startMonth, startDayOfMonth] = startDate
+        .split("T")[0]
+        .split("-")
+        .map(Number);
+  
+      const start = new Date(startYear, startMonth - 1, startDayOfMonth);
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const startDay = new Date(
+        start.getFullYear(),
+        start.getMonth(),
+        start.getDate(),
+      );
+  
+      if (status === "pending" && today < startDay) {
         return {
-          label: "DEPARTED",
-          container: "bg-blue-50 border border-blue-100",
-          text: "text-blue-600",
+          label: "UPCOMING",
+          container: "bg-indigo-50",
+          text: "text-indigo-500",
         };
-      case "overstayed":
+      }
+  
+      const [endYear, endMonth, endDayOfMonth] = endDate
+        .split("T")[0]
+        .split("-")
+        .map(Number);
+  
+      const [endH, endM] = endTime.split(":").map(Number);
+      const overallExpiry = new Date(
+        endYear,
+        endMonth - 1,
+        endDayOfMonth,
+        endH,
+        endM,
+      );
+  
+      if (status === "pending" && (isExpired || now >= overallExpiry)) {
         return {
-          label: "OVERSTAYED",
-          container: "bg-amber-50 border border-amber-100",
-          text: "text-amber-600",
+          label: "EXPIRED",
+          container: "bg-rose-50",
+          text: "text-rose-500",
         };
-      default:
+      }
+  
+      if (status === "pending") {
+        const [startH, startM] = startTime.split(":").map(Number);
+        const todayStartTime = new Date(start);
+        todayStartTime.setHours(startH, startM, 0, 0);
+  
+        const todayEndTime = new Date(start);
+        todayEndTime.setHours(endH, endM, 0, 0);
+  
+        const isOverNight = todayStartTime > todayEndTime;
+  
+        const isWithinWindow = isOverNight
+          ? now >= todayStartTime || now <= todayEndTime
+          : now >= todayStartTime && now <= todayEndTime;
+  
+        if (isWithinWindow) {
+          return {
+            label: "READY FOR ENTRY",
+            container: "bg-indigo-100",
+            text: "text-indigo-700",
+          };
+        }
+  
         return {
-          label: status.toUpperCase(),
-          container: "bg-slate-50 border border-slate-100",
-          text: "text-slate-500",
+          label: now < todayStartTime ? "NOT YET READY" : "EXPIRED",
+          container: now < todayStartTime ? "bg-slate-100" : "bg-rose-50",
+          text: now < todayStartTime ? "text-slate-600" : "text-rose-500",
         };
-    }
-  };
+      }
+  
+      switch (status) {
+        case "checked_in":
+          return {
+            label: "INSIDE",
+            container: "bg-emerald-100",
+            text: "text-emerald-700",
+          };
+        case "checked_out":
+          return {
+            label: "DEPARTED",
+            container: "bg-blue-100",
+            text: "text-blue-700",
+          };
+        case "overstayed":
+          return {
+            label: "OVERSTAYED",
+            container: "bg-amber-100",
+            text: "text-amber-700",
+          };
+        default:
+          return {
+            label: status.toUpperCase(),
+            container: "bg-slate-100",
+            text: "text-slate-600",
+          };
+      }
+    };
 
   const canActionExecute = (label: string, invite: Invitation) => {
     const isStaffEntry = invite.invite_type === "staff_entry";
@@ -419,6 +514,8 @@ export default function GatePassesView() {
                     invite.start_date,
                     invite.is_cancelled,
                     invite.start_time,
+                    invite.end_date,
+                    invite.end_time,
                   );
 
               return (
@@ -680,6 +777,8 @@ export default function GatePassesView() {
                   selectedInvite.start_date,
                   selectedInvite.is_cancelled,
                   selectedInvite.start_time,
+                  selectedInvite.end_date,
+                  selectedInvite.end_time,
                 )
             : null
         }

@@ -1149,7 +1149,6 @@ export const getBookingStatusBadge = (status: BookingStatus) => {
   }
 };
 
-
 export const fetchSecurityStats = async (
   id: string,
 ): Promise<SecurityDashboardStats> => {
@@ -1341,7 +1340,10 @@ export const formatUtcDate = (dateStr?: string | null): string => {
   return `${year}-${month}-${day}`;
 };
 
-export const getShiftEndDateLabel = (baseDateStr: string, dayOffset: number) => {
+export const getShiftEndDateLabel = (
+  baseDateStr: string,
+  dayOffset: number,
+) => {
   if (!baseDateStr) return "";
   const date = new Date(baseDateStr);
   date.setDate(date.getDate() + dayOffset);
@@ -1350,4 +1352,19 @@ export const getShiftEndDateLabel = (baseDateStr: string, dayOffset: number) => 
     month: "short",
     day: "numeric",
   });
+};
+
+export const isOvernightSchedule = (
+  startTimeStr?: string,
+  endTimeStr?: string,
+): boolean => {
+  if (!startTimeStr || !endTimeStr) return false;
+
+  const [startH, startM] = startTimeStr.split(":").map(Number);
+  const [endH, endM] = endTimeStr.split(":").map(Number);
+
+  const startVal = startH * 60 + startM;
+  const endVal = endH * 60 + endM;
+
+  return endVal < startVal;
 };
