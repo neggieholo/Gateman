@@ -1,6 +1,8 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { CalendarDays, CheckCircle2, Wrench } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -132,34 +134,34 @@ const audiences = [
   },
 ];
 
-function Brand({ light = false }: { light?: boolean }) {
-  return (
-    <a href="#home" className="flex shrink-0 items-center gap-2.5">
-      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-lime-400 text-emerald-950">
-        <svg viewBox="0 0 32 32" fill="none" className="h-7 w-7">
-          <path
-            d="M16 3 27 8v8c0 7-4.6 11.1-11 14C9.6 27.1 5 23 5 16V8l11-5Z"
-            stroke="currentColor"
-            strokeWidth="2.2"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M11 16.5 14.5 20 22 12.5"
-            stroke="currentColor"
-            strokeWidth="2.4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </span>
-      <span
-        className={`text-xl font-extrabold tracking-tight ${light ? "text-white" : "text-emerald-950"}`}
-      >
-        GateMan<span className="text-lime-500">.</span>
-      </span>
-    </a>
-  );
-}
+// function Brand({ light = false }: { light?: boolean }) {
+//   return (
+//     <a href="#home" className="flex shrink-0 items-center gap-2.5">
+//       <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-lime-400 text-emerald-950">
+//         <svg viewBox="0 0 32 32" fill="none" className="h-7 w-7">
+//           <path
+//             d="M16 3 27 8v8c0 7-4.6 11.1-11 14C9.6 27.1 5 23 5 16V8l11-5Z"
+//             stroke="currentColor"
+//             strokeWidth="2.2"
+//             strokeLinejoin="round"
+//           />
+//           <path
+//             d="M11 16.5 14.5 20 22 12.5"
+//             stroke="currentColor"
+//             strokeWidth="2.4"
+//             strokeLinecap="round"
+//             strokeLinejoin="round"
+//           />
+//         </svg>
+//       </span>
+//       <span
+//         className={`text-xl font-extrabold tracking-tight ${light ? "text-white" : "text-emerald-950"}`}
+//       >
+//         GateMan<span className="text-lime-500">.</span>
+//       </span>
+//     </a>
+//   );
+// }
 
 function ArrowIcon() {
   return (
@@ -190,38 +192,46 @@ function CheckIcon() {
 }
 
 export default function Home() {
-  const [menuOpen, setMenuOpen] = useState(false);
   const [email, setEmail] = useState("");
   const router = useRouter();
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#f8f9f5] text-[#17251d]">
       {/* Navigation */}
-      <nav className="relative z-20 mx-auto flex max-w-7xl items-center justify-between px-6 py-5 lg:px-10">
-        <a href="#" className="flex items-center gap-2.5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#173e2c] text-xl font-black text-lime-300">
-            G
-          </span>
-          <span className="text-2xl font-extrabold tracking-tight">
-            Gateman
-          </span>
-        </a>
+      <nav className="sticky top-0 z-20 mx-auto flex max-w-7xl items-center justify-between px-6 py-5 lg:px-10">
+        <div className="flex items-center">
+          <img
+            src="/gm_landing_logo.jpg"
+            alt="GateMan Logo"
+            className="h-12 w-20"
+          />
+          <div className="flex h-full items-center">
+            <img
+              src="/gmlanding_2.jpg"
+              alt="GateMan Logo"
+              className="h-8 w-40"
+            />
+          </div>
+        </div>
 
-        <div className="hidden items-center gap-8 text-sm font-medium text-gray-600 md:flex">
-          <a href="#features" className="transition hover:text-green-800">
-            Features
-          </a>
-          <a href="#how-it-works" className="transition hover:text-green-800">
+        <div className="hidden items-center gap-8 text-sm font-oswald font-medium text-gray-600 md:flex">
+          <Link href="#features" className="transition hover:text-green-800">
+            Feature
+          </Link>
+          <Link
+            href="#how-it-works"
+            className="transition hover:text-green-800"
+          >
             How it works
-          </a>
-          <a href="#security" className="transition hover:text-green-800">
+          </Link>
+          <Link href="#security" className="transition hover:text-green-800">
             Security
-          </a>
+          </Link>
         </div>
 
         <button
           onClick={() => router.push("/login")}
-          className="hidden rounded-full bg-[#173e2c] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#28573e] md:inline-flex"
+          className="hidden rounded-full bg-[#173e2c] px-6 py-3 text-sm font-oswald font-semibold text-white transition hover:bg-[#28573e] md:inline-flex"
         >
           Sign Up/Login <span className="ml-2">↗</span>
         </button>
@@ -232,13 +242,13 @@ export default function Home() {
         <div className="absolute -left-32 top-20 z-0 h-80 w-80 rounded-full bg-lime-200/30 blur-3xl" />
 
         <div className="relative z-10">
-          <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-green-900/10 bg-white px-4 py-2 text-xs font-semibold text-green-900 shadow-sm">
+          <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-green-900/10 bg-white px-4 py-2 text-xs font-sans font-semibold text-green-900 shadow-sm">
             <span className="h-2 w-2 animate-pulse rounded-full bg-lime-500" />A
             smarter way to manage estate access, community and security
             operations.
           </div>
 
-          <h1 className="max-w-2xl text-5xl font-semibold leading-[1.06] tracking-[-0.055em] sm:text-6xl lg:text-7xl">
+          <h1 className="max-w-2xl text-5xl font-montserrat font-semibold leading-[1.06] tracking-[-0.055em] sm:text-6xl lg:text-7xl">
             Your estate.
             <br />
             Your people.
@@ -261,29 +271,29 @@ export default function Home() {
             </span>
           </h1>
 
-          <p className="mt-8 max-w-lg text-lg leading-8 text-gray-600 italic font-bold">
+          <p className="mt-8 max-w-lg text-lg leading-8 text-gray-600 italic font-montserrat">
             Simplify visitor access, empower residents, and give your security
             team the tools to manage every arrival with confidence.
           </p>
-          <p className="mt-7 max-w-xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
+          <p className="mt-7 max-w-xl font-montserrat text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
             GateMan brings visitor management, resident access and security
             operations together in one cloud-based platform—helping property
             managers and security teams work with greater visibility and
             accountability.
           </p>
 
-          <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-            <a
-              href="#get-started"
+          <div className="mt-9 flex flex-col gap-3 sm:flex-row font-oswald">
+            <button
+              onClick={() => router.push("/login")}
               className="inline-flex items-center justify-center rounded-full bg-[#173e2c] px-7 py-4 font-semibold text-white shadow-lg shadow-green-950/10 transition hover:-translate-y-0.5 hover:bg-[#28573e]"
             >
               Discover GateMan <span className="ml-3 text-xl">↗</span>
-            </a>
+            </button>
             <a
               href="#how-it-works"
               className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white px-7 py-4 font-semibold transition hover:border-green-800"
             >
-              See how it works <span className="ml-3">↓</span>
+              Learn More <span className="ml-3">↓</span>
             </a>
           </div>
         </div>
@@ -298,7 +308,7 @@ export default function Home() {
               {/* Sidebar */}
               <aside className="hidden w-24 shrink-0 flex-col items-center bg-[#0c2145] px-2 py-4 sm:flex sm:w-28">
                 <div className="flex h-7 w-10 items-center justify-center border-2 border-white bg-white text-sm font-black tracking-tighter text-[#0c2145]">
-                  G<span className="text-amber-500">M</span>
+                  <img src="gmlogo.jpg" className="h-6 w-full" alt="gm_logo" />
                 </div>
 
                 <div className="mt-4 flex w-full flex-col gap-1">
@@ -579,7 +589,7 @@ export default function Home() {
 
       {/* Positioning strip */}
       <section className="border-y border-slate-100 bg-white mt-2">
-        <div className="mx-auto flex max-w-7xl flex-col gap-5 px-5 py-7 sm:px-8 md:flex-row md:items-center md:justify-between lg:px-12">
+        <div className="mx-auto flex max-w-7xl flex-col font-sans gap-5 px-5 py-7 sm:px-8 md:flex-row md:items-center md:justify-between lg:px-12">
           <p className="max-w-md text-sm leading-6 text-slate-600">
             Built for the people responsible for managing{" "}
             <span className="font-bold text-emerald-950">
@@ -595,7 +605,7 @@ export default function Home() {
             ].map((label) => (
               <span
                 key={label}
-                className="rounded-full border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-600"
+                className="rounded-full border border-slate-200 px-3.5 py-2 text-xs font-sans oswald font-semibold text-slate-600"
               >
                 {label}
               </span>
@@ -611,13 +621,13 @@ export default function Home() {
       >
         <div className="mx-auto max-w-7xl">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-emerald-700">
+            <p className="text-xs font-montserrat font-extrabold uppercase tracking-[0.2em] text-emerald-700">
               The GateMan platform
             </p>
-            <h2 className="mt-4 text-3xl font-extrabold leading-tight tracking-[-0.035em] text-emerald-950 sm:text-4xl lg:text-5xl">
+            <h2 className="mt-4 text-3xl font-montserrat font-extrabold leading-tight tracking-[-0.035em] text-emerald-950 sm:text-4xl lg:text-5xl">
               More than visitor management.
             </h2>
-            <p className="mt-5 text-base leading-7 text-slate-600 sm:text-lg">
+            <p className="mt-5 text-base font-montserrat leading-7 text-slate-600 sm:text-lg">
               A connected approach to managing the people, permissions and
               processes that keep properties running.
             </p>
@@ -637,17 +647,17 @@ export default function Home() {
                     {module.number}
                   </span>
                 </div>
-                <h3 className="mt-7 text-xl font-extrabold tracking-tight text-emerald-950">
+                <h3 className="mt-7 text-xl font-oswald font-extrabold tracking-tight text-emerald-950">
                   {module.title}
                 </h3>
-                <p className="mt-3 text-sm leading-6 text-slate-600">
+                <p className="mt-3 text-sm leading-6 font-sans text-slate-600">
                   {module.description}
                 </p>
                 <ul className="mt-6 space-y-3 border-t border-slate-100 pt-5">
                   {module.features.map((feature) => (
                     <li
                       key={feature}
-                      className="flex items-start gap-2.5 text-xs leading-5 text-slate-600"
+                      className="flex items-start gap-2.5 text-xs leading-5 font-sans text-slate-600"
                     >
                       <span className="mt-0.5 text-emerald-700">
                         <CheckIcon />
@@ -673,7 +683,7 @@ export default function Home() {
           ].map(([number, label]) => (
             <div
               key={number}
-              className="flex items-center justify-center gap-3"
+              className="flex items-center justify-center gap-3 font-montserrat"
             >
               <span className="text-md font-bold text-gray-600">{number}</span>
               <span className="text-sm font-semibold text-green-700 sm:text-sm">
@@ -693,7 +703,7 @@ export default function Home() {
           ].map(([number, label]) => (
             <div
               key={number}
-              className="flex items-center justify-center gap-3"
+              className="flex items-center justify-center gap-3 font-montserrat"
             >
               <span className="text-md font-bold text-black">{number}</span>
               <span className="text-sm font-semibold text-white sm:text-sm">
@@ -707,17 +717,17 @@ export default function Home() {
       <section id="security" className="bg-[#173e2c] text-white">
         <div className="mx-auto grid max-w-7xl items-center gap-14 px-6 py-20 lg:grid-cols-2 lg:px-10 lg:py-28">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-lime-300">
+            <p className="text-xs font-montserrat font-bold uppercase tracking-[0.22em] text-lime-300">
               Advanced security & accountability
             </p>
-            <h2 className="mt-5 text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
+            <h2 className="mt-5 text-4xl font-montserrat font-semibold leading-tight tracking-tight sm:text-5xl">
               Track every movement
               <br />
               from check-in
               <br />
               to checkout.
             </h2>
-            <p className="mt-6 max-w-lg leading-7 text-green-100/75">
+            <p className="mt-6 max-w-lg leading-7 font-montserrat text-green-100/75">
               Empower your estate with end-to-end security visibility. Monitor
               guard tours, enforce location-based liveness verification, and
               maintain a tamper-proof audit trail of all actions.
@@ -746,8 +756,8 @@ export default function Home() {
                     {number}
                   </div>
                   <div>
-                    <h3 className="font-bold">{title}</h3>
-                    <p className="mt-1 text-sm leading-6 text-green-100/70">
+                    <h3 className="font-oswald font-bold">{title}</h3>
+                    <p className="mt-1 text-sm leading-6 font-sans text-green-100/70">
                       {description}
                     </p>
                   </div>
@@ -842,17 +852,17 @@ export default function Home() {
       <section id="community" className="mx-auto max-w-7xl px-6 py-12 lg:px-10">
         <div className="grid items-center gap-12 rounded-4xl border border-gray-200 bg-white p-7 sm:p-12 lg:grid-cols-2 lg:p-16">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-green-800">
+            <p className="text-xs font-montserrat font-bold uppercase tracking-[0.22em] text-green-800">
               Community & Communication
             </p>
-            <h2 className="mt-5 text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
+            <h2 className="mt-5 text-4xl font-montserrat font-semibold leading-tight tracking-tight sm:text-5xl">
               Stay connected.
               <br />
               Share updates.
               <br />
               <span className="text-gray-400">Broadcast instantly.</span>
             </h2>
-            <p className="mt-6 max-w-lg leading-7 text-gray-600">
+            <p className="mt-6 max-w-lg font-montserrat leading-7 text-gray-600">
               Bring your estate closer together with live community feeds,
               direct messaging between residents, and instant administrative
               alerts for guards and homeowners.
@@ -865,7 +875,7 @@ export default function Home() {
                 "Real-time estate announcements and alerts",
               ].map((item) => (
                 <li key={item} className="flex items-center gap-3">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-lime-100 text-xs font-black text-green-800">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-lime-100 text-xs font-sans font-black text-green-800">
                     ✓
                   </span>
                   {item}
@@ -968,17 +978,17 @@ export default function Home() {
 
         <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-lime-300 shadow-sm">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-montserrat font-semibold text-lime-300 shadow-sm">
               <CalendarDays className="h-4 w-4" />
               Convenience at your fingertips
             </span>
 
-            <h2 className="mt-6 text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
+            <h2 className="mt-6 text-3xl font-montserrat font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
               Your estate facilities,
               <span className="block text-lime-300">easier to access.</span>
             </h2>
 
-            <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-green-100 sm:text-lg">
+            <p className="mx-auto mt-5 max-w-2xl text-base leading-7 font-montserrat text-green-100 sm:text-lg">
               Make facility reservations, choose available time slots, and
               request estate-provided services without unnecessary delays or
               paperwork.
@@ -1001,11 +1011,11 @@ export default function Home() {
                   </span>
                 </div>
 
-                <h3 className="mt-8 text-xl font-bold text-white sm:text-2xl">
+                <h3 className="mt-8 text-xl font-montserrat font-bold text-white sm:text-2xl">
                   Facility Access Management
                 </h3>
 
-                <p className="mt-3 leading-7 text-green-100">
+                <p className="mt-3 leading-7 font-oswald text-green-100">
                   Book shared estate facilities such as halls, sports areas, and
                   other amenities. Check availability and select your preferred
                   date and time before confirming a reservation.
@@ -1019,12 +1029,14 @@ export default function Home() {
                   ].map((item) => (
                     <div key={item} className="flex items-start gap-3">
                       <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-lime-300" />
-                      <span className="text-sm text-green-100">{item}</span>
+                      <span className="text-sm text-green-100 font-sans">
+                        {item}
+                      </span>
                     </div>
                   ))}
                 </div>
 
-                <div className="mt-8 border-t border-white/10 pt-5 text-sm font-semibold text-lime-300">
+                <div className="mt-8 border-t font-oswald border-white/10 pt-5 text-sm font-semibold text-lime-300">
                   Automated time-slot scheduling &amp; conflict prevention
                 </div>
               </div>
@@ -1045,11 +1057,11 @@ export default function Home() {
                   </span>
                 </div>
 
-                <h3 className="mt-8 text-xl font-bold text-white sm:text-2xl">
+                <h3 className="mt-8 text-xl font-montserrat font-bold text-white sm:text-2xl">
                   Service Requests &amp; Dispatch
                 </h3>
 
-                <p className="mt-3 leading-7 text-green-100">
+                <p className="mt-3 leading-7 font-oswald text-green-100">
                   Request services provided by your estate and make it easier
                   for management to coordinate the right people to handle them.
                   Keep residents informed as requests progress.
@@ -1063,12 +1075,14 @@ export default function Home() {
                   ].map((item) => (
                     <div key={item} className="flex items-start gap-3">
                       <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-lime-300" />
-                      <span className="text-sm text-green-100">{item}</span>
+                      <span className="text-sm text-green-100 font-sans">
+                        {item}
+                      </span>
                     </div>
                   ))}
                 </div>
 
-                <div className="mt-8 border-t border-white/10 pt-5 text-sm font-semibold text-lime-300">
+                <div className="mt-8 border-t border-white/10 pt-5 text-sm font-oswald font-semibold text-lime-300">
                   Centralized dispatch coordination &amp; progress tracking
                 </div>
               </div>
@@ -1085,14 +1099,14 @@ export default function Home() {
         <div className="mx-auto max-w-7xl">
           <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
             <div className="max-w-2xl">
-              <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-emerald-700">
+              <p className="text-xs font-montserrat font-extrabold uppercase tracking-[0.2em] text-emerald-700">
                 Who we serve
               </p>
-              <h2 className="mt-4 text-3xl font-extrabold leading-tight tracking-[-0.035em] text-emerald-950 sm:text-4xl lg:text-5xl">
+              <h2 className="mt-4 text-3xl font-montserrat font-extrabold leading-tight tracking-[-0.035em] text-emerald-950 sm:text-4xl lg:text-5xl">
                 Designed for the places people live, work and gather.
               </h2>
             </div>
-            <p className="max-w-md text-sm leading-6 text-slate-600">
+            <p className="max-w-md font-oswald text-sm leading-6 text-slate-600">
               GateMan supports organisations that need a more secure, efficient
               and scalable approach to property access and operations.
             </p>
@@ -1110,10 +1124,10 @@ export default function Home() {
                   {item.icon}
                 </span>
                 <div>
-                  <h3 className="font-extrabold text-emerald-950">
+                  <h3 className="font-extrabold text-emerald-950 font-oswald">
                     {item.title}
                   </h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                  <p className="mt-2 text-sm leading-6 font-sans text-slate-600">
                     {item.text}
                   </p>
                 </div>
@@ -1129,7 +1143,7 @@ export default function Home() {
         className="scroll-mt-20 px-5 py-20 sm:px-8 sm:py-24 lg:px-12"
       >
         <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
-          <div>
+          <div className="font-montserrat">
             <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-emerald-700">
               About GateMan Global Limited
             </p>
@@ -1139,13 +1153,13 @@ export default function Home() {
           </div>
 
           <div>
-            <p className="text-base leading-8 text-slate-600">
+            <p className="text-base font-oswald leading-8 text-slate-600">
               GateMan Global Limited is a property access management and
               security operations technology company. Our mission is to simplify
               property access while improving safety, accountability and
               operational excellence through connected digital tools.
             </p>
-            <p className="mt-5 text-base leading-8 text-slate-600">
+            <p className="mt-5 font-sans text-base leading-8 text-slate-600">
               Our vision is to help shape the future of secure, intelligent and
               connected communities across Africa and beyond.
             </p>
@@ -1173,10 +1187,10 @@ export default function Home() {
                   key={item.title}
                   className="rounded-2xl border border-slate-200 p-5"
                 >
-                  <h3 className="text-sm font-extrabold text-emerald-950">
+                  <h3 className="text-sm font-oswald tracking-widest font-extrabold text-emerald-950">
                     {item.title}
                   </h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                  <p className="mt-2 font-sans text-sm leading-6 text-slate-600">
                     {item.text}
                   </p>
                 </div>
@@ -1184,10 +1198,10 @@ export default function Home() {
             </div>
 
             <div className="mt-6 rounded-2xl border border-lime-200 bg-lime-50 p-5">
-              <p className="text-sm font-extrabold text-emerald-950">
+              <p className="text-sm font-oswald tracking-widest font-extrabold text-emerald-950">
                 An important distinction
               </p>
-              <p className="mt-2 text-sm leading-6 text-slate-700">
+              <p className="mt-2 font-sans text-sm leading-6 text-slate-700">
                 GateMan provides the software platform. Security personnel are
                 supplied and managed by the property owner or an independent
                 security company.
@@ -1202,19 +1216,19 @@ export default function Home() {
         id="contact"
         className="scroll-mt-20 px-5 pb-20 sm:px-8 sm:pb-24 lg:px-12"
       >
-        <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-lime-300 px-6 py-12 sm:px-10 sm:py-16 lg:px-16 lg:py-20">
-          <div className="absolute -right-16 -top-20 h-72 w-72 rounded-full border-[40px] border-emerald-950/5" />
+        <div className="relative mx-auto max-w-7xl overflow-hidden rounded-4xl bg-lime-300 px-6 py-12 sm:px-10 sm:py-16 lg:px-16 lg:py-20">
+          <div className="absolute -right-16 -top-20 h-72 w-72 rounded-full border-40 border-emerald-950/5" />
           <div className="absolute -bottom-32 right-1/3 h-72 w-72 rounded-full bg-white/20 blur-3xl" />
 
           <div className="relative grid gap-10 lg:grid-cols-[1fr_0.75fr] lg:items-center lg:gap-16">
             <div>
-              <span className="inline-flex rounded-full border border-emerald-950/15 bg-white/30 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-emerald-950">
+              <span className="inline-flex rounded-full border border-emerald-950/15 bg-white/30 px-3 py-1.5 text-[10px] font-montserrat font-extrabold uppercase tracking-[0.16em] text-emerald-950">
                 Let&apos;s talk about your property
               </span>
-              <h2 className="mt-5 max-w-2xl text-3xl font-extrabold leading-tight tracking-[-0.04em] text-emerald-950 sm:text-4xl lg:text-5xl">
+              <h2 className="mt-5 max-w-2xl text-3xl font-montserrat font-extrabold leading-tight tracking-[-0.04em] text-emerald-950 sm:text-4xl lg:text-5xl">
                 Ready to rethink how your property operates?
               </h2>
-              <p className="mt-5 max-w-xl text-base leading-7 text-emerald-950/75">
+              <p className="mt-5 font-sans max-w-xl text-base leading-7 text-emerald-950/75">
                 Tell us about your organisation and discover how GateMan can
                 support your property access and operational management needs.
               </p>
@@ -1226,7 +1240,7 @@ export default function Home() {
                 ].map((label) => (
                   <span
                     key={label}
-                    className="rounded-full border border-emerald-950/15 bg-white/30 px-3 py-2 text-xs font-semibold text-emerald-950"
+                    className="rounded-full border border-emerald-950/15 bg-white/30 px-3 py-2 text-xs  font-oswald tracking-widest font-semibold text-emerald-950"
                   >
                     {label}
                   </span>
@@ -1238,16 +1252,16 @@ export default function Home() {
               // onSubmit={handleContact}
               className="relative rounded-2xl border border-white/60 bg-white p-5 shadow-xl shadow-emerald-950/10 sm:p-7"
             >
-              <h3 className="text-lg font-extrabold text-emerald-950">
+              <h3 className="text-lg font-montserrat font-extrabold text-emerald-950">
                 Start a conversation
               </h3>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm font-sans text-slate-500">
                 Share your details to enquire about the platform.
               </p>
 
               <label
                 htmlFor="organisation"
-                className="mt-5 block text-xs font-bold text-slate-700"
+                className="mt-5 block text-xs font-oswald tracking-wider font-bold text-slate-700"
               >
                 Organisation / property name
               </label>
@@ -1262,7 +1276,7 @@ export default function Home() {
 
               <label
                 htmlFor="email"
-                className="mt-4 block text-xs font-bold text-slate-700"
+                className="mt-4 block text-xs font-oswald font-bold tracking-wider text-slate-700"
               >
                 Work email
               </label>
@@ -1278,11 +1292,11 @@ export default function Home() {
 
               <button
                 type="submit"
-                className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-emerald-950 px-5 py-4 text-sm font-bold text-white transition hover:bg-emerald-800"
+                className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-emerald-950 px-5 py-4 text-sm font-oswald font-bold tracking-widest text-white transition hover:bg-emerald-800"
               >
                 Enquire about GateMan <ArrowIcon />
               </button>
-              <p className="mt-3 text-center text-[10px] leading-5 text-slate-400">
+              <p className="mt-3 text-center font-sans text-[12px] leading-5 text-slate-400">
                 This opens your default email application with your enquiry
                 prepared.
               </p>
@@ -1296,8 +1310,21 @@ export default function Home() {
         <div className="mx-auto max-w-7xl">
           <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
             <div className="max-w-sm">
-              <Brand />
-              <p className="mt-4 text-sm leading-6 text-slate-500">
+              <div className="flex items-center">
+                <img
+                  src="/gm_landing_logo.jpg"
+                  alt="GateMan Logo"
+                  className="h-12 w-20"
+                />
+                <div className="flex h-full items-center">
+                  <img
+                    src="/gmlanding_2.jpg"
+                    alt="GateMan Logo"
+                    className="h-8 w-40"
+                  />
+                </div>
+              </div>
+              <p className="mt-4 text-sm leading-6 text-slate-500 font-sans">
                 Property access management and security operations technology
                 for better-managed, digitally connected communities.
               </p>
@@ -1305,7 +1332,7 @@ export default function Home() {
 
             <div className="grid grid-cols-2 gap-x-10 gap-y-6 sm:gap-x-16">
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-wider text-emerald-950">
+                <p className="text-xs font-oswald font-extrabold uppercase tracking-wider text-emerald-950">
                   Platform
                 </p>
                 <div className="mt-4 space-y-3">
@@ -1336,7 +1363,7 @@ export default function Home() {
                 </div>
               </div>
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-wider text-emerald-950">
+                <p className="text-xs font-oswald font-extrabold uppercase tracking-wider text-emerald-950">
                   Company
                 </p>
                 <div className="mt-4 space-y-3">
