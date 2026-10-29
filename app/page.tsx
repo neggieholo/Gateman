@@ -137,7 +137,7 @@ const audiences = [
 // function Brand({ light = false }: { light?: boolean }) {
 //   return (
 //     <a href="#home" className="flex shrink-0 items-center gap-2.5">
-//       <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-lime-400 text-emerald-950">
+//       <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gm-gold text-gm-navy">
 //         <svg viewBox="0 0 32 32" fill="none" className="h-7 w-7">
 //           <path
 //             d="M16 3 27 8v8c0 7-4.6 11.1-11 14C9.6 27.1 5 23 5 16V8l11-5Z"
@@ -155,9 +155,9 @@ const audiences = [
 //         </svg>
 //       </span>
 //       <span
-//         className={`text-xl font-extrabold tracking-tight ${light ? "text-white" : "text-emerald-950"}`}
+//         className={`text-xl font-extrabold tracking-tight ${light ? "text-white" : "text-gm-navy"}`}
 //       >
-//         GateMan<span className="text-lime-500">.</span>
+//         GateMan<span className="text-gm-gold">.</span>
 //       </span>
 //     </a>
 //   );
@@ -196,7 +196,7 @@ export default function Home() {
   const router = useRouter();
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#f8f9f5] text-[#17251d]">
+    <main className="min-h-screen overflow-hidden bg-[#FFFFFF] text-[#1C1C1E]">
       {/* Navigation */}
       <nav className="sticky top-0 z-20 mx-auto flex max-w-7xl items-center justify-between px-6 py-5 lg:px-10">
         <div className="flex items-center">
@@ -215,23 +215,20 @@ export default function Home() {
         </div>
 
         <div className="hidden items-center gap-8 text-sm font-oswald font-medium text-gray-600 md:flex">
-          <Link href="#features" className="transition hover:text-green-800">
+          <Link href="#features" className="transition hover:text-gm-navy">
             Feature
           </Link>
-          <Link
-            href="#how-it-works"
-            className="transition hover:text-green-800"
-          >
+          <Link href="#how-it-works" className="transition hover:text-gm-navy">
             How it works
           </Link>
-          <Link href="#security" className="transition hover:text-green-800">
+          <Link href="#security" className="transition hover:text-gm-navy">
             Security
           </Link>
         </div>
 
         <button
           onClick={() => router.push("/login")}
-          className="hidden rounded-full bg-[#173e2c] px-6 py-3 text-sm font-oswald font-semibold text-white transition hover:bg-[#28573e] md:inline-flex"
+          className="hidden rounded-full bg-gm-navy px-6 py-3 text-sm font-oswald font-semibold text-white transition hover:bg-[#142E59] md:inline-flex"
         >
           Sign Up/Login <span className="ml-2">↗</span>
         </button>
@@ -239,11 +236,11 @@ export default function Home() {
 
       {/* Hero */}
       <section className="relative mx-auto grid max-w-7xl items-center gap-14 px-6 pt-12 lg:grid-cols-2 lg:px-10 lg:pt-20">
-        <div className="absolute -left-32 top-20 z-0 h-80 w-80 rounded-full bg-lime-200/30 blur-3xl" />
+        <div className="absolute -left-32 top-20 z-0 h-80 w-80 rounded-full bg-gm-gold/30 blur-3xl" />
 
         <div className="relative z-10">
-          <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-green-900/10 bg-white px-4 py-2 text-xs font-sans font-semibold text-green-900 shadow-sm">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-lime-500" />A
+          <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-gm-navy/10 bg-white px-4 py-2 text-xs font-sans font-semibold text-gm-navy shadow-sm">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-gm-gold" />A
             smarter way to manage estate access, community and security
             operations.
           </div>
@@ -253,7 +250,7 @@ export default function Home() {
             <br />
             Your people.
             <br />
-            <span className="relative inline-block text-[#38764b]">
+            <span className="relative inline-block text-gm-gold">
               Your security.
               <svg
                 className="absolute -bottom-3 left-0 w-full"
@@ -263,7 +260,7 @@ export default function Home() {
               >
                 <path
                   d="M3 9C80 2 225 1 326 7"
-                  stroke="#b6df76"
+                  stroke="#D4AF37"
                   strokeWidth="6"
                   strokeLinecap="round"
                 />
@@ -285,13 +282,13 @@ export default function Home() {
           <div className="mt-9 flex flex-col gap-3 sm:flex-row font-oswald">
             <button
               onClick={() => router.push("/login")}
-              className="inline-flex items-center justify-center rounded-full bg-[#173e2c] px-7 py-4 font-semibold text-white shadow-lg shadow-green-950/10 transition hover:-translate-y-0.5 hover:bg-[#28573e]"
+              className="inline-flex items-center justify-center rounded-full bg-gm-navy px-7 py-4 font-semibold text-white shadow-lg shadow-gm-navy/10 transition hover:-translate-y-0.5 hover:bg-[#142E59]"
             >
               Discover GateMan <span className="ml-3 text-xl">↗</span>
             </button>
             <a
               href="#how-it-works"
-              className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white px-7 py-4 font-semibold transition hover:border-green-800"
+              className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white px-7 py-4 font-semibold transition hover:border-gm-navy"
             >
               Learn More <span className="ml-3">↓</span>
             </a>
@@ -300,14 +297,14 @@ export default function Home() {
 
         {/* Dashboard illustration — GateMan Command Center */}
         <div className="relative z-10 mx-auto w-full max-w-4xl lg:ml-auto">
-          <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-lime-200/60 blur-3xl" />
+          <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-gm-gold/60 blur-3xl" />
           <div className="absolute -bottom-8 -left-8 h-40 w-40 rounded-full bg-blue-200/50 blur-3xl" />
 
           <div className="relative overflow-hidden rounded-2xl border border-slate-200 shadow-2xl shadow-slate-950/15 transition-all duration-500 hover:scale-[0.98] hover:shadow-xl sm:rounded-3xl bg-black">
             <div className="flex">
               {/* Sidebar */}
-              <aside className="hidden w-24 shrink-0 flex-col items-center bg-[#0c2145] px-2 py-4 sm:flex sm:w-28">
-                <div className="flex h-7 w-10 items-center justify-center border-2 border-white bg-white text-sm font-black tracking-tighter text-[#0c2145]">
+              <aside className="hidden w-24 shrink-0 flex-col items-center bg-gm-navy px-2 py-4 sm:flex sm:w-28">
+                <div className="flex h-7 w-10 items-center justify-center border-2 border-white bg-white text-sm font-black tracking-tighter text-gm-navy">
                   <img src="gmlogo.jpg" className="h-6 w-full" alt="gm_logo" />
                 </div>
 
@@ -325,15 +322,13 @@ export default function Home() {
                     <div
                       key={item.label}
                       className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[7.5px] font-bold ${
-                        item.active
-                          ? "bg-white text-[#0c2145]"
-                          : "text-slate-200"
+                        item.active ? "bg-white text-gm-navy" : "text-slate-200"
                       }`}
                     >
                       <span className="text-[11px]">{item.icon}</span>
                       <span>{item.label}</span>
                       {item.active && (
-                        <span className="ml-auto h-1 w-1 rounded-full bg-[#0c2145]" />
+                        <span className="ml-auto h-1 w-1 rounded-full bg-gm-navy" />
                       )}
                     </div>
                   ))}
@@ -343,7 +338,7 @@ export default function Home() {
                   <div className="truncate text-[7.5px] font-bold text-white">
                     Estate Admin
                   </div>
-                  <div className="mt-0.5 inline-flex rounded-full bg-emerald-300 px-1.5 py-0.2 text-[6.5px] font-black text-emerald-950">
+                  <div className="mt-0.5 inline-flex rounded-full bg-gm-navy px-1.5 py-0.2 text-[6.5px] font-black text-gm-navy">
                     ADMIN
                   </div>
                 </div>
@@ -354,7 +349,7 @@ export default function Home() {
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-slate-100 bg-white px-2.5 py-2.5 sm:px-3.5 sm:py-3">
                   <div className="min-w-0">
-                    <p className="truncate text-[11px] font-black tracking-tight text-[#0c2145] sm:text-sm">
+                    <p className="truncate text-[11px] font-black tracking-tight text-gm-navy sm:text-sm">
                       Welcome, Example Estate
                     </p>
                     <p className="text-[7.5px] text-slate-400 sm:text-[8.5px]">
@@ -373,7 +368,7 @@ export default function Home() {
                 </div>
 
                 <div className="space-y-2 p-2 sm:space-y-2.5 sm:p-2.5">
-                  <h3 className="text-xs font-black tracking-tight text-[#0c2145] sm:text-sm">
+                  <h3 className="text-xs font-black tracking-tight text-gm-navy sm:text-sm">
                     Command Center
                   </h3>
 
@@ -386,7 +381,7 @@ export default function Home() {
                         icon: "♢",
                         iconBg: "bg-indigo-50 text-indigo-600",
                         metrics: [
-                          ["On-duty", "8", "text-emerald-600"],
+                          ["On-duty", "8", "text-gm-navy"],
                           ["Unresolved complaints", "2", "text-rose-500"],
                           ["Join requests", "3", "text-rose-500"],
                         ],
@@ -437,7 +432,7 @@ export default function Home() {
                             </span>
                           </div>
 
-                          <p className="text-base font-black tracking-tight text-[#0c2145] sm:text-lg">
+                          <p className="text-base font-black tracking-tight text-gm-navy sm:text-lg">
                             {card.value}
                           </p>
                         </div>
@@ -473,7 +468,7 @@ export default function Home() {
                         </div>
 
                         <div className="min-w-0">
-                          <p className="text-[10px] font-black text-[#0c2145] sm:text-xs">
+                          <p className="text-[10px] font-black text-gm-navy sm:text-xs">
                             Resident Management
                           </p>
                           <p className="text-[7px] font-bold uppercase text-slate-400">
@@ -490,7 +485,7 @@ export default function Home() {
                           ⊕ Pending Requests
                         </p>
                         <div className="inline-flex min-w-12 items-center rounded-lg border border-slate-100 px-2 py-1">
-                          <span className="text-sm font-black text-[#0c2145]">
+                          <span className="text-sm font-black text-gm-navy">
                             5
                           </span>
                         </div>
@@ -499,13 +494,13 @@ export default function Home() {
 
                     {/* Services Requests */}
                     <div className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm transition-all duration-300 hover:shadow-md">
-                      <div className="flex items-start gap-2 border-b border-slate-100 bg-gradient-to-r from-white to-emerald-50/70 p-2 sm:p-2.5">
-                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-xs text-white shadow-sm">
+                      <div className="flex items-start gap-2 border-b border-slate-100 bg-gradient-to-r from-white to-gm-navy/5 p-2 sm:p-2.5">
+                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gm-navy text-xs text-white shadow-sm">
                           ⚒
                         </div>
 
                         <div className="min-w-0">
-                          <p className="text-[10px] font-black text-[#0c2145] sm:text-xs">
+                          <p className="text-[10px] font-black text-gm-navy sm:text-xs">
                             Services Requests
                           </p>
                           <p className="text-[7px] font-bold uppercase text-slate-400">
@@ -524,7 +519,7 @@ export default function Home() {
                           ⊕ Recently Completed
                         </p>
                         <div className="inline-flex min-w-12 items-center rounded-lg border border-slate-100 px-2 py-1">
-                          <span className="text-sm font-black text-emerald-600">
+                          <span className="text-sm font-black text-gm-navy">
                             9
                           </span>
                         </div>
@@ -535,7 +530,7 @@ export default function Home() {
                   {/* Dashboard footer */}
                   <div className="flex items-center justify-between rounded-lg border border-slate-100 bg-white px-2.5 py-2">
                     <div>
-                      <p className="text-[7.5px] font-bold text-[#0c2145]">
+                      <p className="text-[7.5px] font-bold text-gm-navy">
                         GateMan Security Operations
                       </p>
                       <p className="text-[7px] text-slate-400">
@@ -543,8 +538,8 @@ export default function Home() {
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[6.5px] font-bold text-emerald-700">
-                      <span className="h-1 w-1 rounded-full bg-emerald-500" />
+                    <div className="flex items-center gap-1 rounded-full bg-gm-navy/5 px-2 py-1 text-[6.5px] font-bold text-gm-navy">
+                      <span className="h-1 w-1 rounded-full bg-gm-navy" />
                       Dashboard preview
                     </div>
                   </div>
@@ -555,7 +550,7 @@ export default function Home() {
 
           {/* Floating security status */}
           <div className="absolute -bottom-3 -left-2 hidden items-center gap-2.5 rounded-xl border border-white bg-white px-3 py-2 shadow-xl sm:flex lg:-left-5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-50 text-sm text-emerald-700">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gm-navy/5 text-sm text-gm-navy">
               ✓
             </div>
 
@@ -571,7 +566,7 @@ export default function Home() {
 
           {/* Floating access status */}
           <div className="absolute -right-2 top-14 hidden items-center gap-2 rounded-xl border border-white bg-white px-2.5 py-2 shadow-xl md:flex lg:-right-4">
-            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-lime-100 text-xs text-green-900">
+            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gm-gold/10 text-xs text-gm-navy">
               ⌘
             </div>
 
@@ -592,7 +587,7 @@ export default function Home() {
         <div className="mx-auto flex max-w-7xl flex-col font-sans gap-5 px-5 py-7 sm:px-8 md:flex-row md:items-center md:justify-between lg:px-12">
           <p className="max-w-md text-sm leading-6 text-slate-600">
             Built for the people responsible for managing{" "}
-            <span className="font-bold text-emerald-950">
+            <span className="font-bold text-gm-navy">
               properties, access and daily operations.
             </span>
           </p>
@@ -617,14 +612,14 @@ export default function Home() {
       {/* Platform modules */}
       <section
         id="platform"
-        className="scroll-mt-20 px-5 py-20 sm:px-8 sm:py-24 lg:px-12"
+        className="scroll-mt-20 px-5 py-20 sm:px-8 sm:py-24 lg:px-12 bg-gm-navy/30"
       >
         <div className="mx-auto max-w-7xl">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="text-xs font-montserrat font-extrabold uppercase tracking-[0.2em] text-emerald-700">
+            <p className="text-xs font-montserrat font-extrabold uppercase tracking-[0.2em] text-gm-navy">
               The GateMan platform
             </p>
-            <h2 className="mt-4 text-3xl font-montserrat font-extrabold leading-tight tracking-[-0.035em] text-emerald-950 sm:text-4xl lg:text-5xl">
+            <h2 className="mt-4 text-3xl font-montserrat font-extrabold leading-tight tracking-[-0.035em] text-gm-navy sm:text-4xl lg:text-5xl">
               More than visitor management.
             </h2>
             <p className="mt-5 text-base font-montserrat leading-7 text-slate-600 sm:text-lg">
@@ -637,17 +632,17 @@ export default function Home() {
             {modules.map((module) => (
               <article
                 key={module.number}
-                className="group flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-6 transition duration-300 hover:-translate-y-1 hover:border-lime-300 hover:shadow-xl hover:shadow-emerald-950/5 sm:p-7"
+                className="group flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-6 transition duration-300 hover:-translate-y-1 hover:border-gm-gold hover:shadow-xl hover:shadow-gm-navy/5 sm:p-7"
               >
                 <div className="flex items-center justify-between">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-lime-100 text-emerald-950 transition group-hover:bg-lime-300">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gm-gold/10 text-gm-navy transition group-hover:bg-gm-gold">
                     <span className="h-6 w-6">{module.icon}</span>
                   </span>
-                  <span className="text-xs font-bold tracking-widest text-slate-300">
+                  <span className="text-xs font-bold tracking-widest text-gm-navy">
                     {module.number}
                   </span>
                 </div>
-                <h3 className="mt-7 text-xl font-oswald font-extrabold tracking-tight text-emerald-950">
+                <h3 className="mt-7 text-xl font-oswald font-extrabold tracking-tight text-gm-navy">
                   {module.title}
                 </h3>
                 <p className="mt-3 text-sm leading-6 font-sans text-slate-600">
@@ -659,7 +654,7 @@ export default function Home() {
                       key={feature}
                       className="flex items-start gap-2.5 text-xs leading-5 font-sans text-slate-600"
                     >
-                      <span className="mt-0.5 text-emerald-700">
+                      <span className="mt-0.5 text-gm-navy">
                         <CheckIcon />
                       </span>
                       <span>{feature}</span>
@@ -686,14 +681,14 @@ export default function Home() {
               className="flex items-center justify-center gap-3 font-montserrat"
             >
               <span className="text-md font-bold text-gray-600">{number}</span>
-              <span className="text-sm font-semibold text-green-700 sm:text-sm">
+              <span className="text-sm font-semibold text-gm-navy sm:text-sm">
                 {label}
               </span>
             </div>
           ))}
         </div>
       </section>
-      <section className="border-y border-gray-200/80 bg-green-700">
+      <section className="border-y border-gray-200/80 bg-gm-navy">
         <div className="mx-auto max-w-7xl flex justify-evenly gap-6 px-6 py-4 lg:px-10">
           {[
             ["05", "Centralised records"],
@@ -714,10 +709,10 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="security" className="bg-[#173e2c] text-white">
+      <section id="security" className="bg-gm-navy text-white">
         <div className="mx-auto grid max-w-7xl items-center gap-14 px-6 py-20 lg:grid-cols-2 lg:px-10 lg:py-28">
           <div>
-            <p className="text-xs font-montserrat font-bold uppercase tracking-[0.22em] text-lime-300">
+            <p className="text-xs font-montserrat font-bold uppercase tracking-[0.22em] text-gm-gold">
               Advanced security & accountability
             </p>
             <h2 className="mt-5 text-4xl font-montserrat font-semibold leading-tight tracking-tight sm:text-5xl">
@@ -727,7 +722,7 @@ export default function Home() {
               <br />
               to checkout.
             </h2>
-            <p className="mt-6 max-w-lg leading-7 font-montserrat text-green-100/75">
+            <p className="mt-6 max-w-lg leading-7 font-montserrat text-white">
               Empower your estate with end-to-end security visibility. Monitor
               guard tours, enforce location-based liveness verification, and
               maintain a tamper-proof audit trail of all actions.
@@ -752,12 +747,12 @@ export default function Home() {
                 ],
               ].map(([number, title, description]) => (
                 <div key={number} className="flex gap-4">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 font-bold text-lime-300">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 font-bold text-gm-gold">
                     {number}
                   </div>
                   <div>
                     <h3 className="font-oswald font-bold">{title}</h3>
-                    <p className="mt-1 text-sm leading-6 font-sans text-green-100/70">
+                    <p className="mt-1 text-sm leading-6 font-sans text-gm-navy/70">
                       {description}
                     </p>
                   </div>
@@ -768,19 +763,19 @@ export default function Home() {
 
           {/* Guard Map Location Visual matching live app */}
           <div className="relative mx-auto w-full max-w-md">
-            <div className="absolute -inset-8 rounded-full bg-lime-300/10 blur-3xl" />
+            <div className="absolute -inset-8 rounded-full bg-gm-gold/10 blur-3xl" />
             <div className="relative rounded-4xl border border-white/10 bg-white/[0.07] p-5 shadow-2xl backdrop-blur-sm sm:p-8">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-green-100/60">
+                  <p className="text-xs font-medium text-gm-navy/60">
                     LIVE RADAR & MAP
                   </p>
                   <p className="mt-2 text-xl font-bold">
                     Personnel Geolocation
                   </p>
                 </div>
-                <span className="flex items-center gap-1.5 rounded-full bg-lime-300 px-3 py-1.5 text-[10px] font-bold text-green-950">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-700 animate-pulse" />
+                <span className="flex items-center gap-1.5 rounded-full bg-gm-gold px-3 py-1.5 text-[10px] font-bold text-gm-navy">
+                  <span className="h-1.5 w-1.5 rounded-full bg-gm-navy animate-pulse" />
                   TRACKING ACTIVE
                 </span>
               </div>
@@ -788,13 +783,13 @@ export default function Home() {
               <div className="mt-7 rounded-2xl bg-white p-5 text-gray-900 shadow-inner">
                 <div className="flex items-center justify-between border-b border-gray-100 pb-4">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#173e2c] text-base font-bold text-lime-300 shadow-md">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gm-navy text-base font-bold text-gm-gold shadow-md">
                       🛡️
                     </div>
                     <div>
                       <p className="font-bold text-sm">John Guard (On Duty)</p>
                       {/* Coordinates up top with actual address underneath */}
-                      <p className="text-[11px] font-mono text-lime-700 font-bold">
+                      <p className="text-[11px] font-mono text-gm-gold font-bold">
                         Lat: 6.5244° N, Lon: 3.3392° E
                       </p>
                       <p className="text-[10px] text-gray-500 font-medium">
@@ -802,7 +797,7 @@ export default function Home() {
                       </p>
                     </div>
                   </div>
-                  <span className="rounded-lg bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700 border border-emerald-100">
+                  <span className="rounded-lg bg-gm-navy/5 px-2.5 py-1 text-[10px] font-bold text-gm-navy border border-gm-navy/15">
                     Verified
                   </span>
                 </div>
@@ -811,11 +806,11 @@ export default function Home() {
                 <div className="relative mt-4 h-40 w-full overflow-hidden rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center">
                   <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:1.5rem_1.5rem] opacity-40" />
 
-                  <div className="absolute h-28 w-28 rounded-full border border-lime-400/20 animate-ping" />
-                  <div className="absolute h-16 w-16 rounded-full border border-lime-400/40" />
+                  <div className="absolute h-28 w-28 rounded-full border border-gm-gold/20 animate-ping" />
+                  <div className="absolute h-16 w-16 rounded-full border border-gm-gold/40" />
 
                   <div className="relative z-10 flex flex-col items-center">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-lime-400 text-green-950 font-black shadow-lg shadow-lime-400/30 border-2 border-white animate-bounce">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gm-gold text-gm-navy font-black shadow-lg shadow-gm-gold/30 border-2 border-white animate-bounce">
                       📍
                     </div>
                     <div className="mt-1 rounded-md bg-white/95 px-2.5 py-0.5 text-[10px] font-black text-slate-900 shadow-md backdrop-blur">
@@ -833,14 +828,14 @@ export default function Home() {
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] text-gray-400">ACTION</p>
-                    <p className="mt-0.5 text-xs font-bold text-[#173e2c] underline cursor-pointer">
+                    <p className="mt-0.5 text-xs font-bold text-gm-navy underline cursor-pointer">
                       View Live Photo
                     </p>
                   </div>
                 </div>
               </div>
 
-              <p className="mt-5 text-center text-xs text-green-100/60">
+              <p className="mt-5 text-center text-xs text-gm-navy/60">
                 Connected directly to your GateMan security backend audit logs.
               </p>
             </div>
@@ -849,10 +844,10 @@ export default function Home() {
       </section>
 
       {/* Community */}
-      <section id="community" className="mx-auto max-w-7xl px-6 py-12 lg:px-10">
-        <div className="grid items-center gap-12 rounded-4xl border border-gray-200 bg-white p-7 sm:p-12 lg:grid-cols-2 lg:p-16">
+      <section id="community" className="px-6 py-12 lg:px-10 bg-sky-500/5">
+        <div className="mx-auto max-w-7xl grid items-center gap-12 rounded-4xl border border-gray-200 bg-white p-7 sm:p-12 lg:grid-cols-2 lg:p-16">
           <div>
-            <p className="text-xs font-montserrat font-bold uppercase tracking-[0.22em] text-green-800">
+            <p className="text-xs font-montserrat font-bold uppercase tracking-[0.22em] text-gm-navy">
               Community & Communication
             </p>
             <h2 className="mt-5 text-4xl font-montserrat font-semibold leading-tight tracking-tight sm:text-5xl">
@@ -875,7 +870,7 @@ export default function Home() {
                 "Real-time estate announcements and alerts",
               ].map((item) => (
                 <li key={item} className="flex items-center gap-3">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-lime-100 text-xs font-sans font-black text-green-800">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gm-gold/10 text-xs font-sans font-black text-gm-navy">
                     ✓
                   </span>
                   {item}
@@ -885,7 +880,7 @@ export default function Home() {
           </div>
 
           {/* Interactive Community Feed & Notification Preview */}
-          <div className="rounded-3xl bg-[#f5f7f1] p-5 sm:p-7 shadow-inner">
+          <div className="rounded-3xl bg-[#F8FAFC] p-5 sm:p-7 shadow-inner">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-bold">Estate Feed & Alerts</p>
@@ -893,7 +888,7 @@ export default function Home() {
                   Live community discussion & admin broadcast
                 </p>
               </div>
-              <span className="rounded-full bg-green-100 px-3 py-1.5 text-xs font-bold text-green-800">
+              <span className="rounded-full bg-gm-navy/5 px-3 py-1.5 text-xs font-bold text-gm-navy">
                 Active Now
               </span>
             </div>
@@ -911,7 +906,7 @@ export default function Home() {
                       <p className="text-[10px] text-gray-400">2 mins ago</p>
                     </div>
                   </div>
-                  <span className="rounded bg-lime-50 px-2 py-0.5 text-[9px] font-bold text-green-800">
+                  <span className="rounded bg-gm-gold/10 px-2 py-0.5 text-[9px] font-bold text-gm-navy">
                     Community Post
                   </span>
                 </div>
@@ -920,10 +915,10 @@ export default function Home() {
                   we still on for the gate security upgrade review?&quot;
                 </p>
                 <div className="mt-3 flex items-center gap-4 border-t border-gray-50 pt-2.5 text-[11px] text-gray-500 font-semibold">
-                  <span className="hover:text-green-800 cursor-pointer">
+                  <span className="hover:text-gm-navy cursor-pointer">
                     💬 6 Comments
                   </span>
-                  <span className="hover:text-green-800 cursor-pointer">
+                  <span className="hover:text-gm-navy cursor-pointer">
                     ❤️ 14 Likes
                   </span>
                   <span className="text-blue-600 ml-auto cursor-pointer">
@@ -933,13 +928,13 @@ export default function Home() {
               </div>
 
               {/* Admin Broadcast Preview */}
-              <div className="rounded-2xl border border-green-200 bg-[#173e2c] p-4 text-white shadow-md">
+              <div className="rounded-2xl border border-gm-navy/15 bg-gm-navy p-4 text-white shadow-md">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-lime-300 text-xs font-black text-green-950">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gm-gold text-xs font-black text-gm-navy">
                       📢
                     </span>
-                    <p className="text-xs font-bold text-lime-300">
+                    <p className="text-xs font-bold text-gm-gold">
                       Admin Broadcast
                     </p>
                   </div>
@@ -947,7 +942,7 @@ export default function Home() {
                     Sent to Guards & Residents
                   </span>
                 </div>
-                <p className="mt-2 text-xs text-green-50">
+                <p className="mt-2 text-xs text-gm-navy">
                   &quot;Notice: Routine perimeter light check scheduled for 8 PM
                   tonight. All security personnel take note.&quot;
                 </p>
@@ -955,7 +950,7 @@ export default function Home() {
             </div>
 
             <div className="mt-4 flex items-center gap-3 rounded-2xl bg-white border border-gray-200 p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-lime-100 text-lg text-green-800">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gm-gold/10 text-lg text-gm-navy">
                 💬
               </div>
               <div>
@@ -972,23 +967,23 @@ export default function Home() {
       </section>
 
       {/* Facility Bookings & Services */}
-      <section className="relative overflow-hidden bg-[#173e2c] py-20 sm:py-24 text-white">
-        <div className="absolute -right-32 top-10 h-80 w-80 rounded-full bg-lime-400/10 blur-3xl" />
-        <div className="absolute -left-32 bottom-0 h-72 w-72 rounded-full bg-emerald-600/20 blur-3xl" />
+      <section className="relative overflow-hidden bg-gm-navy py-20 sm:py-24 text-white">
+        <div className="absolute -right-32 top-10 h-80 w-80 rounded-full bg-gm-gold/10 blur-3xl" />
+        <div className="absolute -left-32 bottom-0 h-72 w-72 rounded-full bg-gm-navy/20 blur-3xl" />
 
         <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-montserrat font-semibold text-lime-300 shadow-sm">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-montserrat font-semibold text-gm-gold shadow-sm">
               <CalendarDays className="h-4 w-4" />
               Convenience at your fingertips
             </span>
 
             <h2 className="mt-6 text-3xl font-montserrat font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
               Your estate facilities,
-              <span className="block text-lime-300">easier to access.</span>
+              <span className="block text-gm-gold">easier to access.</span>
             </h2>
 
-            <p className="mx-auto mt-5 max-w-2xl text-base leading-7 font-montserrat text-green-100 sm:text-lg">
+            <p className="mx-auto mt-5 max-w-2xl text-base leading-7 font-montserrat text-white sm:text-lg">
               Make facility reservations, choose available time slots, and
               request estate-provided services without unnecessary delays or
               paperwork.
@@ -997,12 +992,12 @@ export default function Home() {
 
           <div className="mt-14 grid gap-6 md:grid-cols-2">
             {/* Facility Booking */}
-            <div className="group relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.06] p-7 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl sm:p-9">
+            <div className="group relative overflow-hidden rounded-3xl border border-white/10 bg-white/6 p-7 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl sm:p-9">
               <div className="absolute right-0 top-0 h-36 w-36 rounded-full bg-white/5 transition-transform duration-500 group-hover:scale-150" />
 
               <div className="relative">
                 <div className="flex items-start justify-between">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-lime-300 shadow-lg border border-white/10">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-gm-gold shadow-lg border border-white/10">
                     <CalendarDays className="h-7 w-7" />
                   </div>
 
@@ -1015,7 +1010,7 @@ export default function Home() {
                   Facility Access Management
                 </h3>
 
-                <p className="mt-3 leading-7 font-oswald text-green-100">
+                <p className="mt-3 leading-7 font-oswald text-slate-200">
                   Book shared estate facilities such as halls, sports areas, and
                   other amenities. Check availability and select your preferred
                   date and time before confirming a reservation.
@@ -1028,15 +1023,15 @@ export default function Home() {
                     "Manage bookings and avoid scheduling conflicts",
                   ].map((item) => (
                     <div key={item} className="flex items-start gap-3">
-                      <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-lime-300" />
-                      <span className="text-sm text-green-100 font-sans">
+                      <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-gm-gold" />
+                      <span className="text-sm text-slate-200 font-sans">
                         {item}
                       </span>
                     </div>
                   ))}
                 </div>
 
-                <div className="mt-8 border-t font-oswald border-white/10 pt-5 text-sm font-semibold text-lime-300">
+                <div className="mt-8 border-t font-oswald border-white/10 pt-5 text-sm font-semibold text-gm-gold">
                   Automated time-slot scheduling &amp; conflict prevention
                 </div>
               </div>
@@ -1048,7 +1043,7 @@ export default function Home() {
 
               <div className="relative">
                 <div className="flex items-start justify-between">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-lime-300 shadow-lg border border-white/10">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-gm-gold shadow-lg border border-white/10">
                     <Wrench className="h-7 w-7" />
                   </div>
 
@@ -1061,7 +1056,7 @@ export default function Home() {
                   Service Requests &amp; Dispatch
                 </h3>
 
-                <p className="mt-3 leading-7 font-oswald text-green-100">
+                <p className="mt-3 leading-7 font-oswald text-slate-200">
                   Request services provided by your estate and make it easier
                   for management to coordinate the right people to handle them.
                   Keep residents informed as requests progress.
@@ -1074,15 +1069,15 @@ export default function Home() {
                     "Improve coordination between residents and management",
                   ].map((item) => (
                     <div key={item} className="flex items-start gap-3">
-                      <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-lime-300" />
-                      <span className="text-sm text-green-100 font-sans">
+                      <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-gm-gold" />
+                      <span className="text-sm text-slate-200 font-sans">
                         {item}
                       </span>
                     </div>
                   ))}
                 </div>
 
-                <div className="mt-8 border-t border-white/10 pt-5 text-sm font-oswald font-semibold text-lime-300">
+                <div className="mt-8 border-t border-white/10 pt-5 text-sm font-oswald font-semibold text-gm-gold">
                   Centralized dispatch coordination &amp; progress tracking
                 </div>
               </div>
@@ -1094,15 +1089,15 @@ export default function Home() {
       {/* Who we serve */}
       <section
         id="who-we-serve"
-        className="scroll-mt-20 bg-slate-50 px-5 py-20 sm:px-8 sm:py-24 lg:px-12"
+        className="scroll-mt-20 bg-sky-500/10 px-5 py-20 sm:px-8 sm:py-24 lg:px-12"
       >
         <div className="mx-auto max-w-7xl">
           <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
             <div className="max-w-2xl">
-              <p className="text-xs font-montserrat font-extrabold uppercase tracking-[0.2em] text-emerald-700">
+              <p className="text-xs font-montserrat font-extrabold uppercase tracking-[0.2em] text-gm-navy">
                 Who we serve
               </p>
-              <h2 className="mt-4 text-3xl font-montserrat font-extrabold leading-tight tracking-[-0.035em] text-emerald-950 sm:text-4xl lg:text-5xl">
+              <h2 className="mt-4 text-3xl font-montserrat font-extrabold leading-tight tracking-[-0.035em] text-gm-navy sm:text-4xl lg:text-5xl">
                 Designed for the places people live, work and gather.
               </h2>
             </div>
@@ -1116,15 +1111,15 @@ export default function Home() {
             {audiences.map((item, i) => (
               <article
                 key={item.title}
-                className="group flex gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 transition hover:border-lime-300 hover:shadow-lg hover:shadow-emerald-950/5 sm:p-6"
+                className="group flex gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 transition hover:border-gm-gold hover:shadow-lg hover:shadow-gm-navy/5 sm:p-6"
               >
                 <span
-                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-2xl ${i % 2 === 0 ? "bg-lime-100 text-emerald-950" : "bg-emerald-50 text-emerald-800"}`}
+                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-2xl ${i % 2 === 0 ? "bg-gm-gold/10 text-gm-navy" : "bg-gm-navy/5 text-gm-navy"}`}
                 >
                   {item.icon}
                 </span>
                 <div>
-                  <h3 className="font-extrabold text-emerald-950 font-oswald">
+                  <h3 className="font-extrabold text-gm-navy font-oswald">
                     {item.title}
                   </h3>
                   <p className="mt-2 text-sm leading-6 font-sans text-slate-600">
@@ -1144,10 +1139,10 @@ export default function Home() {
       >
         <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
           <div className="font-montserrat">
-            <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-emerald-700">
+            <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-gm-navy">
               About GateMan Global Limited
             </p>
-            <h2 className="mt-4 text-3xl font-extrabold leading-tight tracking-[-0.035em] text-emerald-950 sm:text-4xl">
+            <h2 className="mt-4 text-3xl font-extrabold leading-tight tracking-[-0.035em] text-gm-navy sm:text-4xl">
               We build the technology behind better-managed properties.
             </h2>
           </div>
@@ -1187,7 +1182,7 @@ export default function Home() {
                   key={item.title}
                   className="rounded-2xl border border-slate-200 p-5"
                 >
-                  <h3 className="text-sm font-oswald tracking-widest font-extrabold text-emerald-950">
+                  <h3 className="text-sm font-oswald tracking-widest font-extrabold text-gm-navy">
                     {item.title}
                   </h3>
                   <p className="mt-2 font-sans text-sm leading-6 text-slate-600">
@@ -1197,8 +1192,8 @@ export default function Home() {
               ))}
             </div>
 
-            <div className="mt-6 rounded-2xl border border-lime-200 bg-lime-50 p-5">
-              <p className="text-sm font-oswald tracking-widest font-extrabold text-emerald-950">
+            <div className="mt-6 rounded-2xl border border-gm-gold/30 bg-gm-gold/10 p-5">
+              <p className="text-sm font-oswald tracking-widest font-extrabold text-gm-navy">
                 An important distinction
               </p>
               <p className="mt-2 font-sans text-sm leading-6 text-slate-700">
@@ -1216,19 +1211,19 @@ export default function Home() {
         id="contact"
         className="scroll-mt-20 px-5 pb-20 sm:px-8 sm:pb-24 lg:px-12"
       >
-        <div className="relative mx-auto max-w-7xl overflow-hidden rounded-4xl bg-lime-300 px-6 py-12 sm:px-10 sm:py-16 lg:px-16 lg:py-20">
-          <div className="absolute -right-16 -top-20 h-72 w-72 rounded-full border-40 border-emerald-950/5" />
+        <div className="relative mx-auto max-w-7xl overflow-hidden rounded-4xl bg-gm-gold px-6 py-12 sm:px-10 sm:py-16 lg:px-16 lg:py-20">
+          <div className="absolute -right-16 -top-20 h-72 w-72 rounded-full border-40 border-gm-navy/5" />
           <div className="absolute -bottom-32 right-1/3 h-72 w-72 rounded-full bg-white/20 blur-3xl" />
 
           <div className="relative grid gap-10 lg:grid-cols-[1fr_0.75fr] lg:items-center lg:gap-16">
             <div>
-              <span className="inline-flex rounded-full border border-emerald-950/15 bg-white/30 px-3 py-1.5 text-[10px] font-montserrat font-extrabold uppercase tracking-[0.16em] text-emerald-950">
+              <span className="inline-flex rounded-full border border-gm-navy/15 bg-gm-charcoal px-3 py-1.5 text-[10px] font-montserrat font-extrabold uppercase tracking-[0.16em] text-white">
                 Let&apos;s talk about your property
               </span>
-              <h2 className="mt-5 max-w-2xl text-3xl font-montserrat font-extrabold leading-tight tracking-[-0.04em] text-emerald-950 sm:text-4xl lg:text-5xl">
+              <h2 className="mt-5 max-w-2xl text-3xl font-montserrat font-extrabold leading-tight tracking-[-0.04em] text-gm-navy sm:text-4xl lg:text-5xl">
                 Ready to rethink how your property operates?
               </h2>
-              <p className="mt-5 font-sans max-w-xl text-base leading-7 text-emerald-950/75">
+              <p className="mt-5 font-sans max-w-xl text-base leading-7 text-gm-navy/75">
                 Tell us about your organisation and discover how GateMan can
                 support your property access and operational management needs.
               </p>
@@ -1240,7 +1235,7 @@ export default function Home() {
                 ].map((label) => (
                   <span
                     key={label}
-                    className="rounded-full border border-emerald-950/15 bg-white/30 px-3 py-2 text-xs  font-oswald tracking-widest font-semibold text-emerald-950"
+                    className="rounded-full border border-gm-navy/15 bg-gm-charcoal px-3 py-2 text-xs  font-oswald tracking-widest font-semibold text-white"
                   >
                     {label}
                   </span>
@@ -1250,9 +1245,9 @@ export default function Home() {
 
             <form
               // onSubmit={handleContact}
-              className="relative rounded-2xl border border-white/60 bg-white p-5 shadow-xl shadow-emerald-950/10 sm:p-7"
+              className="relative rounded-2xl border border-white/60 bg-white p-5 shadow-xl shadow-gm-navy/10 sm:p-7"
             >
-              <h3 className="text-lg font-montserrat font-extrabold text-emerald-950">
+              <h3 className="text-lg font-montserrat font-extrabold text-gm-navy">
                 Start a conversation
               </h3>
               <p className="mt-1 text-sm font-sans text-slate-500">
@@ -1271,7 +1266,7 @@ export default function Home() {
                 // value={organisation}
                 // onChange={(e) => setOrganisation(e.target.value)}
                 placeholder="e.g. Greenview Estate"
-                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/10"
+                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-gm-navy focus:ring-2 focus:ring-gm-navy/10"
               />
 
               <label
@@ -1287,12 +1282,12 @@ export default function Home() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@company.com"
-                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/10"
+                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-gm-navy focus:ring-2 focus:ring-gm-navy/10"
               />
 
               <button
                 type="submit"
-                className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-emerald-950 px-5 py-4 text-sm font-oswald font-bold tracking-widest text-white transition hover:bg-emerald-800"
+                className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-gm-charcoal px-5 py-4 text-sm font-oswald font-bold tracking-widest text-gm-gold transition hover:bg-gm-charcoal/70"
               >
                 Enquire about GateMan <ArrowIcon />
               </button>
@@ -1306,7 +1301,7 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-100 bg-white px-5 py-10 sm:px-8 lg:px-12">
+      <footer className="border-t border-slate-100 bg-gm-charcoal px-5 py-10 sm:px-8 lg:px-12">
         <div className="mx-auto max-w-7xl">
           <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
             <div className="max-w-sm">
@@ -1324,7 +1319,7 @@ export default function Home() {
                   />
                 </div>
               </div>
-              <p className="mt-4 text-sm leading-6 text-slate-500 font-sans">
+              <p className="mt-4 text-sm leading-6 text-slate-300 font-sans">
                 Property access management and security operations technology
                 for better-managed, digitally connected communities.
               </p>
@@ -1332,62 +1327,62 @@ export default function Home() {
 
             <div className="grid grid-cols-2 gap-x-10 gap-y-6 sm:gap-x-16">
               <div>
-                <p className="text-xs font-oswald font-extrabold uppercase tracking-wider text-emerald-950">
+                <p className="text-xs font-oswald font-extrabold uppercase tracking-wider text-gm-gold">
                   Platform
                 </p>
                 <div className="mt-4 space-y-3">
                   <a
                     href="#platform"
-                    className="block text-sm text-slate-500 hover:text-emerald-950"
+                    className="block text-sm text-slate-300 hover:text-gm-gold/60"
                   >
                     Visitor management
                   </a>
                   <a
                     href="#platform"
-                    className="block text-sm text-slate-500 hover:text-emerald-950"
+                    className="block text-sm text-slate-300 hover:text-gm-gold/60"
                   >
                     Resident management
                   </a>
                   <a
                     href="#platform"
-                    className="block text-sm text-slate-500 hover:text-emerald-950"
+                    className="block text-sm text-slate-300 hover:text-gm-gold/60"
                   >
                     Security operations
                   </a>
                   <a
                     href="#platform"
-                    className="block text-sm text-slate-500 hover:text-emerald-950"
+                    className="block text-sm text-slate-300 hover:text-gm-gold/60"
                   >
                     Estate management
                   </a>
                 </div>
               </div>
               <div>
-                <p className="text-xs font-oswald font-extrabold uppercase tracking-wider text-emerald-950">
+                <p className="text-xs font-oswald font-extrabold uppercase tracking-wider text-gm-gold">
                   Company
                 </p>
                 <div className="mt-4 space-y-3">
                   <a
                     href="#about"
-                    className="block text-sm text-slate-500 hover:text-emerald-950"
+                    className="block text-sm text-slate-300 hover:text-gm-gold/60"
                   >
                     About GateMan
                   </a>
                   <a
                     href="#who-we-serve"
-                    className="block text-sm text-slate-500 hover:text-emerald-950"
+                    className="block text-sm text-slate-300 hover:text-gm-gold/60"
                   >
                     Who we serve
                   </a>
                   <a
                     href="#how-it-works"
-                    className="block text-sm text-slate-500 hover:text-emerald-950"
+                    className="block text-sm text-slate-300 hover:text-gm-gold/60"
                   >
                     How it works
                   </a>
                   <a
                     href="#contact"
-                    className="block text-sm text-slate-500 hover:text-emerald-950"
+                    className="block text-sm text-slate-300 hover:text-gm-gold/60"
                   >
                     Contact
                   </a>
