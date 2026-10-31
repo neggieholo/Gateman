@@ -214,15 +214,24 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="hidden items-center gap-8 text-sm font-oswald font-medium text-gray-600 md:flex">
-          <Link href="#features" className="transition hover:text-gm-navy">
-            Feature
+        <div className="hidden items-center gap-6 text-sm font-oswald font-medium text-gray-600 lg:flex">
+          <Link href="#platform" className="transition hover:text-gm-navy">
+            Platform
+          </Link>
+          <Link href="#who-we-serve" className="transition hover:text-gm-navy">
+            Solutions
           </Link>
           <Link href="#how-it-works" className="transition hover:text-gm-navy">
             How it works
           </Link>
           <Link href="#security" className="transition hover:text-gm-navy">
             Security
+          </Link>
+          <Link href="#community" className="transition hover:text-gm-navy">
+            Community
+          </Link>
+          <Link href="#about" className="transition hover:text-gm-navy">
+            About
           </Link>
         </div>
 
@@ -706,6 +715,71 @@ export default function Home() {
               </span>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section
+        id="how-it-works"
+        className="scroll-mt-20 bg-white px-6 py-20 lg:px-10 lg:py-24"
+      >
+        <div className="mx-auto max-w-7xl">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="text-xs font-montserrat font-bold uppercase tracking-[0.22em] text-gm-navy">
+              How GateMan works
+            </p>
+            <h2 className="mt-4 text-3xl font-montserrat font-extrabold leading-tight tracking-[-0.035em] text-gm-navy sm:text-4xl lg:text-5xl">
+              One platform for more organised property operations.
+            </h2>
+            <p className="mt-5 text-base font-montserrat leading-7 text-slate-600 sm:text-lg">
+              Bring your property, people and day-to-day workflows together in
+              four straightforward stages.
+            </p>
+          </div>
+
+          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              {
+                number: "01",
+                title: "Set up your property",
+                description:
+                  "Create your property workspace and organise the information your administrators need to manage operations.",
+              },
+              {
+                number: "02",
+                title: "Connect your people",
+                description:
+                  "Bring residents, administrators and security personnel into a more connected access and communication process.",
+              },
+              {
+                number: "03",
+                title: "Coordinate daily operations",
+                description:
+                  "Manage visitor access, security activities, facility bookings and service requests through connected workflows.",
+              },
+              {
+                number: "04",
+                title: "Maintain visibility",
+                description:
+                  "Keep track of activity, records, reports and community updates to support more accountable operations.",
+              },
+            ].map((step) => (
+              <article
+                key={step.number}
+                className="rounded-2xl border border-slate-200 bg-white p-6 transition duration-300 hover:-translate-y-1 hover:border-gm-gold hover:shadow-xl hover:shadow-gm-navy/5 sm:p-7"
+              >
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gm-gold/10 text-sm font-bold text-gm-navy">
+                  {step.number}
+                </span>
+                <h3 className="mt-6 text-xl font-oswald font-extrabold tracking-tight text-gm-navy">
+                  {step.title}
+                </h3>
+                <p className="mt-3 text-sm font-sans leading-6 text-slate-600">
+                  {step.description}
+                </p>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 
