@@ -29,6 +29,10 @@ import toast from "react-hot-toast";
 import { PlanSelectionModal } from "./PlanSelectionModal";
 import { PlanSelectionData } from "../services/types";
 import { ADDON_MODULES } from "../services/data";
+import TermsModal, {
+  PrivacyModal,
+  RefundModal,
+} from "./terms_policies/PolicyModals";
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -69,6 +73,11 @@ export default function Auth() {
     }
     return false;
   });
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acknowledgedPrivacy, setAcknowledgedPrivacy] = useState(false);
+  const [activePolicy, setActivePolicy] = useState<
+    "terms" | "privacy" | "refund" | null
+  >(null);
 
   const availableLgas = useMemo(() => {
     const stateData = states_lgas.find((s) => s.state === state);
@@ -574,11 +583,6 @@ export default function Auth() {
         style={{ borderRadius: "0px 0px 120px 0px" }}
       >
         <div className="absolute inset-0 mix-blend-multiply z-10" />
-        {/* <img
-          src="https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?q=80&w=2070&auto=format&fit=crop"
-          alt="Modern Apartment"
-          className="absolute inset-0 w-full h-full object-cover"
-        /> */}
         <div className="relative z-20 flex flex-col justify-between items-start h-full p-16 text-white">
           <div className="relative w-full h-50 flex items-center overflow-hidden self-start">
             <Image
@@ -958,6 +962,70 @@ export default function Auth() {
               </div>
             )}
 
+            {!isLogin && !isForgot && (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                <label className="flex items-start gap-3 text-sm text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    required
+                    checked={acceptedTerms}
+                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600"
+                  />
+                  <span>
+                    I have read and agree to the{" "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActivePolicy("terms");
+                      }}
+                      className="font-semibold text-indigo-600 underline underline-offset-2 hover:text-indigo-800"
+                    >
+                      Terms and Conditions
+                    </button>
+                    .
+                  </span>
+                </label>
+
+                <label className="flex items-start gap-3 text-sm text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    required
+                    checked={acknowledgedPrivacy}
+                    onChange={(e) => setAcknowledgedPrivacy(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600"
+                  />
+                  <span>
+                    I acknowledge that I have read the{" "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActivePolicy("privacy");
+                      }}
+                      className="font-semibold text-indigo-600 underline underline-offset-2 hover:text-indigo-800"
+                    >
+                      Privacy Policy
+                    </button>
+                    .
+                  </span>
+                </label>
+
+                <p className="pl-7 text-xs leading-relaxed text-slate-500">
+                  Please also review our{" "}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActivePolicy("refund");
+                    }}
+                    className="font-semibold text-indigo-600 underline underline-offset-2 hover:text-indigo-800"
+                  >
+                    Refund and Cancellation Policy
+                  </button>
+                  .
+                </p>
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={loading}
@@ -1120,6 +1188,19 @@ export default function Auth() {
           console.log("Updated Registration Payload Plan:", updatedSelection);
         }}
         allowTrial={true}
+      />
+
+      <TermsModal
+        isOpen={activePolicy === "terms"}
+        onClose={() => setActivePolicy(null)}
+      />
+      <PrivacyModal
+        isOpen={activePolicy === "privacy"}
+        onClose={() => setActivePolicy(null)}
+      />
+      <RefundModal
+        isOpen={activePolicy === "refund"}
+        onClose={() => setActivePolicy(null)}
       />
     </div>
   );

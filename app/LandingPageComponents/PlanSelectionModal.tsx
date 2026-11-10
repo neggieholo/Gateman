@@ -122,11 +122,11 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-white w-full max-w-6xl lg:max-w-7xl rounded-[2.5rem] p-6 md:p-8 shadow-2xl scale-in-center border border-slate-100 overflow-y-auto max-h-[90vh] flex flex-col no-scrollbar">
+      <div className="bg-white w-full max-w-6xl lg:max-w-7xl rounded-[2.5rem] px-6 pb-6 sm:p-6 md:p-8 shadow-2xl scale-in-center border border-slate-100 overflow-y-auto max-h-[90vh] flex flex-col no-scrollbar">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h3 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+        <div className="sticky top-0 z-20 flex justify-between items-center gap-3 mb-6 bg-white p-3">
+          <div className="min-w-0">
+            <h3 className="text-xl md:text-3xl font-bold text-slate-900 tracking-tight">
               Configure Your Plan
             </h3>
             <p className="text-slate-500 text-xs md:text-sm mt-1">
@@ -134,10 +134,11 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({
               subscription duration.
             </p>
           </div>
+
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
+            className="shrink-0 p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
           >
             <X size={20} />
           </button>
@@ -186,15 +187,15 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({
         {allowTrial && (
           <div
             onClick={handleTrialToggle}
-            className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all mb-6 ${
+            className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 sm:p-5 rounded-2xl border-2 cursor-pointer transition-all mb-6 ${
               isTrial
                 ? "border-emerald-500 bg-emerald-50/40 shadow-sm"
                 : "border-slate-100 bg-slate-50/40"
             }`}
           >
-            <div className="flex items-center space-x-3">
+            <div className="flex items-start gap-3 min-w-0">
               <div
-                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
+                className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
                   isTrial
                     ? "bg-emerald-500 text-white"
                     : "bg-slate-200 text-slate-500"
@@ -202,27 +203,30 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({
               >
                 <Gift size={20} />
               </div>
-              <div>
+
+              <div className="flex-1 min-w-0">
                 <h5 className="font-bold text-slate-900 text-sm">
                   Activate 30-Day Free Trial
                 </h5>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 leading-relaxed mt-1">
                   Enjoy all features free for 30 days. All add-on modules are
                   automatically unlocked.
                 </p>
               </div>
             </div>
 
-            <div
-              className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${
-                isTrial ? "bg-emerald-500" : "bg-slate-300"
-              }`}
-            >
+            <div className="flex justify-end sm:justify-center sm:shrink-0">
               <div
-                className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                  isTrial ? "translate-x-5" : "translate-x-0"
+                className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${
+                  isTrial ? "bg-emerald-500" : "bg-slate-300"
                 }`}
-              />
+              >
+                <div
+                  className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                    isTrial ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </div>
             </div>
           </div>
         )}

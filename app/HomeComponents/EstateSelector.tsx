@@ -59,7 +59,7 @@ export default function EstateSelector() {
         />
       )}
 
-      <div className="bg-slate-900 text-white px-3 sm:px-4 py-2 text-xs flex items-center justify-between border-b border-slate-800 relative z-50 select-none">
+      <div className="bg-slate-900 text-white px-3 sm:px-4 py-2 text-xs flex items-center justify-between border-b border-slate-800 relative z-20 select-none">
         {/* Active Estate Title & Indicator */}
         <div className="flex items-center space-x-2 min-w-0 pr-2">
           <span className="shrink-0 h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />

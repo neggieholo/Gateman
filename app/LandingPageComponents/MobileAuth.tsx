@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @next/next/no-img-element */
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -14,10 +14,6 @@ import {
   Eye,
   EyeClosed,
   MapPin,
-  Sparkles,
-  ShieldCheck,
-  Home,
-  X,
   Smartphone,
 } from "lucide-react";
 import { useUser } from "../UserContext";
@@ -29,6 +25,7 @@ import toast from "react-hot-toast";
 import { PlanSelectionModal } from "./PlanSelectionModal";
 import { PlanSelectionData } from "../services/types";
 import { ADDON_MODULES } from "../services/data";
+import TermsModal, { PrivacyModal, RefundModal } from "./terms_policies/PolicyModals";
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -51,6 +48,7 @@ export default function Auth() {
   const [name, setName] = useState("");
   const [state, setState] = useState("");
   const [lga, setLga] = useState("");
+  const [address, setAddress] = useState("");
   const [adminName, setAdminName] = useState("");
   const [showPlanModal, setShowPlanModal] = useState(false);
   // const [town, setTown] = useState('');
@@ -58,7 +56,6 @@ export default function Auth() {
   const [mfaType, setMfaType] = useState<"EMAIL" | "TOTP" | "NONE">("NONE");
   const [otpLoading, setOtpLoading] = useState(false);
   const [metadata, setMetadata] = useState("");
-  const [address, setAddress] = useState("");
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -69,6 +66,11 @@ export default function Auth() {
     }
     return false;
   });
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acknowledgedPrivacy, setAcknowledgedPrivacy] = useState(false);
+  const [activePolicy, setActivePolicy] = useState<
+    "terms" | "privacy" | "refund" | null
+  >(null);
 
   const availableLgas = useMemo(() => {
     const stateData = states_lgas.find((s) => s.state === state);
@@ -565,11 +567,11 @@ export default function Auth() {
     );
 
   return (
-    <div className="min-h-screen w-full bg-slate-100 flex flex-col justify-center items-center p-4 sm:p-6 overflow-y-auto">
+    <div className="min-h-screen w-full bg-gm-navy flex flex-col justify-center items-center p-4 sm:p-6 overflow-y-auto">
       {/* Auth Form Container */}
       <div className="w-full max-w-md my-auto bg-white p-6 sm:p-10 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-white space-y-6">
         {/* Mobile Branding: Logo & App Name */}
-        <div className="flex flex-col items-center text-center space-y-3">
+        <div className="flex flex-col items-center text-center">
           <div className="relative w-32 h-16 flex items-center justify-center overflow-hidden">
             <Image
               src="/gmadminlogo.jpg"
@@ -580,9 +582,6 @@ export default function Auth() {
             />
           </div>
           <div>
-            <h1 className="text-2xl font-black font-montserrat text-slate-900 tracking-tight">
-              GateMan
-            </h1>
             <p className="text-xs text-indigo-500 font-oswald tracking-wide">
               Modern Living, Simplified.
             </p>
@@ -590,7 +589,7 @@ export default function Auth() {
         </div>
 
         {/* Dynamic Title / Subtitle */}
-        <div className="text-center pt-2">
+        <div className="text-center pt-1">
           <h2 className="text-2xl font-montserrat font-bold text-slate-900 tracking-tight mb-1">
             {isLogin
               ? "Welcome back"
@@ -616,7 +615,7 @@ export default function Auth() {
         )}
 
         {/* Auth Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {!isLogin && !isForgot && (
             <>
               <div>
@@ -633,7 +632,7 @@ export default function Auth() {
                     required
                     value={adminName}
                     onChange={(e) => setAdminName(e.target.value)}
-                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-medium"
+                    className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-100 text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-medium"
                     placeholder="John Doe"
                   />
                 </div>
@@ -653,7 +652,7 @@ export default function Auth() {
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-medium"
+                    className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-100 text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-medium"
                     placeholder="Platinum Estate"
                   />
                 </div>
@@ -668,6 +667,7 @@ export default function Auth() {
                   onClick={() => setShowPlanModal(true)}
                   className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-indigo-50/50 hover:bg-indigo-50 border border-indigo-100 hover:border-indigo-200 text-left rounded-2xl transition-all group"
                 >
+                  {/* Added flex-1 min-w-0 so this container shrinks dynamically */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-semibold text-indigo-500 uppercase tracking-wider whitespace-nowrap">
@@ -686,10 +686,12 @@ export default function Auth() {
                     </div>
 
                     <div className="mt-1 space-y-1">
+                      {/* Default Core Modules (Always Active) */}
                       <div className="flex items-center space-x-1.5 text-xs text-slate-500 font-medium">
                         <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0"></span>
                         <span className="text-xs text-slate-500 font-medium truncate">
-                          Core Platform Access
+                          Core Platform Access (Dashboard, User & Resident
+                          Management)
                         </span>
                       </div>
 
@@ -711,11 +713,18 @@ export default function Auth() {
                           })}
                         </div>
                       )}
+
+                      {/* {configuredPlan.isTrial && (
+                                  <span className="inline-block text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 mt-1">
+                                    30-Day Free Trial Enabled
+                                  </span>
+                                )} */}
                     </div>
                   </div>
 
-                  <span className="shrink-0 whitespace-nowrap text-xs font-bold text-indigo-600 bg-white px-3 py-1.5 rounded-xl border border-indigo-100 shadow-sm text-center">
-                    Change
+                  {/* Added shrink-0 and whitespace-nowrap to keep button fixed & formatted */}
+                  <span className="shrink-0 whitespace-nowrap text-xs font-bold text-indigo-600 bg-white px-3 py-1.5 rounded-xl border border-indigo-100 shadow-sm group-hover:scale-105 transition-transform text-center">
+                    Change Plan
                   </span>
                 </button>
               </div>
@@ -723,7 +732,7 @@ export default function Auth() {
           )}
 
           <div>
-            <label className="block text-sm font-oswald text-slate-700 mb-1.5 ml-1">
+            <label className="block text-sm  font-oswald text-slate-700 mb-1.5 ml-1">
               Email Address
             </label>
             <div className="relative">
@@ -736,7 +745,7 @@ export default function Auth() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 font-sans text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-medium"
+                className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-100 font-sans text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-medium"
                 placeholder="name@company.com"
               />
             </div>
@@ -744,7 +753,7 @@ export default function Auth() {
 
           {!isForgot && (
             <div>
-              <label className="block text-sm font-oswald text-slate-700 mb-1.5 ml-1">
+              <label className="block text-sm  font-oswald text-slate-700 mb-1.5 ml-1">
                 Password
               </label>
               <div className="relative">
@@ -757,9 +766,10 @@ export default function Auth() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-11 pr-12 py-3 bg-slate-50 border border-slate-100 font-sans text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-medium"
+                  className="w-full pl-11 pr-12 py-3.5 bg-slate-50 border border-slate-100 font-sans text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block transition-all outline-none font-medium"
                   placeholder="••••••••"
                 />
+                {/* Moved to the right and added cursor-pointer */}
                 <button
                   type="button"
                   onClick={() => setShow(!show)}
@@ -772,46 +782,32 @@ export default function Auth() {
           )}
 
           {isLogin && !isForgot && (
-            <div className="flex items-center justify-between pt-1">
-              <div className="flex items-center">
-                <input
-                  id="remember_me"
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => {
-                    const isChecked = e.target.checked;
-                    setRememberMe(isChecked);
-                    localStorage.setItem("rememberMe", String(isChecked));
-                  }}
-                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
-                />
-                <label
-                  htmlFor="remember_me"
-                  className="ml-2 block text-xs sm:text-sm text-gray-700 font-sans"
-                >
-                  Remember me
-                </label>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setIsForgot(true);
-                  setIsLogin(false);
-                  setError(null);
-                  setEmail("");
+            <div className="flex items-center mt-4">
+              <input
+                id="remember_me"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => {
+                  const isChecked = e.target.checked;
+                  setRememberMe(isChecked);
+                  localStorage.setItem("rememberMe", String(isChecked));
                 }}
-                className="text-xs sm:text-sm font-oswald text-indigo-600 hover:underline transition-colors"
+                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+              />
+              <label
+                htmlFor="remember_me"
+                className="ml-2 block text-sm text-gray-700 font-sans"
               >
-                Forgot password?
-              </button>
+                Remember me
+              </label>
             </div>
           )}
 
           {!isLogin && !isForgot && (
             <div className="grid grid-cols-1 gap-4">
+              {/* State Select */}
               <div>
-                <label className="block text-sm font-oswald text-slate-700 mb-1.5 ml-1">
+                <label className="block text-sm  font-oswald text-slate-700 mb-1.5 ml-1">
                   State
                 </label>
                 <div className="relative">
@@ -826,7 +822,7 @@ export default function Auth() {
                       setState(e.target.value);
                       setLga("");
                     }}
-                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 font-sans text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block outline-none font-medium appearance-none"
+                    className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-100 font-sans text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block outline-none font-medium appearance-none"
                   >
                     <option value="">Select State</option>
                     {states_lgas.map((s) => (
@@ -838,8 +834,9 @@ export default function Auth() {
                 </div>
               </div>
 
+              {/* City (LGA) Select */}
               <div>
-                <label className="block text-sm font-oswald text-slate-700 mb-1.5 ml-1">
+                <label className="block text-sm  font-oswald text-slate-700 mb-1.5 ml-1">
                   LGA
                 </label>
                 <div className="relative">
@@ -852,7 +849,7 @@ export default function Auth() {
                     disabled={!state}
                     value={lga}
                     onChange={(e) => setLga(e.target.value)}
-                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 font-sans text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block outline-none font-medium appearance-none disabled:opacity-50"
+                    className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-100 font-sans text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block outline-none font-medium appearance-none disabled:opacity-50"
                   >
                     <option value="">Select LGA</option>
                     {availableLgas.map((lga) => (
@@ -863,13 +860,117 @@ export default function Auth() {
                   </select>
                 </div>
               </div>
+
+              {/* Town Input */}
+              <div>
+                <label className="block text-sm  font-oswald text-slate-700 mb-1.5 ml-1">
+                  Street Address
+                </label>
+                <div className="relative">
+                  <MapPin
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                    size={20}
+                  />
+                  <input
+                    type="text"
+                    required
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-100 text-slate-900 text-sm rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 block outline-none font-medium"
+                    placeholder="e.g. 12 Chevron Drive"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isLogin && !isForgot && (
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsForgot(true);
+                  setIsLogin(false);
+                  setError(null);
+                  setEmail("");
+                }}
+                className="text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors"
+              >
+                <span className="font-oswald text-indigo-600">
+                  Forgot password?
+                </span>
+              </button>
+            </div>
+          )}
+
+          {!isLogin && !isForgot && (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+              <label className="flex items-start gap-3 text-sm text-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  required
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600"
+                />
+                <span>
+                  I have read and agree to the{" "}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActivePolicy("terms");
+                    }}
+                    className="font-semibold text-indigo-600 underline underline-offset-2 hover:text-indigo-800"
+                  >
+                    Terms and Conditions
+                  </button>
+                  .
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 text-sm text-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  required
+                  checked={acknowledgedPrivacy}
+                  onChange={(e) => setAcknowledgedPrivacy(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600"
+                />
+                <span>
+                  I acknowledge that I have read the{" "}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActivePolicy("privacy");
+                    }}
+                    className="font-semibold text-indigo-600 underline underline-offset-2 hover:text-indigo-800"
+                  >
+                    Privacy Policy
+                  </button>
+                  .
+                </span>
+              </label>
+
+              <p className="pl-7 text-xs leading-relaxed text-slate-500">
+                Please also review our{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActivePolicy("refund");
+                  }}
+                  className="font-semibold text-indigo-600 underline underline-offset-2 hover:text-indigo-800"
+                >
+                  Refund and Cancellation Policy
+                </button>
+                .
+              </p>
             </div>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center text-white bg-primary hover:bg-primary/90 focus:ring-4 focus:ring-indigo-300 font-montserrat rounded-2xl text-base py-3.5 transition-all shadow-xl shadow-indigo-200 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed mt-2"
+            className="w-full flex items-center justify-center text-white bg-primary/60 hover:bg-primary focus:ring-4 focus:ring-indigo-300 font-montserrat rounded-2xl text-lg px-5 py-4 transition-all shadow-xl shadow-indigo-200 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {loading || requestingOtp ? (
               <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -880,7 +981,7 @@ export default function Auth() {
                   : isForgot
                     ? "Get Reset Link"
                     : "Create Account"}
-                <ArrowRight size={18} className="ml-2" />
+                <ArrowRight size={20} className="ml-2" />
               </>
             )}
           </button>
@@ -1012,6 +1113,20 @@ export default function Auth() {
         }}
         allowTrial={true}
       />
+
+      <TermsModal
+        isOpen={activePolicy === "terms"}
+        onClose={() => setActivePolicy(null)}
+      />
+      <PrivacyModal
+        isOpen={activePolicy === "privacy"}
+        onClose={() => setActivePolicy(null)}
+      />
+      <RefundModal
+        isOpen={activePolicy === "refund"}
+        onClose={() => setActivePolicy(null)}
+      />
+      
     </div>
   );
 }

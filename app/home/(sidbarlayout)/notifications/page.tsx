@@ -61,7 +61,7 @@ export default function NotificationsPage() {
     if (notifications.length > 0) {
       handleRead();
     }
-  }, [user, notifications.length, canView]);
+  }, [user, notifications.length, canView, setBadgeCount]);
 
   const clearAll = async () => {
     if (!canDelete) {
@@ -102,9 +102,9 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="p-8 h-[calc(100vh-64px)] overflow-hidden bg-slate-50/50">
-      <div className="flex justify-between items-center mb-12">
-        <div className="flex items-center gap-4">
+    <div className="sm:p-8 p-1 h-[calc(100vh-64px)] overflow-hidden bg-slate-50/50">
+      <div className="flex-col items-start sm:items-center gap-6 mb-6">
+        <div className="mb-6">
           <button
             onClick={() => router.back()}
             className="p-3 bg-white rounded-2xl border hover:bg-slate-50 transition-colors"
@@ -112,29 +112,32 @@ export default function NotificationsPage() {
           >
             <ArrowLeft size={20} className="text-slate-700" />
           </button>
-          <h1 className="text-3xl font-black text-slate-900 flex items-center gap-3">
+        </div>
+        <div className="flex items-center gap-4 justify-between">
+          <h1 className="text-3xl font-oswald font-black text-slate-900 flex items-center gap-3">
             <BellRing className="text-indigo-600" size={32} /> Notifications
           </h1>
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={triggerRefresh}
-            className="p-3 bg-white rounded-2xl border"
-          >
-            <RefreshCw
-              size={20}
-              className={loadingNotifications ? "animate-spin" : ""}
-            />
-          </button>
-          {notifications.length > 0 && canDelete && (
+
+          <div className="flex gap-3">
             <button
-              onClick={clearAll}
-              disabled={clearing}
-              className="flex items-center gap-2 bg-white px-6 py-3 rounded-2xl text-rose-600 font-bold shadow-sm"
+              onClick={triggerRefresh}
+              className="p-3 bg-white rounded-2xl border"
             >
-              <Trash2 size={16} /> {clearing ? "Clearing..." : "Clear All"}
+              <RefreshCw
+                size={20}
+                className={loadingNotifications ? "animate-spin" : ""}
+              />
             </button>
-          )}
+            {notifications.length > 0 && canDelete && (
+              <button
+                onClick={clearAll}
+                disabled={clearing}
+                className="flex items-center gap-2 bg-white px-6 py-3 rounded-2xl text-rose-600 font-bold shadow-sm"
+              >
+                <Trash2 size={16} /> {clearing ? "Clearing..." : "Clear All"}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -157,7 +160,7 @@ export default function NotificationsPage() {
           ) : (
             <div className="flex flex-col items-center py-32 bg-white rounded-[40px] border-dashed border-2">
               <Inbox size={48} className="text-slate-200" />
-              <h3 className="text-slate-900 font-bold text-2xl mt-4">
+              <h3 className="text-slate-900 font-oswald font-bold text-2xl mt-4">
                 {loadingNotifications ? "" : "All caught up!"}
               </h3>
             </div>

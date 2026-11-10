@@ -742,7 +742,7 @@ export default function Settings() {
   }
 
   return (
-    <div className="relative flex-1 p-4 sm:p-6 space-y-6 sm:space-y-8  bg-slate-50/50 font-sans">
+    <div className="relative flex-1 p-1 sm:p-6 space-y-6 sm:space-y-8 bg-slate-50/50 font-sans">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 sm:gap-0">
         <div>
@@ -795,7 +795,7 @@ export default function Settings() {
       {/* Single Vertical Column Layout */}
       <div className="w-full space-y-6 sm:space-y-8">
         {/* 1. Identity Section */}
-        <div className="bg-white p-5 sm:p-8 rounded-4xl border border-slate-100 shadow-sm space-y-6 ">
+        <div className="bg-white p-3 sm:p-8 rounded-4xl border border-slate-100 shadow-sm space-y-6 ">
           <div className="flex items-center gap-2 mb-2">
             <Building2 className="text-indigo-600" size={20} />
             <h2 className="font-montserrat font-bold text-slate-900">
@@ -1004,7 +1004,7 @@ export default function Settings() {
 
         {/* Subscription & Plan Info Section */}
         {planInfo && canManageSubscription && (
-          <div className="bg-white p-5 sm:p-8 rounded-4xl border border-slate-100 shadow-sm space-y-6">
+          <div className="bg-white p-2 sm:p-8 rounded-4xl border border-slate-100 shadow-sm space-y-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="text-amber-500" size={20} />

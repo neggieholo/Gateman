@@ -10,8 +10,9 @@ const page = async () => {
     const mobileCheck = isMobile(userAgent);
 
   return (
-    mobileCheck ? <MobileAuth /> : <Auth />
-  )
+    <MobileAuth />
+    // mobileCheck ? <MobileAuth /> : <Auth />
+  );
 }
 
 export default page

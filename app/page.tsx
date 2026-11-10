@@ -134,34 +134,6 @@ const audiences = [
   },
 ];
 
-// function Brand({ light = false }: { light?: boolean }) {
-//   return (
-//     <a href="#home" className="flex shrink-0 items-center gap-2.5">
-//       <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gm-gold text-gm-navy">
-//         <svg viewBox="0 0 32 32" fill="none" className="h-7 w-7">
-//           <path
-//             d="M16 3 27 8v8c0 7-4.6 11.1-11 14C9.6 27.1 5 23 5 16V8l11-5Z"
-//             stroke="currentColor"
-//             strokeWidth="2.2"
-//             strokeLinejoin="round"
-//           />
-//           <path
-//             d="M11 16.5 14.5 20 22 12.5"
-//             stroke="currentColor"
-//             strokeWidth="2.4"
-//             strokeLinecap="round"
-//             strokeLinejoin="round"
-//           />
-//         </svg>
-//       </span>
-//       <span
-//         className={`text-xl font-extrabold tracking-tight ${light ? "text-white" : "text-gm-navy"}`}
-//       >
-//         GateMan<span className="text-gm-gold">.</span>
-//       </span>
-//     </a>
-//   );
-// }
 
 function ArrowIcon() {
   return (
@@ -193,12 +165,13 @@ function CheckIcon() {
 
 export default function Home() {
   const [email, setEmail] = useState("");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const router = useRouter();
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#FFFFFF] text-[#1C1C1E]">
+    <main className="min-h-screen overflow-x-clip bg-[#FFFFFF] text-[#1C1C1E]">
       {/* Navigation */}
-      <nav className="sticky top-0 z-20 mx-auto flex max-w-7xl items-center justify-between px-6 py-5 lg:px-10">
+      <nav className="sticky top-0 z-50 mx-auto flex max-w-7xl items-center justify-between bg-white px-6 py-5 lg:px-10">
         <div className="flex items-center">
           <img
             src="/gm_landing_logo.jpg"
@@ -235,16 +208,92 @@ export default function Home() {
           </Link>
         </div>
 
+        {/* Mobile menu toggle */}
+        <button
+          type="button"
+          aria-label={
+            isMobileMenuOpen ? "Close navigation menu" : "Open navigation menu"
+          }
+          aria-expanded={isMobileMenuOpen}
+          onClick={() => setIsMobileMenuOpen((open) => !open)}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-gm-navy transition hover:bg-slate-50 lg:hidden"
+        >
+          {isMobileMenuOpen ? (
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              className="h-6 w-6"
+              aria-hidden="true"
+            >
+              <path
+                d="m6 6 12 12M18 6 6 18"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+          ) : (
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              className="h-6 w-6"
+              aria-hidden="true"
+            >
+              <path
+                d="M4 7h16M4 12h16M4 17h16"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+          )}
+        </button>
+
+        {/* Desktop login button */}
         <button
           onClick={() => router.push("/login")}
-          className="hidden rounded-full bg-gm-navy px-6 py-3 text-sm font-oswald font-semibold text-white transition hover:bg-[#142E59] md:inline-flex"
+          className="hidden rounded-full bg-gm-navy px-6 py-3 text-sm font-oswald font-semibold text-white transition hover:bg-[#142E59] lg:inline-flex"
         >
           Sign Up/Login <span className="ml-2">↗</span>
         </button>
+
+        {/* Mobile navigation panel */}
+        {isMobileMenuOpen && (
+          <div className="absolute left-0 right-0 top-full z-30 border-t border-slate-100 bg-white px-6 py-5 shadow-lg lg:hidden">
+            <div className="flex flex-col gap-4 text-sm font-oswald font-medium text-gray-600">
+              {[
+                ["Platform", "#platform"],
+                ["Solutions", "#who-we-serve"],
+                ["How it works", "#how-it-works"],
+                ["Security", "#security"],
+                ["Community", "#community"],
+                ["About", "#about"],
+              ].map(([label, href]) => (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="transition hover:text-gm-navy"
+                >
+                  {label}
+                </Link>
+              ))}
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  router.push("/login");
+                }}
+                className="mt-1 inline-flex w-full items-center justify-center rounded-full bg-gm-navy px-6 py-3 text-sm font-oswald font-semibold text-white transition hover:bg-[#142E59]"
+              >
+                Sign Up/Login <span className="ml-2">↗</span>
+              </button>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero */}
-      <section className="relative mx-auto grid max-w-7xl items-center gap-14 px-6 pt-12 lg:grid-cols-2 lg:px-10 lg:pt-20">
+      <section className="relative mx-auto grid max-w-7xl items-center gap-14 px-6 pt-2 sm:pt-5 lg:grid-cols-2 lg:px-10 lg:pt-20">
         <div className="absolute -left-32 top-20 z-0 h-80 w-80 rounded-full bg-gm-gold/30 blur-3xl" />
 
         <div className="relative z-10">
@@ -676,9 +725,9 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Trust strip */}
+      {/* Trust strip 1 */}
       <section className="border-y border-gray-200/80 bg-white/70">
-        <div className="mx-auto max-w-7xl flex justify-evenly gap-6 px-6 py-4 lg:px-10">
+        <div className="mx-auto max-w-7xl grid grid-cols-2 lg:grid-cols-4 gap-3 px-4 py-3 lg:px-10">
           {[
             ["01", "Digital visitor passes"],
             ["02", "Resident access"],
@@ -687,18 +736,20 @@ export default function Home() {
           ].map(([number, label]) => (
             <div
               key={number}
-              className="flex items-center justify-center gap-3 font-montserrat"
+              className="flex items-center gap-2 font-montserrat"
             >
-              <span className="text-md font-bold text-gray-600">{number}</span>
-              <span className="text-sm font-semibold text-gm-navy sm:text-sm">
+              <span className="text-xs font-bold text-gray-400">{number}</span>
+              <span className="text-[11px] sm:text-sm font-semibold text-gm-navy">
                 {label}
               </span>
             </div>
           ))}
         </div>
       </section>
+
+      {/* Trust strip 2 */}
       <section className="border-y border-gray-200/80 bg-gm-navy">
-        <div className="mx-auto max-w-7xl flex justify-evenly gap-6 px-6 py-4 lg:px-10">
+        <div className="mx-auto max-w-7xl grid grid-cols-2 lg:grid-cols-4 gap-3 px-4 py-3 lg:px-10">
           {[
             ["05", "Centralised records"],
             ["07", "Reports and Suggestions"],
@@ -707,10 +758,10 @@ export default function Home() {
           ].map(([number, label]) => (
             <div
               key={number}
-              className="flex items-center justify-center gap-3 font-montserrat"
+              className="flex items-center gap-2 font-montserrat"
             >
-              <span className="text-md font-bold text-black">{number}</span>
-              <span className="text-sm font-semibold text-white sm:text-sm">
+              <span className="text-xs font-bold text-gm-gold">{number}</span>
+              <span className="text-[11px] sm:text-sm font-semibold text-white">
                 {label}
               </span>
             </div>
@@ -1067,7 +1118,7 @@ export default function Home() {
           <div className="mt-14 grid gap-6 md:grid-cols-2">
             {/* Facility Booking */}
             <div className="group relative overflow-hidden rounded-3xl border border-white/10 bg-white/6 p-7 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl sm:p-9">
-              <div className="absolute right-0 top-0 h-36 w-36 rounded-full bg-white/5 transition-transform duration-500 group-hover:scale-150" />
+              {/* <div className="absolute right-0 top-0 h-36 w-36 rounded-full bg-white/5 transition-transform duration-500 group-hover:scale-150" /> */}
 
               <div className="relative">
                 <div className="flex items-start justify-between">
@@ -1075,9 +1126,9 @@ export default function Home() {
                     <CalendarDays className="h-7 w-7" />
                   </div>
 
-                  <span className="text-4xl font-bold tracking-tight text-white/20">
+                  {/* <span className="text-4xl font-bold tracking-tight text-white/20">
                     04
-                  </span>
+                  </span> */}
                 </div>
 
                 <h3 className="mt-8 text-xl font-montserrat font-bold text-white sm:text-2xl">
@@ -1113,7 +1164,7 @@ export default function Home() {
 
             {/* Estate Services */}
             <div className="group relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.06] p-7 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl sm:p-9">
-              <div className="absolute right-0 top-0 h-36 w-36 rounded-full bg-white/5 transition-transform duration-500 group-hover:scale-150" />
+              {/* <div className="absolute right-0 top-0 h-36 w-36 rounded-full bg-white/5 transition-transform duration-500 group-hover:scale-150" /> */}
 
               <div className="relative">
                 <div className="flex items-start justify-between">
@@ -1121,9 +1172,9 @@ export default function Home() {
                     <Wrench className="h-7 w-7" />
                   </div>
 
-                  <span className="text-4xl font-bold tracking-tight text-white/20">
+                  {/* <span className="text-4xl font-bold tracking-tight text-white/20">
                     08
-                  </span>
+                  </span> */}
                 </div>
 
                 <h3 className="mt-8 text-xl font-montserrat font-bold text-white sm:text-2xl">

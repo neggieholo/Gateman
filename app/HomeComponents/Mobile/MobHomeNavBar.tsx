@@ -8,7 +8,7 @@ import { checkSession } from "@/app/services/apis";
 import { Menu } from "lucide-react";
 
 export default function MobHomeNavbar() {
-  const { user, setUser, isLoading, setIsLoading } = useUser();
+  const { user, setUser, isLoading, setIsLoading, badgeCount } = useUser();
   const router = useRouter();
   const { setIsSidebarOpen } = useUser();
   const [mounted, setMounted] = useState(false);
@@ -50,7 +50,7 @@ export default function MobHomeNavbar() {
 
   return (
     <header className="bg-white/80 backdrop-blur-md border-b border-slate-100 flex flex-col items-center justify-between px-2 sticky top-0 z-30 h-fit font-sans">
-      <div className="flex items-center w-full bg-primary/40 rounded-2xl px-2 text-secondary">
+      <div className="flex items-center w-full bg-primary/40 rounded-2xl px-2 text-secondary mt-2">
         <h1 className="font-montserrat text-md text-start font-black text-slate-800 tracking-tight py-2">
           Welcome, <span className="text-primary">{fullname}</span>
         </h1>
@@ -65,34 +65,32 @@ export default function MobHomeNavbar() {
             <Menu size={20} />
           </button>
         </div>
-        <div className="flex items-center gap-3 p-2 w-full justify-end">
-          <div className="indicator group">
-            {/* {badgeCount > 0 && (
-              <span className="indicator-item badge badge-primary badge-sm text-white font-bold border-white border-2 scale-110 group-hover:animate-bounce">
+        <div className="flex items-center gap-6 sm:gap-4 p-2 w-full justify-end">
+          <button
+            type="button"
+            className="relative btn btn-ghost btn-circle bg-slate-50 hover:bg-primary/10 hover:text-primary transition-all duration-300 shadow-sm border border-slate-100"
+            onClick={() => router.push("/home/notifications")}
+          >
+            {badgeCount > 0 && (
+              <span className="absolute -top-1 -right-2.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white shadow-md ring-2 ring-white">
                 {badgeCount}
               </span>
-            )} */}
-            <button
-              type="button"
-              className="btn btn-ghost btn-circle bg-slate-50 hover:bg-primary/10 hover:text-primary transition-all duration-300 shadow-sm border border-slate-100"
-              onClick={() => router.push("/home/dashboard")}
+            )}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                />
-              </svg>
-            </button>
-          </div>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+              />
+            </svg>
+          </button>
 
           <button
             type="button"
@@ -101,7 +99,7 @@ export default function MobHomeNavbar() {
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4"
+              className="h-6 w-6"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"

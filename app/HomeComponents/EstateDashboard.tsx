@@ -199,7 +199,7 @@ export default function EstateDashboard() {
   }
 
   return (
-    <div className="relative space-y-6 w-full h-full overflow-y-auto p-4 sm:p-6 bg-slate-50/50 pb-20 font-sans">
+    <div className="relative space-y-6 w-full h-full overflow-y-auto p-1 sm:p-6 bg-slate-50/50 sm:pb-20 font-sans">
       {/* Header */}
       <div className="flex justify-between items-center border-b border-slate-100 pb-3">
         <div>
