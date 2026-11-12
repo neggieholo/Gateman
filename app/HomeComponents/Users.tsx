@@ -96,7 +96,7 @@ export default function UsersPage() {
     <div className="space-y-6 p-4 sm:p-6 font-sans flex flex-col max-h-screen overflow-hidden">
       {/* Dynamic Navigation Bar Layout Tab Controls */}
       <div className="flex justify-start mb-4 shrink-0 min-w-0">
-        <div className="flex bg-slate-200/60 p-1 rounded-xl border border-slate-200/20 shadow-inner">
+        <div className="flex bg-slate-200/60 p-1 rounded-xl border border-slate-200/20 shadow-inner overflow-x-auto">
           <button
             onClick={() => handleTabSwitch("users")}
             className={`flex items-center gap-1.5 px-5 py-2 rounded-lg font-montserrat font-bold text-xs uppercase tracking-wider transition-all ${

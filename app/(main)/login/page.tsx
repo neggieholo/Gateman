@@ -10,8 +10,7 @@ const page = async () => {
     const mobileCheck = isMobile(userAgent);
 
   return (
-    <MobileAuth />
-    // mobileCheck ? <MobileAuth /> : <Auth />
+    mobileCheck ? <MobileAuth /> : <Auth />
   );
 }
 
